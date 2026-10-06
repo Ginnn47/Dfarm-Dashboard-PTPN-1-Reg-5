@@ -1,0 +1,49 @@
+{
+  "name": "dfarm-dashboard",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@nuxt/ui": "^4.11.3",
+    "@pinia-orm/nuxt": "^2.0.0",
+    "@pinia/nuxt": "^1.0.2",
+    "@tanstack/vue-table": "^9.2.6",
+    "@tiptap/core": "^3.31.4",
+    "@tiptap/extension-bubble-menu": "^3.31.4",
+    "@tiptap/extension-code": "^3.31.4",
+    "@tiptap/extension-collaboration": "^3.31.4",
+    "@tiptap/extension-drag-handle": "^3.31.4",
+    "@tiptap/extension-drag-handle-vue-3": "^3.31.4",
+    "@tiptap/extension-floating-menu": "^3.31.4",
+    "@tiptap/extension-horizontal-rule": "^3.31.4",
+    "@tiptap/extension-image": "^3.31.4",
+    "@tiptap/extension-mention": "^3.31.4",
+    "@tiptap/extension-node-range": "^3.31.4",
+    "@tiptap/extension-placeholder": "^3.31.4",
+    "@tiptap/markdown": "^3.31.4",
+    "@tiptap/pm": "^3.31.4",
+    "@tiptap/starter-kit": "^3.31.4",
+    "@tiptap/suggestion": "^3.31.4",
+    "@tiptap/vue-3": "^3.31.4",
+    "@vesp/nuxt-fontawesome": "^2.0.0",
+    "@vueuse/nuxt": "^15.0.0",
+    "echarts": "^6.1.0",
+    "nuxt": "^4.5.2",
+    "nuxt-echarts": "^1.1.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vue": "^3.5.43",
+    "vue-echarts": "^8.3.1",
+    "vue-router": "^5.3.1"
+  },
+  "devDependencies": {
+    "@golar/vue": "^0.1.10",
+    "golar": "^0.1.10"
+  }
+}
