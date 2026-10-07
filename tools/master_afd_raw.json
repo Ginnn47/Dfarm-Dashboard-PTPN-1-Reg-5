@@ -1,0 +1,1666 @@
+﻿[
+    {
+        "row":  3,
+        "reff":  "AFD017K01",
+        "plantCode":  "7K01",
+        "plantDesc":  "KEBUN PASEWARAN KALISELOGIRI",
+        "afdCode":  "AFD01",
+        "afdDesc":  "AFD. PASEWARAN UTARA"
+    },
+    {
+        "row":  4,
+        "reff":  "AFD027K01",
+        "plantCode":  "7K01",
+        "plantDesc":  "KEBUN PASEWARAN KALISELOGIRI",
+        "afdCode":  "AFD02",
+        "afdDesc":  "AFD. PASEWARAN SELATAN"
+    },
+    {
+        "row":  5,
+        "reff":  "AFD037K01",
+        "plantCode":  "7K01",
+        "plantDesc":  "KEBUN PASEWARAN KALISELOGIRI",
+        "afdCode":  "AFD03",
+        "afdDesc":  "AFD. SIDOMULYO"
+    },
+    {
+        "row":  6,
+        "reff":  "AFD047K01",
+        "plantCode":  "7K01",
+        "plantDesc":  "KEBUN PASEWARAN KALISELOGIRI",
+        "afdCode":  "AFD04",
+        "afdDesc":  "AFD. ASEMBAGUS"
+    },
+    {
+        "row":  7,
+        "reff":  "AFD057K01",
+        "plantCode":  "7K01",
+        "plantDesc":  "KEBUN PASEWARAN KALISELOGIRI",
+        "afdCode":  "AFD05",
+        "afdDesc":  "AFD. TETELAN"
+    },
+    {
+        "row":  8,
+        "reff":  "AFD057K01",
+        "plantCode":  "7K01",
+        "plantDesc":  "KEBUN PASEWARAN KALISELOGIRI",
+        "afdCode":  "AFD05",
+        "afdDesc":  "AFD. TETELAN"
+    },
+    {
+        "row":  9,
+        "reff":  "AFD067K01",
+        "plantCode":  "7K01",
+        "plantDesc":  "KEBUN PASEWARAN KALISELOGIRI",
+        "afdCode":  "AFD06",
+        "afdDesc":  "AFD. ALAS GEDANG"
+    },
+    {
+        "row":  10,
+        "reff":  "AFD067K01",
+        "plantCode":  "7K01",
+        "plantDesc":  "KEBUN PASEWARAN KALISELOGIRI",
+        "afdCode":  "AFD06",
+        "afdDesc":  "AFD. ALAS GEDANG"
+    },
+    {
+        "row":  11,
+        "reff":  "AFD077K01",
+        "plantCode":  "7K01",
+        "plantDesc":  "KEBUN PASEWARAN KALISELOGIRI",
+        "afdCode":  "AFD07",
+        "afdDesc":  "AFD. WANGKAL/SECANG"
+    },
+    {
+        "row":  12,
+        "reff":  "AFD077K01",
+        "plantCode":  "7K01",
+        "plantDesc":  "KEBUN PASEWARAN KALISELOGIRI",
+        "afdCode":  "AFD07",
+        "afdDesc":  "AFD. WANGKAL/SECANG"
+    },
+    {
+        "row":  13,
+        "reff":  "AFD017K03",
+        "plantCode":  "7K03",
+        "plantDesc":  "KEBUN SUNGAILEMBU",
+        "afdCode":  "AFD01",
+        "afdDesc":  "AFD. SUNGAI LEMBU"
+    },
+    {
+        "row":  14,
+        "reff":  "AFD027K03",
+        "plantCode":  "7K03",
+        "plantDesc":  "KEBUN SUNGAILEMBU",
+        "afdCode":  "AFD02",
+        "afdDesc":  "AFD. PAKAODA"
+    },
+    {
+        "row":  15,
+        "reff":  "AFD037K03",
+        "plantCode":  "7K03",
+        "plantDesc":  "KEBUN SUNGAILEMBU",
+        "afdCode":  "AFD03",
+        "afdDesc":  "AFD. REJOAGUNG"
+    },
+    {
+        "row":  16,
+        "reff":  "AFD047K03",
+        "plantCode":  "7K03",
+        "plantDesc":  "KEBUN SUNGAILEMBU",
+        "afdCode":  "AFD04",
+        "afdDesc":  "AFD. SUMBER BOPONG"
+    },
+    {
+        "row":  17,
+        "reff":  "AFD017K04",
+        "plantCode":  "7K04",
+        "plantDesc":  "KEBUN SUMBERJAMBE",
+        "afdCode":  "AFD01",
+        "afdDesc":  "AFD. SUMBER JAMBE"
+    },
+    {
+        "row":  18,
+        "reff":  "AFD027K04",
+        "plantCode":  "7K04",
+        "plantDesc":  "KEBUN SUMBERJAMBE",
+        "afdCode":  "AFD02",
+        "afdDesc":  "AFD. SUMBER WARINGIN"
+    },
+    {
+        "row":  19,
+        "reff":  "AFD037K04",
+        "plantCode":  "7K04",
+        "plantDesc":  "KEBUN SUMBERJAMBE",
+        "afdCode":  "AFD03",
+        "afdDesc":  "AFD. SUMBER GANDENG"
+    },
+    {
+        "row":  20,
+        "reff":  "AFD047K04",
+        "plantCode":  "7K04",
+        "plantDesc":  "KEBUN SUMBERJAMBE",
+        "afdCode":  "AFD04",
+        "afdDesc":  "AFD. PAL IV/VI"
+    },
+    {
+        "row":  21,
+        "reff":  "AFD017K05",
+        "plantCode":  "7K05",
+        "plantDesc":  "KEBUN KALIKEMPIT KALISEPANJANG JATIRONO",
+        "afdCode":  "AFD01",
+        "afdDesc":  "AFD. KALI WADUNG"
+    },
+    {
+        "row":  22,
+        "reff":  "AFD027K05",
+        "plantCode":  "7K05",
+        "plantDesc":  "KEBUN KALIKEMPIT KALISEPANJANG JATIRONO",
+        "afdCode":  "AFD02",
+        "afdDesc":  "AFD. WARINGIN"
+    },
+    {
+        "row":  23,
+        "reff":  "AFD037K05",
+        "plantCode":  "7K05",
+        "plantDesc":  "KEBUN KALIKEMPIT KALISEPANJANG JATIRONO",
+        "afdCode":  "AFD03",
+        "afdDesc":  "AFD. KALIJAMBE"
+    },
+    {
+        "row":  24,
+        "reff":  "AFD047K05",
+        "plantCode":  "7K05",
+        "plantDesc":  "KEBUN KALIKEMPIT KALISEPANJANG JATIRONO",
+        "afdCode":  "AFD04",
+        "afdDesc":  "AFD. MARGOSUGIH"
+    },
+    {
+        "row":  25,
+        "reff":  "AFD057K05",
+        "plantCode":  "7K05",
+        "plantDesc":  "KEBUN KALIKEMPIT KALISEPANJANG JATIRONO",
+        "afdCode":  "AFD05",
+        "afdDesc":  "AFD. BONDOKEREP"
+    },
+    {
+        "row":  26,
+        "reff":  "AFD067K05",
+        "plantCode":  "7K05",
+        "plantDesc":  "KEBUN KALIKEMPIT KALISEPANJANG JATIRONO",
+        "afdCode":  "AFD06",
+        "afdDesc":  "AFD. KEMPIT"
+    },
+    {
+        "row":  27,
+        "reff":  "AFD077K05",
+        "plantCode":  "7K05",
+        "plantDesc":  "KEBUN KALIKEMPIT KALISEPANJANG JATIRONO",
+        "afdCode":  "AFD07",
+        "afdDesc":  "AFD. DARUNGAN"
+    },
+    {
+        "row":  28,
+        "reff":  "AFD087K05",
+        "plantCode":  "7K05",
+        "plantDesc":  "KEBUN KALIKEMPIT KALISEPANJANG JATIRONO",
+        "afdCode":  "AFD08",
+        "afdDesc":  "AFD. BESARAN"
+    },
+    {
+        "row":  29,
+        "reff":  "AFD097K05",
+        "plantCode":  "7K05",
+        "plantDesc":  "KEBUN KALIKEMPIT KALISEPANJANG JATIRONO",
+        "afdCode":  "AFD09",
+        "afdDesc":  "AFD. KAMPUNG LIMA"
+    },
+    {
+        "row":  30,
+        "reff":  "AFD107K05",
+        "plantCode":  "7K05",
+        "plantDesc":  "KEBUN KALIKEMPIT KALISEPANJANG JATIRONO",
+        "afdCode":  "AFD10",
+        "afdDesc":  "AFD. KALI BARU KIDUL"
+    },
+    {
+        "row":  31,
+        "reff":  "AFD117K05",
+        "plantCode":  "7K05",
+        "plantDesc":  "KEBUN KALIKEMPIT KALISEPANJANG JATIRONO",
+        "afdCode":  "AFD11",
+        "afdDesc":  "AFD. SUMBER BARU"
+    },
+    {
+        "row":  32,
+        "reff":  "AFD127K05",
+        "plantCode":  "7K05",
+        "plantDesc":  "KEBUN KALIKEMPIT KALISEPANJANG JATIRONO",
+        "afdCode":  "AFD12",
+        "afdDesc":  "AFD. KAJAR"
+    },
+    {
+        "row":  33,
+        "reff":  "AFD137K05",
+        "plantCode":  "7K05",
+        "plantDesc":  "KEBUN KALIKEMPIT KALISEPANJANG JATIRONO",
+        "afdCode":  "AFD13",
+        "afdDesc":  "AFD. KACANGAN"
+    },
+    {
+        "row":  34,
+        "reff":  "AFD147K05",
+        "plantCode":  "7K05",
+        "plantDesc":  "KEBUN KALIKEMPIT KALISEPANJANG JATIRONO",
+        "afdCode":  "AFD14",
+        "afdDesc":  "AFD. JATIRONO UTARA"
+    },
+    {
+        "row":  35,
+        "reff":  "AFD157K05",
+        "plantCode":  "7K05",
+        "plantDesc":  "KEBUN KALIKEMPIT KALISEPANJANG JATIRONO",
+        "afdCode":  "AFD15",
+        "afdDesc":  "AFD. SUMBER SALAK"
+    },
+    {
+        "row":  36,
+        "reff":  "AFD167K05",
+        "plantCode":  "7K05",
+        "plantDesc":  "KEBUN KALIKEMPIT KALISEPANJANG JATIRONO",
+        "afdCode":  "AFD16",
+        "afdDesc":  "AFD. GUNUNG RAUNG"
+    },
+    {
+        "row":  37,
+        "reff":  "AFD177K05",
+        "plantCode":  "7K05",
+        "plantDesc":  "KEBUN KALIKEMPIT KALISEPANJANG JATIRONO",
+        "afdCode":  "AFD17",
+        "afdDesc":  "AFD. GUNUNG MAS"
+    },
+    {
+        "row":  38,
+        "reff":  "AFD017K07",
+        "plantCode":  "7K07",
+        "plantDesc":  "KEBUN KALITELEPAK",
+        "afdCode":  "AFD01",
+        "afdDesc":  "AFD. DAMPIT"
+    },
+    {
+        "row":  39,
+        "reff":  "AFD027K07",
+        "plantCode":  "7K07",
+        "plantDesc":  "KEBUN KALITELEPAK",
+        "afdCode":  "AFD02",
+        "afdDesc":  "AFD. PURWOJOYO"
+    },
+    {
+        "row":  40,
+        "reff":  "AFD037K07",
+        "plantCode":  "7K07",
+        "plantDesc":  "KEBUN KALITELEPAK",
+        "afdCode":  "AFD03",
+        "afdDesc":  "AFD. KALISUGIH"
+    },
+    {
+        "row":  41,
+        "reff":  "AFD047K07",
+        "plantCode":  "7K07",
+        "plantDesc":  "KEBUN KALITELEPAK",
+        "afdCode":  "AFD04",
+        "afdDesc":  "AFD. KALIRINGIN"
+    },
+    {
+        "row":  42,
+        "reff":  "AFD057K07",
+        "plantCode":  "7K07",
+        "plantDesc":  "KEBUN KALITELEPAK",
+        "afdCode":  "AFD05",
+        "afdDesc":  "AFD. KALIURIP"
+    },
+    {
+        "row":  43,
+        "reff":  "AFD067K07",
+        "plantCode":  "7K07",
+        "plantDesc":  "KEBUN KALITELEPAK",
+        "afdCode":  "AFD06",
+        "afdDesc":  "AFD. SIDOMUKTI"
+    },
+    {
+        "row":  44,
+        "reff":  "AFD077K07",
+        "plantCode":  "7K07",
+        "plantDesc":  "KEBUN KALITELEPAK",
+        "afdCode":  "AFD07",
+        "afdDesc":  "AFD. PEGUNDANGAN"
+    },
+    {
+        "row":  45,
+        "reff":  "AFD087K07",
+        "plantCode":  "7K07",
+        "plantDesc":  "KEBUN KALITELEPAK",
+        "afdCode":  "AFD08",
+        "afdDesc":  "AFD. DADIMUKTI"
+    },
+    {
+        "row":  46,
+        "reff":  "AFD097K07",
+        "plantCode":  "7K07",
+        "plantDesc":  "KEBUN KALITELEPAK",
+        "afdCode":  "AFD09",
+        "afdDesc":  "AFD. JATIRONO"
+    },
+    {
+        "row":  47,
+        "reff":  "AFD107K07",
+        "plantCode":  "7K07",
+        "plantDesc":  "KEBUN KALITELEPAK",
+        "afdCode":  "AFD10",
+        "afdDesc":  "AFD. REJOSARI"
+    },
+    {
+        "row":  48,
+        "reff":  "AFD117K07",
+        "plantCode":  "7K07",
+        "plantDesc":  "KEBUN KALITELEPAK",
+        "afdCode":  "AFD11",
+        "afdDesc":  "AFD. KALISARI"
+    },
+    {
+        "row":  49,
+        "reff":  "AFD127K07",
+        "plantCode":  "7K07",
+        "plantDesc":  "KEBUN KALITELEPAK",
+        "afdCode":  "AFD12",
+        "afdDesc":  "AFD. SUMBERMANGGIS"
+    },
+    {
+        "row":  50,
+        "reff":  "AFD137K07",
+        "plantCode":  "7K07",
+        "plantDesc":  "KEBUN KALITELEPAK",
+        "afdCode":  "AFD13",
+        "afdDesc":  "AFD. POROLINGGO"
+    },
+    {
+        "row":  51,
+        "reff":  "AFD147K07",
+        "plantCode":  "7K07",
+        "plantDesc":  "KEBUN KALITELEPAK",
+        "afdCode":  "AFD14",
+        "afdDesc":  "AFD. KALITELEPAK"
+    },
+    {
+        "row":  52,
+        "reff":  "AFD017K09",
+        "plantCode":  "7K09",
+        "plantDesc":  "KEBUN KALIREJO KENDENG LEMBU",
+        "afdCode":  "AFD01",
+        "afdDesc":  "AFD. BESARAN"
+    },
+    {
+        "row":  53,
+        "reff":  "AFD027K09",
+        "plantCode":  "7K09",
+        "plantDesc":  "KEBUN KALIREJO KENDENG LEMBU",
+        "afdCode":  "AFD02",
+        "afdDesc":  "AFD. REJOSARI"
+    },
+    {
+        "row":  54,
+        "reff":  "AFD037K09",
+        "plantCode":  "7K09",
+        "plantDesc":  "KEBUN KALIREJO KENDENG LEMBU",
+        "afdCode":  "AFD03",
+        "afdDesc":  "AFD. KALIPUTIH"
+    },
+    {
+        "row":  55,
+        "reff":  "AFD047K09",
+        "plantCode":  "7K09",
+        "plantDesc":  "KEBUN KALIREJO KENDENG LEMBU",
+        "afdCode":  "AFD04",
+        "afdDesc":  "AFD. GENTENGAN"
+    },
+    {
+        "row":  56,
+        "reff":  "AFD057K09",
+        "plantCode":  "7K09",
+        "plantDesc":  "KEBUN KALIREJO KENDENG LEMBU",
+        "afdCode":  "AFD05",
+        "afdDesc":  "AFD. KAMPUNG ANYAR"
+    },
+    {
+        "row":  57,
+        "reff":  "AFD067K09",
+        "plantCode":  "7K09",
+        "plantDesc":  "KEBUN KALIREJO KENDENG LEMBU",
+        "afdCode":  "AFD06",
+        "afdDesc":  "AFD. SEMAMPIR"
+    },
+    {
+        "row":  58,
+        "reff":  "AFD077K09",
+        "plantCode":  "7K09",
+        "plantDesc":  "KEBUN KALIREJO KENDENG LEMBU",
+        "afdCode":  "AFD07",
+        "afdDesc":  "AFD. PAGER GUNUNG"
+    },
+    {
+        "row":  59,
+        "reff":  "AFD087K09",
+        "plantCode":  "7K09",
+        "plantDesc":  "KEBUN KALIREJO KENDENG LEMBU",
+        "afdCode":  "AFD08",
+        "afdDesc":  "AFD. KAMPUNG BARU"
+    },
+    {
+        "row":  60,
+        "reff":  "AFD097K09",
+        "plantCode":  "7K09",
+        "plantDesc":  "KEBUN KALIREJO KENDENG LEMBU",
+        "afdCode":  "AFD09",
+        "afdDesc":  "AFD. BESARAN KALIREJO"
+    },
+    {
+        "row":  61,
+        "reff":  "AFD097K09",
+        "plantCode":  "7K09",
+        "plantDesc":  "KEBUN KALIREJO KENDENG LEMBU",
+        "afdCode":  "AFD09",
+        "afdDesc":  "AFD. BESARAN KALIREJO"
+    },
+    {
+        "row":  62,
+        "reff":  "AFD107K09",
+        "plantCode":  "7K09",
+        "plantDesc":  "KEBUN KALIREJO KENDENG LEMBU",
+        "afdCode":  "AFD10",
+        "afdDesc":  "AFD. SUMBER URIP"
+    },
+    {
+        "row":  63,
+        "reff":  "AFD107K09",
+        "plantCode":  "7K09",
+        "plantDesc":  "KEBUN KALIREJO KENDENG LEMBU",
+        "afdCode":  "AFD10",
+        "afdDesc":  "AFD. SUMBER URIP"
+    },
+    {
+        "row":  64,
+        "reff":  "AFD117K09",
+        "plantCode":  "7K09",
+        "plantDesc":  "KEBUN KALIREJO KENDENG LEMBU",
+        "afdCode":  "AFD11",
+        "afdDesc":  "AFD. SIDOMUKTI"
+    },
+    {
+        "row":  65,
+        "reff":  "AFD117K09",
+        "plantCode":  "7K09",
+        "plantDesc":  "KEBUN KALIREJO KENDENG LEMBU",
+        "afdCode":  "AFD11",
+        "afdDesc":  "AFD. SIDOMUKTI"
+    },
+    {
+        "row":  66,
+        "reff":  "AFD127K09",
+        "plantCode":  "7K09",
+        "plantDesc":  "KEBUN KALIREJO KENDENG LEMBU",
+        "afdCode":  "AFD12",
+        "afdDesc":  "AFD. MUKTISARI"
+    },
+    {
+        "row":  67,
+        "reff":  "AFD127K09",
+        "plantCode":  "7K09",
+        "plantDesc":  "KEBUN KALIREJO KENDENG LEMBU",
+        "afdCode":  "AFD12",
+        "afdDesc":  "AFD. MUKTISARI"
+    },
+    {
+        "row":  68,
+        "reff":  "AFD137K09",
+        "plantCode":  "7K09",
+        "plantDesc":  "KEBUN KALIREJO KENDENG LEMBU",
+        "afdCode":  "AFD13",
+        "afdDesc":  "AFD. SIDODADI"
+    },
+    {
+        "row":  69,
+        "reff":  "AFD137K09",
+        "plantCode":  "7K09",
+        "plantDesc":  "KEBUN KALIREJO KENDENG LEMBU",
+        "afdCode":  "AFD13",
+        "afdDesc":  "AFD. SIDODADI"
+    },
+    {
+        "row":  70,
+        "reff":  "AFD147K09",
+        "plantCode":  "7K09",
+        "plantDesc":  "KEBUN KALIREJO KENDENG LEMBU",
+        "afdCode":  "AFD14",
+        "afdDesc":  "AFD. PEGUNDANGAN"
+    },
+    {
+        "row":  71,
+        "reff":  "AFD147K09",
+        "plantCode":  "7K09",
+        "plantDesc":  "KEBUN KALIREJO KENDENG LEMBU",
+        "afdCode":  "AFD14",
+        "afdDesc":  "AFD. PEGUNDANGAN"
+    },
+    {
+        "row":  72,
+        "reff":  "AFD157K09",
+        "plantCode":  "7K09",
+        "plantDesc":  "KEBUN KALIREJO KENDENG LEMBU",
+        "afdCode":  "AFD15",
+        "afdDesc":  "AFD. SEKAR BARU"
+    },
+    {
+        "row":  73,
+        "reff":  "AFD157K09",
+        "plantCode":  "7K09",
+        "plantDesc":  "KEBUN KALIREJO KENDENG LEMBU",
+        "afdCode":  "AFD15",
+        "afdDesc":  "AFD. SEKAR BARU"
+    },
+    {
+        "row":  74,
+        "reff":  "AFD017K11",
+        "plantCode":  "7K11",
+        "plantDesc":  "KEBUN MALANGSARI",
+        "afdCode":  "AFD01",
+        "afdDesc":  "AFD. PANCUREJO"
+    },
+    {
+        "row":  75,
+        "reff":  "AFD027K11",
+        "plantCode":  "7K11",
+        "plantDesc":  "KEBUN MALANGSARI",
+        "afdCode":  "AFD02",
+        "afdDesc":  "AFD. GUNUNG SARI"
+    },
+    {
+        "row":  76,
+        "reff":  "AFD037K11",
+        "plantCode":  "7K11",
+        "plantDesc":  "KEBUN MALANGSARI",
+        "afdCode":  "AFD03",
+        "afdDesc":  "AFD. TRETES"
+    },
+    {
+        "row":  77,
+        "reff":  "AFD047K11",
+        "plantCode":  "7K11",
+        "plantDesc":  "KEBUN MALANGSARI",
+        "afdCode":  "AFD04",
+        "afdDesc":  "AFD. KAMPUNG TENGAH"
+    },
+    {
+        "row":  78,
+        "reff":  "AFD057K11",
+        "plantCode":  "7K11",
+        "plantDesc":  "KEBUN MALANGSARI",
+        "afdCode":  "AFD05",
+        "afdDesc":  "AFD. MULYOSARI"
+    },
+    {
+        "row":  79,
+        "reff":  "AFD067K11",
+        "plantCode":  "7K11",
+        "plantDesc":  "KEBUN MALANGSARI",
+        "afdCode":  "AFD06",
+        "afdDesc":  "AFD. WATULEMPIT"
+    },
+    {
+        "row":  80,
+        "reff":  "AFD077K11",
+        "plantCode":  "7K11",
+        "plantDesc":  "KEBUN MALANGSARI",
+        "afdCode":  "AFD07",
+        "afdDesc":  "AFD. LEDOKSARI"
+    },
+    {
+        "row":  81,
+        "reff":  "AFD087K11",
+        "plantCode":  "7K11",
+        "plantDesc":  "KEBUN MALANGSARI",
+        "afdCode":  "AFD08",
+        "afdDesc":  "AFD. KAMPUNG RUKUN"
+    },
+    {
+        "row":  82,
+        "reff":  "AFD017K12",
+        "plantCode":  "7K12",
+        "plantDesc":  "KEBUN GUNUNG GUMITIR",
+        "afdCode":  "AFD01",
+        "afdDesc":  "AFD. MRAWAN"
+    },
+    {
+        "row":  83,
+        "reff":  "AFD027K12",
+        "plantCode":  "7K12",
+        "plantDesc":  "KEBUN GUNUNG GUMITIR",
+        "afdCode":  "AFD02",
+        "afdDesc":  "AFD. SUMBERSARI"
+    },
+    {
+        "row":  84,
+        "reff":  "AFD037K12",
+        "plantCode":  "7K12",
+        "plantDesc":  "KEBUN GUNUNG GUMITIR",
+        "afdCode":  "AFD03",
+        "afdDesc":  "AFD. TANAH MANIS"
+    },
+    {
+        "row":  85,
+        "reff":  "AFD017K14",
+        "plantCode":  "7K14",
+        "plantDesc":  "KEBUN KAYUMAS PANCUR ANGKREK",
+        "afdCode":  "AFD01",
+        "afdDesc":  "AFD. SUMBER CANTING"
+    },
+    {
+        "row":  86,
+        "reff":  "AFD027K14",
+        "plantCode":  "7K14",
+        "plantDesc":  "KEBUN KAYUMAS PANCUR ANGKREK",
+        "afdCode":  "AFD02",
+        "afdDesc":  "AFD. PANCUR"
+    },
+    {
+        "row":  87,
+        "reff":  "AFD037K14",
+        "plantCode":  "7K14",
+        "plantDesc":  "KEBUN KAYUMAS PANCUR ANGKREK",
+        "afdCode":  "AFD03",
+        "afdDesc":  "AFD. KENDENG"
+    },
+    {
+        "row":  88,
+        "reff":  "AFD047K14",
+        "plantCode":  "7K14",
+        "plantDesc":  "KEBUN KAYUMAS PANCUR ANGKREK",
+        "afdCode":  "AFD04",
+        "afdDesc":  "AFD. MEGASARI"
+    },
+    {
+        "row":  89,
+        "reff":  "AFD057K14",
+        "plantCode":  "7K14",
+        "plantDesc":  "KEBUN KAYUMAS PANCUR ANGKREK",
+        "afdCode":  "AFD05",
+        "afdDesc":  "AFD. ANGKREK"
+    },
+    {
+        "row":  90,
+        "reff":  "AFD067K14",
+        "plantCode":  "7K14",
+        "plantDesc":  "KEBUN KAYUMAS PANCUR ANGKREK",
+        "afdCode":  "AFD06",
+        "afdDesc":  "AFD. KAYUMAS"
+    },
+    {
+        "row":  91,
+        "reff":  "AFD067K14",
+        "plantCode":  "7K14",
+        "plantDesc":  "KEBUN KAYUMAS PANCUR ANGKREK",
+        "afdCode":  "AFD06",
+        "afdDesc":  "AFD. KAYUMAS"
+    },
+    {
+        "row":  92,
+        "reff":  "AFD077K14",
+        "plantCode":  "7K14",
+        "plantDesc":  "KEBUN KAYUMAS PANCUR ANGKREK",
+        "afdCode":  "AFD07",
+        "afdDesc":  "AFD. TAMAN ARUM"
+    },
+    {
+        "row":  93,
+        "reff":  "AFD077K14",
+        "plantCode":  "7K14",
+        "plantDesc":  "KEBUN KAYUMAS PANCUR ANGKREK",
+        "afdCode":  "AFD07",
+        "afdDesc":  "AFD. TAMAN ARUM"
+    },
+    {
+        "row":  94,
+        "reff":  "AFD087K14",
+        "plantCode":  "7K14",
+        "plantDesc":  "KEBUN KAYUMAS PANCUR ANGKREK",
+        "afdCode":  "AFD08",
+        "afdDesc":  "AFD. TAMAN DADAR"
+    },
+    {
+        "row":  95,
+        "reff":  "AFD087K14",
+        "plantCode":  "7K14",
+        "plantDesc":  "KEBUN KAYUMAS PANCUR ANGKREK",
+        "afdCode":  "AFD08",
+        "afdDesc":  "AFD. TAMAN DADAR"
+    },
+    {
+        "row":  96,
+        "reff":  "AFD097K14",
+        "plantCode":  "7K14",
+        "plantDesc":  "KEBUN KAYUMAS PANCUR ANGKREK",
+        "afdCode":  "AFD09",
+        "afdDesc":  "AFD. PLAMPANG"
+    },
+    {
+        "row":  97,
+        "reff":  "AFD097K14",
+        "plantCode":  "7K14",
+        "plantDesc":  "KEBUN KAYUMAS PANCUR ANGKREK",
+        "afdCode":  "AFD09",
+        "afdDesc":  "AFD. PLAMPANG"
+    },
+    {
+        "row":  98,
+        "reff":  "AFD017K15",
+        "plantCode":  "7K15",
+        "plantDesc":  "KEBUN BLAWAN",
+        "afdCode":  "AFD01",
+        "afdDesc":  "AFD. BESARAN"
+    },
+    {
+        "row":  99,
+        "reff":  "AFD027K15",
+        "plantCode":  "7K15",
+        "plantDesc":  "KEBUN BLAWAN",
+        "afdCode":  "AFD02",
+        "afdDesc":  "AFD. PLALANGAN"
+    },
+    {
+        "row":  100,
+        "reff":  "AFD037K15",
+        "plantCode":  "7K15",
+        "plantDesc":  "KEBUN BLAWAN",
+        "afdCode":  "AFD03",
+        "afdDesc":  "AFD. KALISENGON"
+    },
+    {
+        "row":  101,
+        "reff":  "AFD047K15",
+        "plantCode":  "7K15",
+        "plantDesc":  "KEBUN BLAWAN",
+        "afdCode":  "AFD04",
+        "afdDesc":  "AFD. KALIGEDANG"
+    },
+    {
+        "row":  102,
+        "reff":  "AFD057K15",
+        "plantCode":  "7K15",
+        "plantDesc":  "KEBUN BLAWAN",
+        "afdCode":  "AFD05",
+        "afdDesc":  "AFD. GIRIMULYO"
+    },
+    {
+        "row":  103,
+        "reff":  "AFD067K15",
+        "plantCode":  "7K15",
+        "plantDesc":  "KEBUN BLAWAN",
+        "afdCode":  "AFD06",
+        "afdDesc":  "AFD. SUMBEREJO"
+    },
+    {
+        "row":  104,
+        "reff":  "AFD077K15",
+        "plantCode":  "7K15",
+        "plantDesc":  "KEBUN BLAWAN",
+        "afdCode":  "AFD07",
+        "afdDesc":  "AFD. GUNUNG BLAU"
+    },
+    {
+        "row":  105,
+        "reff":  "AFD087K15",
+        "plantCode":  "7K15",
+        "plantDesc":  "KEBUN BLAWAN",
+        "afdCode":  "AFD08",
+        "afdDesc":  "AFD. WATU CAPIL"
+    },
+    {
+        "row":  106,
+        "reff":  "AFD097K15",
+        "plantCode":  "7K15",
+        "plantDesc":  "KEBUN BLAWAN",
+        "afdCode":  "AFD09",
+        "afdDesc":  "AFD. GENDING WALUH"
+    },
+    {
+        "row":  107,
+        "reff":  "AFD107K15",
+        "plantCode":  "7K15",
+        "plantDesc":  "KEBUN BLAWAN",
+        "afdCode":  "AFD10",
+        "afdDesc":  "AFD. JAMPIT BLAWAN"
+    },
+    {
+        "row":  108,
+        "reff":  "AFD017K17",
+        "plantCode":  "7K17",
+        "plantDesc":  "KEBUN SILOSANEN SUMBERTENGAH",
+        "afdCode":  "AFD01",
+        "afdDesc":  "AFD. DARUNGAN"
+    },
+    {
+        "row":  109,
+        "reff":  "AFD027K17",
+        "plantCode":  "7K17",
+        "plantDesc":  "KEBUN SILOSANEN SUMBERTENGAH",
+        "afdCode":  "AFD02",
+        "afdDesc":  "AFD. PINANG"
+    },
+    {
+        "row":  110,
+        "reff":  "AFD037K17",
+        "plantCode":  "7K17",
+        "plantDesc":  "KEBUN SILOSANEN SUMBERTENGAH",
+        "afdCode":  "AFD03",
+        "afdDesc":  "AFD. WRINGIN ANOM"
+    },
+    {
+        "row":  111,
+        "reff":  "AFD047K17",
+        "plantCode":  "7K17",
+        "plantDesc":  "KEBUN SILOSANEN SUMBERTENGAH",
+        "afdCode":  "AFD04",
+        "afdDesc":  "AFD. KAMPONGAN"
+    },
+    {
+        "row":  112,
+        "reff":  "AFD057K17",
+        "plantCode":  "7K17",
+        "plantDesc":  "KEBUN SILOSANEN SUMBERTENGAH",
+        "afdCode":  "AFD05",
+        "afdDesc":  "AFD. SUMBER JAMBE"
+    },
+    {
+        "row":  113,
+        "reff":  "AFD057K17",
+        "plantCode":  "7K17",
+        "plantDesc":  "KEBUN SILOSANEN SUMBERTENGAH",
+        "afdCode":  "AFD05",
+        "afdDesc":  "AFD. SUMBER JAMBE"
+    },
+    {
+        "row":  114,
+        "reff":  "AFD067K17",
+        "plantCode":  "7K17",
+        "plantDesc":  "KEBUN SILOSANEN SUMBERTENGAH",
+        "afdCode":  "AFD06",
+        "afdDesc":  "AFD. GUMITIR"
+    },
+    {
+        "row":  115,
+        "reff":  "AFD067K17",
+        "plantCode":  "7K17",
+        "plantDesc":  "KEBUN SILOSANEN SUMBERTENGAH",
+        "afdCode":  "AFD06",
+        "afdDesc":  "AFD. GUMITIR"
+    },
+    {
+        "row":  116,
+        "reff":  "AFD017K19",
+        "plantCode":  "7K19",
+        "plantDesc":  "KEBUN GLANTANGAN",
+        "afdCode":  "AFD01",
+        "afdDesc":  "AFD. KALIMAYANG"
+    },
+    {
+        "row":  117,
+        "reff":  "AFD027K19",
+        "plantCode":  "7K19",
+        "plantDesc":  "KEBUN GLANTANGAN",
+        "afdCode":  "AFD02",
+        "afdDesc":  "AFD. BANJIR ONJUR"
+    },
+    {
+        "row":  118,
+        "reff":  "AFD037K19",
+        "plantCode":  "7K19",
+        "plantDesc":  "KEBUN GLANTANGAN",
+        "afdCode":  "AFD03",
+        "afdDesc":  "AFD. KALIBAJING"
+    },
+    {
+        "row":  119,
+        "reff":  "AFD047K19",
+        "plantCode":  "7K19",
+        "plantDesc":  "KEBUN GLANTANGAN",
+        "afdCode":  "AFD04",
+        "afdDesc":  "AFD. CURAH JAMBE"
+    },
+    {
+        "row":  120,
+        "reff":  "AFD057K19",
+        "plantCode":  "7K19",
+        "plantDesc":  "KEBUN GLANTANGAN",
+        "afdCode":  "AFD05",
+        "afdDesc":  "AFD. WONOJATI"
+    },
+    {
+        "row":  121,
+        "reff":  "AFD067K19",
+        "plantCode":  "7K19",
+        "plantDesc":  "KEBUN GLANTANGAN",
+        "afdCode":  "AFD06",
+        "afdDesc":  "AFD. SUMBER WARINGIN"
+    },
+    {
+        "row":  122,
+        "reff":  "AFD077K19",
+        "plantCode":  "7K19",
+        "plantDesc":  "KEBUN GLANTANGAN",
+        "afdCode":  "AFD07",
+        "afdDesc":  "AFD. GAMBIRAN"
+    },
+    {
+        "row":  123,
+        "reff":  "AFD087K19",
+        "plantCode":  "7K19",
+        "plantDesc":  "KEBUN GLANTANGAN",
+        "afdCode":  "AFD08",
+        "afdDesc":  "AFD. GUNUNG MAYANG"
+    },
+    {
+        "row":  124,
+        "reff":  "AFD097K19",
+        "plantCode":  "7K19",
+        "plantDesc":  "KEBUN GLANTANGAN",
+        "afdCode":  "AFD09",
+        "afdDesc":  "AFD. DAMPAR"
+    },
+    {
+        "row":  125,
+        "reff":  "AFD017K20",
+        "plantCode":  "7K20",
+        "plantDesc":  "KEBUN KALISANEN KOTTA BLATER",
+        "afdCode":  "AFD01",
+        "afdDesc":  "AFD. UTARA KALISANEN"
+    },
+    {
+        "row":  126,
+        "reff":  "AFD027K20",
+        "plantCode":  "7K20",
+        "plantDesc":  "KEBUN KALISANEN KOTTA BLATER",
+        "afdCode":  "AFD02",
+        "afdDesc":  "AFD. SELATAN KALISANEN"
+    },
+    {
+        "row":  127,
+        "reff":  "AFD037K20",
+        "plantCode":  "7K20",
+        "plantDesc":  "KEBUN KALISANEN KOTTA BLATER",
+        "afdCode":  "AFD03",
+        "afdDesc":  "AFD. CURAH BERKONG"
+    },
+    {
+        "row":  128,
+        "reff":  "AFD047K20",
+        "plantCode":  "7K20",
+        "plantDesc":  "KEBUN KALISANEN KOTTA BLATER",
+        "afdCode":  "AFD04",
+        "afdDesc":  "AFD. PONDOK SUTO"
+    },
+    {
+        "row":  129,
+        "reff":  "AFD057K20",
+        "plantCode":  "7K20",
+        "plantDesc":  "KEBUN KALISANEN KOTTA BLATER",
+        "afdCode":  "AFD05",
+        "afdDesc":  "AFD. WONO WIRI"
+    },
+    {
+        "row":  130,
+        "reff":  "AFD067K20",
+        "plantCode":  "7K20",
+        "plantDesc":  "KEBUN KALISANEN KOTTA BLATER",
+        "afdCode":  "AFD06",
+        "afdDesc":  "AFD. BLATER"
+    },
+    {
+        "row":  131,
+        "reff":  "AFD067K20",
+        "plantCode":  "7K20",
+        "plantDesc":  "KEBUN KALISANEN KOTTA BLATER",
+        "afdCode":  "AFD06",
+        "afdDesc":  "AFD. BLATER"
+    },
+    {
+        "row":  132,
+        "reff":  "AFD077K20",
+        "plantCode":  "7K20",
+        "plantDesc":  "KEBUN KALISANEN KOTTA BLATER",
+        "afdCode":  "AFD07",
+        "afdDesc":  "AFD. GUCI PUTIH"
+    },
+    {
+        "row":  133,
+        "reff":  "AFD077K20",
+        "plantCode":  "7K20",
+        "plantDesc":  "KEBUN KALISANEN KOTTA BLATER",
+        "afdCode":  "AFD07",
+        "afdDesc":  "AFD. GUCI PUTIH"
+    },
+    {
+        "row":  134,
+        "reff":  "AFD087K20",
+        "plantCode":  "7K20",
+        "plantDesc":  "KEBUN KALISANEN KOTTA BLATER",
+        "afdCode":  "AFD08",
+        "afdDesc":  "AFD. TRATE"
+    },
+    {
+        "row":  135,
+        "reff":  "AFD087K20",
+        "plantCode":  "7K20",
+        "plantDesc":  "KEBUN KALISANEN KOTTA BLATER",
+        "afdCode":  "AFD08",
+        "afdDesc":  "AFD. TRATE"
+    },
+    {
+        "row":  136,
+        "reff":  "AFD097K20",
+        "plantCode":  "7K20",
+        "plantDesc":  "KEBUN KALISANEN KOTTA BLATER",
+        "afdCode":  "AFD09",
+        "afdDesc":  "AFD. BANJAR AGUNG"
+    },
+    {
+        "row":  137,
+        "reff":  "AFD097K20",
+        "plantCode":  "7K20",
+        "plantDesc":  "KEBUN KALISANEN KOTTA BLATER",
+        "afdCode":  "AFD09",
+        "afdDesc":  "AFD. BANJAR AGUNG"
+    },
+    {
+        "row":  138,
+        "reff":  "AFD017K22",
+        "plantCode":  "7K22",
+        "plantDesc":  "KEBUN MUMBUL",
+        "afdCode":  "AFD01",
+        "afdDesc":  "AFD. BAJING ONJUR"
+    },
+    {
+        "row":  139,
+        "reff":  "AFD027K22",
+        "plantCode":  "7K22",
+        "plantDesc":  "KEBUN MUMBUL",
+        "afdCode":  "AFD02",
+        "afdDesc":  "AFD. GLANTANGAN"
+    },
+    {
+        "row":  140,
+        "reff":  "AFD037K22",
+        "plantCode":  "7K22",
+        "plantDesc":  "KEBUN MUMBUL",
+        "afdCode":  "AFD03",
+        "afdDesc":  "AFD. PONDOK SELATAN"
+    },
+    {
+        "row":  141,
+        "reff":  "AFD047K22",
+        "plantCode":  "7K22",
+        "plantDesc":  "KEBUN MUMBUL",
+        "afdCode":  "AFD04",
+        "afdDesc":  "AFD. MRAWAN"
+    },
+    {
+        "row":  142,
+        "reff":  "AFD057K22",
+        "plantCode":  "7K22",
+        "plantDesc":  "KEBUN MUMBUL",
+        "afdCode":  "AFD05",
+        "afdDesc":  "AFD. LENGKONG"
+    },
+    {
+        "row":  143,
+        "reff":  "AFD067K22",
+        "plantCode":  "7K22",
+        "plantDesc":  "KEBUN MUMBUL",
+        "afdCode":  "AFD06",
+        "afdDesc":  "AFD. TALANG"
+    },
+    {
+        "row":  144,
+        "reff":  "AFD077K22",
+        "plantCode":  "7K22",
+        "plantDesc":  "KEBUN MUMBUL",
+        "afdCode":  "AFD07",
+        "afdDesc":  "AFD. KOTTABLATER"
+    },
+    {
+        "row":  145,
+        "reff":  "AFD087K22",
+        "plantCode":  "7K22",
+        "plantDesc":  "KEBUN MUMBUL",
+        "afdCode":  "AFD08",
+        "afdDesc":  "AFD. KARANGNANGKA"
+    },
+    {
+        "row":  146,
+        "reff":  "AFD097K22",
+        "plantCode":  "7K22",
+        "plantDesc":  "KEBUN MUMBUL",
+        "afdCode":  "AFD09",
+        "afdDesc":  "AFD. KLATAKAN"
+    },
+    {
+        "row":  147,
+        "reff":  "AFD107K22",
+        "plantCode":  "7K22",
+        "plantDesc":  "KEBUN MUMBUL",
+        "afdCode":  "AFD10",
+        "afdDesc":  "AFD. SIDOMULYO"
+    },
+    {
+        "row":  148,
+        "reff":  "AFD017K24",
+        "plantCode":  "7K24",
+        "plantDesc":  "KEBUN RENTENG BANJARSARI",
+        "afdCode":  "AFD01",
+        "afdDesc":  "AFD. BANJARSARI"
+    },
+    {
+        "row":  149,
+        "reff":  "AFD027K24",
+        "plantCode":  "7K24",
+        "plantDesc":  "KEBUN RENTENG BANJARSARI",
+        "afdCode":  "AFD02",
+        "afdDesc":  "AFD. KARANG NANGKA"
+    },
+    {
+        "row":  150,
+        "reff":  "AFD037K24",
+        "plantCode":  "7K24",
+        "plantDesc":  "KEBUN RENTENG BANJARSARI",
+        "afdCode":  "AFD03",
+        "afdDesc":  "AFD. ANTOKAN"
+    },
+    {
+        "row":  151,
+        "reff":  "AFD047K24",
+        "plantCode":  "7K24",
+        "plantDesc":  "KEBUN RENTENG BANJARSARI",
+        "afdCode":  "AFD04",
+        "afdDesc":  "AFD. GERENG REJO"
+    },
+    {
+        "row":  152,
+        "reff":  "AFD057K24",
+        "plantCode":  "7K24",
+        "plantDesc":  "KEBUN RENTENG BANJARSARI",
+        "afdCode":  "AFD05",
+        "afdDesc":  "AFD. KLATAKAN"
+    },
+    {
+        "row":  153,
+        "reff":  "AFD067K24",
+        "plantCode":  "7K24",
+        "plantDesc":  "KEBUN RENTENG BANJARSARI",
+        "afdCode":  "AFD06",
+        "afdDesc":  "AFD. SIDOMULYO"
+    },
+    {
+        "row":  154,
+        "reff":  "AFD067K24",
+        "plantCode":  "7K24",
+        "plantDesc":  "KEBUN RENTENG BANJARSARI",
+        "afdCode":  "AFD06",
+        "afdDesc":  "AFD. SIDOMULYO"
+    },
+    {
+        "row":  155,
+        "reff":  "AFD077K24",
+        "plantCode":  "7K24",
+        "plantDesc":  "KEBUN RENTENG BANJARSARI",
+        "afdCode":  "AFD07",
+        "afdDesc":  "AFD. CURAH MANIS"
+    },
+    {
+        "row":  156,
+        "reff":  "AFD077K24",
+        "plantCode":  "7K24",
+        "plantDesc":  "KEBUN RENTENG BANJARSARI",
+        "afdCode":  "AFD07",
+        "afdDesc":  "AFD. CURAH MANIS"
+    },
+    {
+        "row":  157,
+        "reff":  "AFD087K24",
+        "plantCode":  "7K24",
+        "plantDesc":  "KEBUN RENTENG BANJARSARI",
+        "afdCode":  "AFD08",
+        "afdDesc":  "AFD. KEDATON"
+    },
+    {
+        "row":  158,
+        "reff":  "AFD087K24",
+        "plantCode":  "7K24",
+        "plantDesc":  "KEBUN RENTENG BANJARSARI",
+        "afdCode":  "AFD08",
+        "afdDesc":  "AFD. KEDATON"
+    },
+    {
+        "row":  159,
+        "reff":  "AFD097K24",
+        "plantCode":  "7K24",
+        "plantDesc":  "KEBUN RENTENG BANJARSARI",
+        "afdCode":  "AFD09",
+        "afdDesc":  "AFD. RAYAP"
+    },
+    {
+        "row":  160,
+        "reff":  "AFD097K24",
+        "plantCode":  "7K24",
+        "plantDesc":  "KEBUN RENTENG BANJARSARI",
+        "afdCode":  "AFD09",
+        "afdDesc":  "AFD. RAYAP"
+    },
+    {
+        "row":  161,
+        "reff":  "AFD017K25",
+        "plantCode":  "7K25",
+        "plantDesc":  "KEBUN ZEELANDIA",
+        "afdCode":  "AFD01",
+        "afdDesc":  "AFD. LANGSEPAN"
+    },
+    {
+        "row":  162,
+        "reff":  "AFD027K25",
+        "plantCode":  "7K25",
+        "plantDesc":  "KEBUN ZEELANDIA",
+        "afdCode":  "AFD02",
+        "afdDesc":  "AFD. ZEELANDIA"
+    },
+    {
+        "row":  163,
+        "reff":  "AFD037K25",
+        "plantCode":  "7K25",
+        "plantDesc":  "KEBUN ZEELANDIA",
+        "afdCode":  "AFD03",
+        "afdDesc":  "AFD. KALISUKO"
+    },
+    {
+        "row":  164,
+        "reff":  "AFD047K25",
+        "plantCode":  "7K25",
+        "plantDesc":  "KEBUN ZEELANDIA",
+        "afdCode":  "AFD04",
+        "afdDesc":  "AFD. SUMBER AYU"
+    },
+    {
+        "row":  165,
+        "reff":  "AFD057K25",
+        "plantCode":  "7K25",
+        "plantDesc":  "KEBUN ZEELANDIA",
+        "afdCode":  "AFD05",
+        "afdDesc":  "AFD. GONDANG"
+    },
+    {
+        "row":  166,
+        "reff":  "AFD067K25",
+        "plantCode":  "7K25",
+        "plantDesc":  "KEBUN ZEELANDIA",
+        "afdCode":  "AFD06",
+        "afdDesc":  "AFD. SUMBER BULUS"
+    },
+    {
+        "row":  167,
+        "reff":  "AFD017K26",
+        "plantCode":  "7K26",
+        "plantDesc":  "KEBUN GUNUNG GAMBIR",
+        "afdCode":  "AFD01",
+        "afdDesc":  "AFD. LAWANG KEDATON"
+    },
+    {
+        "row":  168,
+        "reff":  "AFD027K26",
+        "plantCode":  "7K26",
+        "plantDesc":  "KEBUN GUNUNG GAMBIR",
+        "afdCode":  "AFD02",
+        "afdDesc":  "AFD. GUNUNG GAMBIR"
+    },
+    {
+        "row":  169,
+        "reff":  "AFD037K26",
+        "plantCode":  "7K26",
+        "plantDesc":  "KEBUN GUNUNG GAMBIR",
+        "afdCode":  "AFD03",
+        "afdDesc":  "AFD. TANAH MERAH"
+    },
+    {
+        "row":  170,
+        "reff":  "AFD047K26",
+        "plantCode":  "7K26",
+        "plantDesc":  "KEBUN GUNUNG GAMBIR",
+        "afdCode":  "AFD04",
+        "afdDesc":  "AFD. AENGSONO"
+    },
+    {
+        "row":  171,
+        "reff":  "AFD057K26",
+        "plantCode":  "7K26",
+        "plantDesc":  "KEBUN GUNUNG GAMBIR",
+        "afdCode":  "AFD05",
+        "afdDesc":  "AFD. JAMINTORO"
+    },
+    {
+        "row":  172,
+        "reff":  "AFD067K26",
+        "plantCode":  "7K26",
+        "plantDesc":  "KEBUN GUNUNG GAMBIR",
+        "afdCode":  "AFD06",
+        "afdDesc":  "AFD. KARANG ANOM"
+    },
+    {
+        "row":  173,
+        "reff":  "AFD017K27",
+        "plantCode":  "7K27",
+        "plantDesc":  "KEBUN KERTOWONO",
+        "afdCode":  "AFD01",
+        "afdDesc":  "AFD. PURING"
+    },
+    {
+        "row":  174,
+        "reff":  "AFD027K27",
+        "plantCode":  "7K27",
+        "plantDesc":  "KEBUN KERTOWONO",
+        "afdCode":  "AFD02",
+        "afdDesc":  "AFD. KAMAR TENGAH"
+    },
+    {
+        "row":  175,
+        "reff":  "AFD037K27",
+        "plantCode":  "7K27",
+        "plantDesc":  "KEBUN KERTOWONO",
+        "afdCode":  "AFD03",
+        "afdDesc":  "AFD. KERTOSUKO"
+    },
+    {
+        "row":  176,
+        "reff":  "AFD047K27",
+        "plantCode":  "7K27",
+        "plantDesc":  "KEBUN KERTOWONO",
+        "afdCode":  "AFD04",
+        "afdDesc":  "AFD. BEDENGAN"
+    },
+    {
+        "row":  177,
+        "reff":  "AFD057K27",
+        "plantCode":  "7K27",
+        "plantDesc":  "KEBUN KERTOWONO",
+        "afdCode":  "AFD05",
+        "afdDesc":  "AFD. KALI GEDE/WELANG"
+    },
+    {
+        "row":  178,
+        "reff":  "AFD017K28",
+        "plantCode":  "7K28",
+        "plantDesc":  "KEBUN WONOSARI",
+        "afdCode":  "AFD01",
+        "afdDesc":  "AFD. WONOSARI"
+    },
+    {
+        "row":  179,
+        "reff":  "AFD027K28",
+        "plantCode":  "7K28",
+        "plantDesc":  "KEBUN WONOSARI",
+        "afdCode":  "AFD02",
+        "afdDesc":  "AFD. GEBUG LOR"
+    },
+    {
+        "row":  180,
+        "reff":  "AFD037K28",
+        "plantCode":  "7K28",
+        "plantDesc":  "KEBUN WONOSARI",
+        "afdCode":  "AFD03",
+        "afdDesc":  "AFD. RANDU AGUNG"
+    },
+    {
+        "row":  181,
+        "reff":  "AFD017K30",
+        "plantCode":  "7K30",
+        "plantDesc":  "KEBUN KALIBAKAR PANCURSARI",
+        "afdCode":  "AFD01",
+        "afdDesc":  "AFD. PANCURSARI TIMUR"
+    },
+    {
+        "row":  182,
+        "reff":  "AFD027K30",
+        "plantCode":  "7K30",
+        "plantDesc":  "KEBUN KALIBAKAR PANCURSARI",
+        "afdCode":  "AFD02",
+        "afdDesc":  "AFD. PANCURSARI BARAT"
+    },
+    {
+        "row":  183,
+        "reff":  "AFD037K30",
+        "plantCode":  "7K30",
+        "plantDesc":  "KEBUN KALIBAKAR PANCURSARI",
+        "afdCode":  "AFD03",
+        "afdDesc":  "AFD. PG/WR KEMBAR"
+    },
+    {
+        "row":  184,
+        "reff":  "AFD047K30",
+        "plantCode":  "7K30",
+        "plantDesc":  "KEBUN KALIBAKAR PANCURSARI",
+        "afdCode":  "AFD04",
+        "afdDesc":  "AFD. BUMIREJO"
+    },
+    {
+        "row":  185,
+        "reff":  "AFD057K30",
+        "plantCode":  "7K30",
+        "plantDesc":  "KEBUN KALIBAKAR PANCURSARI",
+        "afdCode":  "AFD05",
+        "afdDesc":  "AFD. GLAGAH ARUM"
+    },
+    {
+        "row":  186,
+        "reff":  "AFD067K30",
+        "plantCode":  "7K30",
+        "plantDesc":  "KEBUN KALIBAKAR PANCURSARI",
+        "afdCode":  "AFD06",
+        "afdDesc":  "AFD. SK/SBR MANGGIS"
+    },
+    {
+        "row":  187,
+        "reff":  "AFD077K30",
+        "plantCode":  "7K30",
+        "plantDesc":  "KEBUN KALIBAKAR PANCURSARI",
+        "afdCode":  "AFD07",
+        "afdDesc":  "AFD. PETUNG OMBO"
+    },
+    {
+        "row":  188,
+        "reff":  "AFD077K30",
+        "plantCode":  "7K30",
+        "plantDesc":  "KEBUN KALIBAKAR PANCURSARI",
+        "afdCode":  "AFD07",
+        "afdDesc":  "AFD. PETUNG OMBO"
+    },
+    {
+        "row":  189,
+        "reff":  "AFD087K30",
+        "plantCode":  "7K30",
+        "plantDesc":  "KEBUN KALIBAKAR PANCURSARI",
+        "afdCode":  "AFD08",
+        "afdDesc":  "AFD. SUMBER GESING"
+    },
+    {
+        "row":  190,
+        "reff":  "AFD087K30",
+        "plantCode":  "7K30",
+        "plantDesc":  "KEBUN KALIBAKAR PANCURSARI",
+        "afdCode":  "AFD08",
+        "afdDesc":  "AFD. SUMBER GESING"
+    },
+    {
+        "row":  191,
+        "reff":  "AFD097K30",
+        "plantCode":  "7K30",
+        "plantDesc":  "KEBUN KALIBAKAR PANCURSARI",
+        "afdCode":  "AFD09",
+        "afdDesc":  "AFD. KALIBAKAR"
+    },
+    {
+        "row":  192,
+        "reff":  "AFD097K30",
+        "plantCode":  "7K30",
+        "plantDesc":  "KEBUN KALIBAKAR PANCURSARI",
+        "afdCode":  "AFD09",
+        "afdDesc":  "AFD. KALIBAKAR"
+    },
+    {
+        "row":  193,
+        "reff":  "AFD107K30",
+        "plantCode":  "7K30",
+        "plantDesc":  "KEBUN KALIBAKAR PANCURSARI",
+        "afdCode":  "AFD10",
+        "afdDesc":  "AFD. LEBAKREJO"
+    },
+    {
+        "row":  194,
+        "reff":  "AFD107K30",
+        "plantCode":  "7K30",
+        "plantDesc":  "KEBUN KALIBAKAR PANCURSARI",
+        "afdCode":  "AFD10",
+        "afdDesc":  "AFD. LEBAKREJO"
+    },
+    {
+        "row":  195,
+        "reff":  "AFD017K32",
+        "plantCode":  "7K32",
+        "plantDesc":  "KEBUN BANGELAN BANTARAN",
+        "afdCode":  "AFD01",
+        "afdDesc":  "AFD. BANTARAN"
+    },
+    {
+        "row":  196,
+        "reff":  "AFD027K32",
+        "plantCode":  "7K32",
+        "plantDesc":  "KEBUN BANGELAN BANTARAN",
+        "afdCode":  "AFD02",
+        "afdDesc":  "AFD. SIRAH KENCONG"
+    },
+    {
+        "row":  197,
+        "reff":  "AFD037K32",
+        "plantCode":  "7K32",
+        "plantDesc":  "KEBUN BANGELAN BANTARAN",
+        "afdCode":  "AFD03",
+        "afdDesc":  "AFD. PENATARAN"
+    },
+    {
+        "row":  198,
+        "reff":  "AFD047K32",
+        "plantCode":  "7K32",
+        "plantDesc":  "KEBUN BANGELAN BANTARAN",
+        "afdCode":  "AFD04",
+        "afdDesc":  "AFD. BESARAN"
+    },
+    {
+        "row":  199,
+        "reff":  "AFD047K32",
+        "plantCode":  "7K32",
+        "plantDesc":  "KEBUN BANGELAN BANTARAN",
+        "afdCode":  "AFD04",
+        "afdDesc":  "AFD. BESARAN"
+    },
+    {
+        "row":  200,
+        "reff":  "AFD057K32",
+        "plantCode":  "7K32",
+        "plantDesc":  "KEBUN BANGELAN BANTARAN",
+        "afdCode":  "AFD05",
+        "afdDesc":  "AFD. KAMPUNG BARU"
+    },
+    {
+        "row":  201,
+        "reff":  "AFD057K32",
+        "plantCode":  "7K32",
+        "plantDesc":  "KEBUN BANGELAN BANTARAN",
+        "afdCode":  "AFD05",
+        "afdDesc":  "AFD. KAMPUNG BARU"
+    },
+    {
+        "row":  202,
+        "reff":  "AFD017K33",
+        "plantCode":  "7K33",
+        "plantDesc":  "KEBUN NGRANGKAH PAWON",
+        "afdCode":  "AFD01",
+        "afdDesc":  "AFD. PAWON PAKELAN"
+    },
+    {
+        "row":  203,
+        "reff":  "AFD027K33",
+        "plantCode":  "7K33",
+        "plantDesc":  "KEBUN NGRANGKAH PAWON",
+        "afdCode":  "AFD02",
+        "afdDesc":  "AFD. BADEK"
+    },
+    {
+        "row":  204,
+        "reff":  "AFD037K33",
+        "plantCode":  "7K33",
+        "plantDesc":  "KEBUN NGRANGKAH PAWON",
+        "afdCode":  "AFD03",
+        "afdDesc":  "AFD. BABADAN"
+    },
+    {
+        "row":  205,
+        "reff":  "AFD047K33",
+        "plantCode":  "7K33",
+        "plantDesc":  "KEBUN NGRANGKAH PAWON",
+        "afdCode":  "AFD04",
+        "afdDesc":  "AFD. SUMBER GLATIK"
+    },
+    {
+        "row":  206,
+        "reff":  "AFD057K33",
+        "plantCode":  "7K33",
+        "plantDesc":  "KEBUN NGRANGKAH PAWON",
+        "afdCode":  "AFD05",
+        "afdDesc":  "AFD. SATAK"
+    },
+    {
+        "row":  207,
+        "reff":  "AFD067K33",
+        "plantCode":  "7K33",
+        "plantDesc":  "KEBUN NGRANGKAH PAWON",
+        "afdCode":  "AFD06",
+        "afdDesc":  "AFD. DAMARWULAN"
+    },
+    {
+        "row":  208,
+        "reff":  "AFD077K33",
+        "plantCode":  "7K33",
+        "plantDesc":  "KEBUN NGRANGKAH PAWON",
+        "afdCode":  "AFD07",
+        "afdDesc":  "AFD. SUMBER"
+    },
+    {
+        "row":  209,
+        "reff":  "AFD017K34",
+        "plantCode":  "7K34",
+        "plantDesc":  "KEBUN TRETES",
+        "afdCode":  "AFD01",
+        "afdDesc":  "AFD. TRETES"
+    },
+    {
+        "row":  210,
+        "reff":  "AFD027K34",
+        "plantCode":  "7K34",
+        "plantDesc":  "KEBUN TRETES",
+        "afdCode":  "AFD02",
+        "afdDesc":  "AFD. BEGAL"
+    }
+]

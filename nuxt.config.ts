@@ -11,5 +11,13 @@ export default defineNuxtConfig({
     'nuxt-echarts',
     '@vueuse/nuxt',
     '@vesp/nuxt-fontawesome'
-  ]
+  ],
+
+  // Register only the ECharts features used by the production dashboard.
+  echarts: {
+    // Nuxt renders charts as SVG on the server, then the browser uses Canvas.
+    renderer: ['canvas', 'svg'],
+    charts: ['BarChart', 'LineChart'],
+    components: ['GridComponent', 'TooltipComponent', 'LegendComponent']
+  }
 })

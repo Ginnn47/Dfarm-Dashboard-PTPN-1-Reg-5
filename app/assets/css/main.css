@@ -1,2 +1,12 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
+
+:root {
+  --dfarm-primary: #16a34a;
+  --dfarm-primary-deep: #006e2d;
+  --dfarm-secondary: #16a34a;
+  --dfarm-tertiary: #f59e0b;
+  --dfarm-canvas: #f8fafc;
+  --dfarm-outline: #e2e8f0;
+  --dfarm-heading: #0f172a;
+}
