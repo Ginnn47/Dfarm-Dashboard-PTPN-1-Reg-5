@@ -1,8 +1,8 @@
 ﻿import {
   afdelingMasterRecords,
   type AfdelingMasterRecord,
-} from './afdelingMaster'
-import type { ProductionRecord } from '../development/production'
+} from './afdelingMaster.ts'
+import type { ProductionRecord } from '../production/types.ts'
 
 export interface AfdelingIdentityMatchResult {
   matched: boolean
@@ -64,6 +64,12 @@ const KNOWN_AFD_ALIASES = new Map<string, string>([
   ['BAJINGONJUR', 'BANJIRONJUR'],
 ])
 
+const KNOWN_ESTATE_ALIASES = new Map<string, string>([
+  ['GLENMORE', 'KENDENGLEMBU'],
+  ['PANCURANGGREK', 'PANCURANGKREK'],
+  ['GLANTANGANMUMBUL', 'GLANTANGAN'],
+])
+
 /**
  * Deterministic identity matcher:
  * Resolves Kebun + Afdeling against the master dataset.
@@ -73,7 +79,10 @@ export function matchAfdelingIdentity(
   estate: string,
   afdeling: string
 ): AfdelingIdentityMatchResult {
-  const estateKey = canonicalizeEstateKey(estate)
+  let estateKey = canonicalizeEstateKey(estate)
+  if (KNOWN_ESTATE_ALIASES.has(estateKey)) {
+    estateKey = KNOWN_ESTATE_ALIASES.get(estateKey)!
+  }
   let afdKey = canonicalizeAfdKey(afdeling)
 
   if (KNOWN_AFD_ALIASES.has(afdKey)) {
@@ -81,9 +90,12 @@ export function matchAfdelingIdentity(
   }
 
   // 1. Filter master records belonging to the plant covering this estate
-  const candidates = afdelingMasterRecords.filter((m) =>
+  let candidates = afdelingMasterRecords.filter((m) =>
     m.plantKey.includes(estateKey)
   )
+  if (candidates.length === 0 && estateKey.includes('MUMBUL')) {
+    candidates = afdelingMasterRecords.filter((m) => m.plantKey.includes('MUMBUL'))
+  }
 
   if (candidates.length === 0) {
     return {

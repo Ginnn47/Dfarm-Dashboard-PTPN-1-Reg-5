@@ -1,10 +1,11 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, watch } from 'vue'
+import { useSidebar } from '~/composables/useSidebar'
 
 interface NavigationItem {
   label: string
   to: string
-  icon: 'home' | 'production' | 'finance' | 'investment-on-farm' | 'investment-off-farm' | 'data-source'
+  icon: 'home' | 'production' | 'finance' | 'investment-on-farm' | 'investment-off-farm' | 'data-source' | 'kpi-management'
   status?: 'planned'
 }
 
@@ -17,6 +18,9 @@ const emit = defineEmits<{
 }>()
 
 const route = useRoute()
+const { isCollapsed } = useSidebar()
+
+const isDesktopCollapsed = computed(() => isCollapsed.value && !props.mobileOpen)
 
 const navigation: Array<{
   label: string
@@ -40,7 +44,8 @@ const navigation: Array<{
   {
     label: 'Data Source',
     items: [
-      { label: 'Data Source', to: '/data-source', icon: 'data-source', status: 'planned' }
+      { label: 'Data Source', to: '/data-source', icon: 'data-source' },
+      { label: 'KPI Management', to: '/kpi-management', icon: 'kpi-management' }
     ]
   }
 ]
@@ -69,12 +74,19 @@ watch(
   />
 
   <aside
-    class="fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-slate-200/90 bg-white transition-transform duration-200 lg:z-30"
-    :class="sidebarClasses"
+    class="fixed inset-y-0 left-0 z-40 flex flex-col border-r border-slate-200/90 bg-white transition-all duration-200 lg:z-30"
+    :class="[
+      sidebarClasses,
+      isDesktopCollapsed ? 'lg:w-20' : 'lg:w-72',
+      'w-72'
+    ]"
     aria-label="Primary navigation"
   >
-    <!-- Sidebar Header with PTPN 1 Logo and Collapse Button -->
-    <div class="flex h-20 items-center justify-between border-b border-slate-100 px-5">
+    <!-- Sidebar Header (Expanded) -->
+    <div
+      v-if="!isDesktopCollapsed"
+      class="flex h-20 items-center justify-between border-b border-slate-100 px-5"
+    >
       <NuxtLink to="/" class="flex items-center gap-3" aria-label="DFARM dashboard home" @click="emit('close')">
         <img
           src="/images/logo.png"
@@ -87,41 +99,87 @@ watch(
         </div>
       </NuxtLink>
 
+      <!-- Mobile Close Button (only inside mobile drawer) -->
       <button
+        v-if="mobileOpen"
         type="button"
-        class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-600 transition-colors hover:bg-sky-100"
+        class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-600 transition-colors hover:bg-sky-100 lg:hidden"
         aria-label="Tutup navigasi"
         @click="emit('close')"
       >
         <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="m18.75 4.5-7.5 7.5 7.5 7.5m-6-15L5.25 12l7.5 7.5" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
         </svg>
       </button>
     </div>
 
+    <!-- Sidebar Header (Collapsed on Desktop) - Clean centered logo without disturbing buttons -->
+    <div
+      v-else
+      class="flex h-20 items-center justify-center border-b border-slate-100 px-2"
+    >
+      <NuxtLink
+        to="/"
+        class="flex items-center justify-center rounded-xl p-2 transition-all hover:bg-slate-50"
+        aria-label="DFARM dashboard home"
+        title="DFARM Monitoring Dashboard"
+        @click="emit('close')"
+      >
+        <img
+          src="/images/logo.png"
+          alt="PTPN 1 Logo"
+          class="h-10 w-10 object-contain shrink-0"
+        />
+      </NuxtLink>
+    </div>
+
     <!-- Navigation List -->
-    <nav class="flex-1 space-y-6 overflow-y-auto px-3 py-6">
-      <section v-for="group in navigation" :key="group.label">
-        <p class="px-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">{{ group.label }}</p>
+    <nav
+      class="flex-1 space-y-6 overflow-y-auto py-6"
+      :class="isDesktopCollapsed ? 'px-2' : 'px-3'"
+    >
+      <section v-for="(group, gIdx) in navigation" :key="group.label">
+        <p
+          v-if="!isDesktopCollapsed"
+          class="px-3 text-[11px] font-bold uppercase tracking-wider text-slate-400"
+        >
+          {{ group.label }}
+        </p>
+        <div
+          v-else-if="gIdx > 0"
+          class="my-3 mx-2 h-px bg-slate-100"
+          aria-hidden="true"
+        />
+
         <ul class="mt-2 space-y-1">
           <li v-for="item in group.items" :key="item.to">
             <NuxtLink
               :to="item.to"
-              class="group relative flex min-h-11 items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
-              :class="isActive(item.to)
-                ? 'bg-[#eaf2fd] font-semibold text-sky-700'
-                : 'font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900'"
+              class="group relative flex min-h-11 items-center rounded-xl text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
+              :class="[
+                isDesktopCollapsed
+                  ? 'justify-center px-0 py-2.5'
+                  : 'justify-between px-3 py-2',
+                isActive(item.to)
+                  ? 'bg-[#eaf2fd] font-semibold text-sky-700'
+                  : 'font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              ]"
+              :title="item.label + (item.status === 'planned' ? ' (Soon)' : '')"
+              :aria-label="item.label"
               @click="emit('close')"
             >
               <!-- Active Left Indicator Bar -->
               <span
                 v-if="isActive(item.to)"
-                class="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1.5 rounded-r-full bg-sky-600"
+                class="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-sky-600"
                 aria-hidden="true"
               />
 
               <!-- Item Icon & Label -->
-              <div class="flex items-center gap-3 min-w-0">
+              <div
+                class="flex items-center"
+                :class="isDesktopCollapsed ? 'justify-center' : 'gap-3 min-w-0'"
+              >
                 <!-- Home / Dashboard -->
                 <svg
                   v-if="item.icon === 'home'"
@@ -202,12 +260,25 @@ watch(
                   <path stroke-linecap="round" d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3" />
                 </svg>
 
-                <span class="truncate">{{ item.label }}</span>
+                <!-- KPI Management -->
+                <svg
+                  v-else-if="item.icon === 'kpi-management'"
+                  class="size-5 shrink-0 transition-colors"
+                  :class="isActive(item.to) ? 'text-sky-600' : 'text-slate-500 group-hover:text-slate-700'"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
+                </svg>
+
+                <span v-if="!isDesktopCollapsed" class="truncate">{{ item.label }}</span>
               </div>
 
               <!-- Soon Badge -->
               <span
-                v-if="item.status === 'planned'"
+                v-if="!isDesktopCollapsed && item.status === 'planned'"
                 class="rounded-full bg-[#f0f4fa] px-2.5 py-0.5 text-[10px] font-semibold text-sky-700/80"
               >
                 Soon
@@ -219,7 +290,10 @@ watch(
     </nav>
 
     <!-- Bottom Application Shell Card -->
-    <div class="m-3 rounded-2xl border border-sky-100 bg-[#eaf2fd]/80 p-4">
+    <div
+      v-if="!isDesktopCollapsed"
+      class="m-3 rounded-2xl border border-sky-100 bg-[#eaf2fd]/80 p-4 transition-all"
+    >
       <div class="flex items-start gap-3">
         <span class="flex size-7 shrink-0 items-center justify-center rounded-full text-sky-600 mt-0.5">
           <svg class="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -231,6 +305,18 @@ watch(
           <p class="text-sm font-bold text-sky-950">Application shell</p>
           <p class="mt-1 text-xs leading-relaxed text-slate-600">Data integration is planned for a later phase.</p>
         </div>
+      </div>
+    </div>
+    <div
+      v-else
+      class="m-2 flex justify-center py-2 transition-all"
+      title="Application shell: Data integration is planned for a later phase."
+    >
+      <div class="flex size-9 items-center justify-center rounded-xl border border-sky-200 bg-[#eaf2fd] text-sky-600 transition-colors hover:bg-sky-100">
+        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10" />
+          <path stroke-linecap="round" d="M12 16v-4m0-4h.01" stroke-width="2.5" />
+        </svg>
       </div>
     </div>
   </aside>

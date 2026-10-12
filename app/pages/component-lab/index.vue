@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { productionFixtureMeta } from '~/data/development/production.meta'
 import { useProductionDashboard, type ProductionDashboardFilters } from '~/composables/useProductionDashboard'
 
 useHead({ title: 'Component Lab | DFARM' })
 
 const filters = ref<ProductionDashboardFilters>({ tahun: '', bulan: '', komoditas: '', kebun: '', afdeling: '', tahunTanam: '' })
 const {
+  activeSourceMeta,
   filteredRecords,
   monthlyData,
   metrics: kpis,
@@ -53,9 +53,9 @@ const stateOptions = [
           <p class="mt-1 max-w-2xl text-sm leading-6 text-slate-600">Reusable visual components using a local, workbook-derived fixture. This is not live data or a production dashboard.</p>
         </div>
         <div class="rounded-xl border border-amber-200 bg-white/70 px-4 py-3 text-xs leading-5 text-slate-600">
-          <p class="font-semibold text-slate-800">{{ productionFixtureMeta.label }}</p>
-          <p>Source: {{ productionFixtureMeta.workbook }}</p>
-          <p>Status: {{ productionFixtureMeta.status }}</p>
+          <p class="font-semibold text-slate-800">{{ activeSourceMeta.name }}</p>
+          <p>Source: {{ activeSourceMeta.workbook }}</p>
+          <p>Status: {{ activeSourceMeta.statusLabel }}</p>
         </div>
       </div>
     </section>
@@ -86,7 +86,7 @@ const stateOptions = [
 
     <!-- SECTION 3: CHARTS -->
     <section class="grid gap-6 xl:grid-cols-2">
-      <DashboardChartCard title="Tren Produksi Bulanan" description="Realisasi dibandingkan RKAP dalam urutan bulan sumber." :state="filteredRecords.length ? 'populated' : 'empty'" :footer="`Development Data · ${productionFixtureMeta.workbook}`">
+      <DashboardChartCard title="Tren Produksi Bulanan" description="Realisasi dibandingkan RKAP dalam urutan bulan sumber." :state="filteredRecords.length ? 'populated' : 'empty'" :footer="`Development Data · ${activeSourceMeta.workbook}`">
         <DashboardProductionTrendChart :data="monthlyData" />
       </DashboardChartCard>
 
@@ -94,19 +94,19 @@ const stateOptions = [
         :title="labEstateLevel === 'afdeling' ? 'Produksi per Afdeling' : 'Produksi per Kebun'"
         :description="labEstateLevel === 'afdeling' ? 'Peringkat afdeling berdasarkan realisasi agregat.' : 'Peringkat kebun berdasarkan realisasi agregat.'"
         :state="labEstateChartData.length ? 'populated' : 'empty'"
-        :footer="`Menampilkan ${labEstateLevel === 'afdeling' ? 'Top 12 Afdeling' : 'Kebun'} · ${productionFixtureMeta.workbook}`"
+        :footer="`Menampilkan ${labEstateLevel === 'afdeling' ? 'Top 12 Afdeling' : 'Kebun'} · ${activeSourceMeta.workbook}`"
       >
         <template #actions>
           <DashboardViewLevelToggle v-model="labEstateLevel" />
         </template>
-        <DashboardDonutChartEstate :data="labEstateChartData" :view-level="labEstateLevel" :max-items="5" />
+        <DashboardProductionByEstateChart :data="labEstateChartData" :view-level="labEstateLevel" :max-items="5" />
       </DashboardChartCard>
 
       <DashboardChartCard
         :title="labComparisonLevel === 'afdeling' ? 'Realisasi vs RKAP per Afdeling' : 'Realisasi vs RKAP per Kebun'"
         :description="labComparisonLevel === 'afdeling' ? 'Perbandingan target dan realisasi per afdeling.' : 'Perbandingan target dan realisasi per kebun.'"
         :state="labComparisonChartData.length ? 'populated' : 'empty'"
-        :footer="`Menampilkan ${labComparisonLevel === 'afdeling' ? 'Top 12 Afdeling' : 'Kebun'} · ${productionFixtureMeta.workbook}`"
+        :footer="`Menampilkan ${labComparisonLevel === 'afdeling' ? 'Top 12 Afdeling' : 'Kebun'} · ${activeSourceMeta.workbook}`"
       >
         <template #actions>
           <DashboardViewLevelToggle v-model="labComparisonLevel" />
@@ -118,7 +118,7 @@ const stateOptions = [
         title="Produksi per Tahun Tanam (Layered Shadow Bar)"
         description="Target RKAP ditampilkan sebagai shadow bar amber di belakang realisasi hijau dengan persentase pencapaian."
         :state="plantingYearData.length ? 'populated' : 'empty'"
-        :footer="`Development Data · ${productionFixtureMeta.workbook}`"
+        :footer="`Development Data · ${activeSourceMeta.workbook}`"
       >
         <DashboardProductionByPlantingYearChart :data="plantingYearData" />
       </DashboardChartCard>
@@ -136,7 +136,7 @@ const stateOptions = [
     <!-- SECTION 4: DETAIL TABLE -->
     <section>
       <div class="mb-4"><p class="text-sm font-semibold text-sky-700">03 / DETAIL</p><h2 class="text-xl font-bold text-slate-900">Production records</h2></div>
-      <DashboardChartCard title="Detail per Kebun, Afdeling, dan Tahun Tanam" description="Baris detail sumber dengan pencarian, filter lokal, sorting, dan pagination." :state="filteredRecords.length ? 'populated' : 'empty'" :footer="`Source sheet: ${productionFixtureMeta.sheet}`">
+      <DashboardChartCard title="Detail per Kebun, Afdeling, dan Tahun Tanam" description="Baris detail sumber dengan pencarian, filter lokal, sorting, dan pagination." :state="filteredRecords.length ? 'populated' : 'empty'" :footer="`Source sheet: ${activeSourceMeta.sheet}`">
         <DashboardProductionTable :data="filteredRecords" :page-size="12" />
       </DashboardChartCard>
     </section>

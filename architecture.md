@@ -1109,3 +1109,52 @@ The architecture foundation is complete when:
 The architecture is intentionally designed so that
 Django is replaceable while the data contract,
 API contract, frontend structure, and business requirements remain stable.
+
+---
+
+# 33. Phase 2.7 — Data Source Switching Architecture
+
+In Phase 2.7, the dashboard transitioned from directly importing local fixtures to consuming a source-agnostic data layer:
+
+`	ext
+Dashboard Components (KPI Cards, Charts, Table, Stream)
+                      ?
+          useProductionDashboard Composable
+                      ?
+             useDataSource Composable
+                      ?
+        Active Production Data Source Adapter
+         /                                 \
+  developmentSource               googleSheetsSource (Phase 2.8)
+  (Local Fixture - 577 rows)       (Placeholder: Not Connected)
+`
+
+Key Architectural Principles:
+1. **Source-Agnostic UI**: No dashboard visual component directly references raw development fixture files. All interfaces and aggregates are defined in pp/data/production/types.ts.
+2. **Centralized Configuration**: All source switching is concentrated on the /data-source page.
+3. **No Silent Fallback**: When an unconfigured or remote source like google-sheets is active, the dashboard explicitly presents the not-connected state banner rather than secretly substituting development data.
+4. **Phase 2.8 Readiness**: The Google Sheets adapter (pp/data/sources/googleSheetsSource.ts) provides a clean implementation entry point for Google Sheets API ingestion without modifying visual components.
+
+---
+
+# 34. Multi-Domain Data Source Management Framework
+
+DFARM accommodates multiple independent business domains, each with dedicated spreadsheet documents and data configurations:
+
+`	ext
+               Data Source Hub (/data-source)
+                             |
+         +-------------------+-------------------+
+         |                   |                   |
+    [Produksi]          [Keuangan]         [Investasi]
+         |                   |            /           \
+  AREAL & POPULASI    DFARM_Keuangan    On-Farm     Off-Farm
+   MASTERFIELD          2026.xlsx       CAPEX        CAPEX
+  (577 baris, valid)  (Phase 3.0)     (Phase 3.1)  (Phase 3.1)
+`
+
+Core Architecture Rules:
+1. **Isolated Domain Spreadsheets**: Production, Finance, On-Farm Investment, and Off-Farm Investment must never be combined into a single mega-sheet. Each domain maintains its own workbook ID, sheet name, cell range, and header row.
+2. **Domain-Specific Active Source**: Each domain independently toggles between development (simulation fixture) and google-sheets (remote cloud spreadsheet) without affecting other domains.
+3. **Canonical Field Requirements**: Each domain defines explicit semantic entity requirements (e.g. eportingYear, ctualRevenue, 	argetHectares, ssetCode).
+4. **Concentrated Configuration Hub**: All domain-specific settings, connection tests, and sync frequencies are managed directly in /data-source with reactive isolation.

@@ -1,20 +1,17 @@
 import { computed, type Ref } from 'vue'
+import { useDataSource } from '~/composables/useDataSource'
 import {
   aggregateByAfdeling,
   aggregateByEstate,
   aggregateByPlantingYear,
   aggregateMonthly,
   BULAN_LABELS,
-  commodityOptions,
   computeKpis,
-  developmentProductionRecords,
-  estateOptions,
-  plantingYearOptions,
   type AfdelingAggregate,
   type EstateAggregate,
   type PlantingYearAggregate,
   type ProductionRecord,
-} from '~/data/development/production'
+} from '~/data/production/types'
 
 export interface ProductionDashboardFilters {
   tahun: string
@@ -30,13 +27,28 @@ export const productionMonthOptions = BULAN_LABELS.map((label, index) => ({
   label,
 }))
 
-export const productionYearOptions = [{
-  value: '2025',
-  label: '2025',
-}]
+export const productionYearOptions = [
+  { value: '2026', label: '2026' },
+  { value: '2025', label: '2025' },
+]
 
 export function useProductionDashboard(filters: Ref<ProductionDashboardFilters>) {
-  const filteredRecords = computed(() => developmentProductionRecords.filter((record) => {
+  const { activeSourceId, activeSource, activeMeta, isAvailable, isNotConnected, setActiveSource } = useDataSource()
+
+  // Retrieve raw records from the active source abstraction
+  const sourceRecords = computed<ProductionRecord[]>(() => {
+    return activeSource.value.getRecords()
+  })
+
+  // Dynamic reporting year options based on the actual active dataset records
+  const yearOptions = computed(() => {
+    const years = Array.from(new Set(sourceRecords.value.map((record) => record.reportingYear)))
+      .filter(Boolean)
+      .sort((a, b) => b - a)
+    return years.map((year) => ({ value: String(year), label: String(year) }))
+  })
+
+  const filteredRecords = computed(() => sourceRecords.value.filter((record) => {
     if (filters.value.tahun && String(record.reportingYear) !== filters.value.tahun) return false
     if (filters.value.komoditas && record.commodity !== filters.value.komoditas) return false
     if (filters.value.kebun && record.estateCode !== filters.value.kebun) return false
@@ -64,8 +76,20 @@ export function useProductionDashboard(filters: Ref<ProductionDashboardFilters>)
     })
   })
 
+  // Dynamic filter options generated from active source records
+  const commodityOptions = computed(() => {
+    return Array.from(new Set(sourceRecords.value.map((record) => record.commodity)))
+      .sort()
+      .map((value) => ({ value, label: value }))
+  })
+
+  const estateOptions = computed(() => {
+    return Array.from(new Map(sourceRecords.value.map((record) => [record.estateCode, record.estate])), ([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'id'))
+  })
+
   const afdelingOptions = computed(() => {
-    let source = developmentProductionRecords
+    let source = sourceRecords.value
     if (filters.value.komoditas) {
       source = source.filter((r) => r.commodity === filters.value.komoditas)
     }
@@ -77,12 +101,19 @@ export function useProductionDashboard(filters: Ref<ProductionDashboardFilters>)
       .map((value) => ({ value, label: value }))
   })
 
+  const plantingYearOptions = computed(() => {
+    return Array.from(new Set(sourceRecords.value.map((record) => record.plantingYear)))
+      .sort((a, b) => a - b)
+      .map((year) => ({ value: String(year), label: String(year) }))
+  })
+
   const monthlyData = computed(() => {
     const monthly = aggregateMonthly(filteredRecords.value)
     return selectedMonth.value
       ? monthly.filter((item) => item.month === selectedMonth.value)
       : monthly
   })
+
   const metrics = computed(() => computeKpis(periodRecords.value))
   const estateData = computed(() => aggregateByEstate(periodRecords.value))
   const afdelingData = computed(() => aggregateByAfdeling(periodRecords.value))
@@ -94,6 +125,12 @@ export function useProductionDashboard(filters: Ref<ProductionDashboardFilters>)
   const belowTargetEstates = computed(() => estateData.value.filter((item) => item.variance != null && item.variance < 0).length)
 
   return {
+    activeSourceId,
+    activeSourceMeta: activeMeta,
+    isAvailable,
+    isNotConnected,
+    setActiveSource,
+    sourceRecords,
     filteredRecords,
     periodRecords,
     selectedMonth,
@@ -107,6 +144,7 @@ export function useProductionDashboard(filters: Ref<ProductionDashboardFilters>)
     peakMonth,
     leadingEstate,
     belowTargetEstates,
+    yearOptions,
     commodityOptions,
     estateOptions,
     afdelingOptions,

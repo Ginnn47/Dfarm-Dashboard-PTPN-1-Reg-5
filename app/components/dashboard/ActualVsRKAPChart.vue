@@ -1,7 +1,7 @@
 ﻿<script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import VChart from 'vue-echarts'
-import type { AfdelingAggregate, EstateAggregate } from '~/data/development/production'
+import type { AfdelingAggregate, EstateAggregate } from '~/data/production/types'
 
 type ChartItem = EstateAggregate | AfdelingAggregate
 
@@ -115,7 +115,7 @@ const option = computed(() => ({
       for (const p of params) {
         const color = p.color as string
         const name = p.seriesName as string
-        const value = (p.value as number || 0).toLocaleString('id-ID')
+        const value = Math.round(p.value as number || 0).toLocaleString('id-ID')
         html += `<div style="display:flex;align-items:center;gap:6px;margin-top:2px">
           <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${color}"></span>
           <span style="flex:1">${name}</span>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import VChart from 'vue-echarts'
-import type { PlantingYearAggregate } from '~/data/development/production'
+import type { PlantingYearAggregate } from '~/data/production/types'
 
 const props = defineProps<{
   data: PlantingYearAggregate[]
@@ -29,42 +29,44 @@ const option = computed(() => {
 
         if (displayMode.value === 'productivity') {
           const val = (item?.value as number || 0).toLocaleString('id-ID', { maximumFractionDigits: 2 })
-          html += `<div>Produktivitas: <b>${val}</b> (rasio/ha)</div>`
+          html += `<div style="display:flex;align-items:center;gap:6px;margin-top:3px">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#006e2d"></span>
+            <span style="flex:1">Produktivitas</span>
+            <span style="font-weight:600">${val} <span style="font-size:11px;color:#64748b;font-weight:normal">kg/ha</span></span>
+          </div>`
           if (dataItem) {
-            html += `<div style="font-size:11px;color:#64748b;margin-top:4px">
-              Luas: ${dataItem.area.toLocaleString('id-ID')} ha<br/>
-              Populasi: ${dataItem.population.toLocaleString('id-ID')} phn
+            html += `<div style="border-top:1px solid #e2e8f0;margin-top:6px;padding-top:6px;font-size:11px;color:#64748b">
+              Luas: <span style="font-weight:600;color:#1e293b">${Math.round(dataItem.area).toLocaleString('id-ID')} ha</span>
+              &nbsp;|&nbsp; Populasi: <span style="font-weight:600;color:#1e293b">${Math.round(dataItem.population).toLocaleString('id-ID')} phn</span>
             </div>`
           }
         } else {
-          const actual = dataItem?.actual || 0
-          const rkap = dataItem?.rkap || 0
+          const actual = Math.round(dataItem?.actual || 0)
+          const rkap = Math.round(dataItem?.rkap || 0)
           const variance = actual - rkap
-          const achievement = rkap > 0 ? (actual / rkap) * 100 : null
-          const achievementColor = (achievement || 0) >= 100 ? '#059669' : '#d97706'
-          const varianceColor = variance >= 0 ? '#059669' : '#dc2626'
+          const achievement = rkap > 0 ? ((actual / rkap) * 100).toFixed(1) : '?'
 
-          html += `<div style="display:flex;align-items:center;gap:6px">
-            <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#006e2d"></span>
-            <span style="flex:1">Realisasi:</span>
-            <b>${actual.toLocaleString('id-ID')}</b>
+          html += `<div style="display:flex;align-items:center;gap:6px;margin-top:3px">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#006e2d"></span>
+            <span style="flex:1">Realisasi</span>
+            <span style="font-weight:600">${actual.toLocaleString('id-ID')}</span>
           </div>`
 
-          html += `<div style="display:flex;align-items:center;gap:6px;margin-top:2px">
-            <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#f59e0b"></span>
-            <span style="flex:1">Target RKAP:</span>
-            <b>${rkap.toLocaleString('id-ID')}</b>
+          html += `<div style="display:flex;align-items:center;gap:6px;margin-top:3px">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b"></span>
+            <span style="flex:1">RKAP</span>
+            <span style="font-weight:600">${rkap.toLocaleString('id-ID')}</span>
           </div>`
 
-          html += `<div style="border-top:1px solid #e2e8f0;margin-top:6px;padding-top:6px;font-size:11px">
-            Pencapaian: <span style="font-weight:700;color:${achievementColor}">${achievement != null ? achievement.toFixed(1) + '%' : '—'}</span>
-            &nbsp;|&nbsp;
-            Selisih: <span style="font-weight:700;color:${varianceColor}">${variance >= 0 ? '+' : ''}${(variance / 1000).toFixed(1)}K</span>
+          html += `<div style="border-top:1px solid #e2e8f0;margin-top:6px;padding-top:6px;font-size:11px;color:#64748b">
+            Variance: <span style="color:${variance >= 0 ? '#059669' : '#dc2626'};font-weight:600">${variance >= 0 ? '+' : ''}${(variance / 1000).toFixed(1)}K</span>
+            &nbsp;|&nbsp; Achievement: <span style="font-weight:600">${achievement}%</span>
           </div>`
 
           if (dataItem) {
-            html += `<div style="font-size:11px;color:#64748b;margin-top:4px">
-              Luas: ${dataItem.area.toLocaleString('id-ID')} ha &nbsp;|&nbsp; Populasi: ${dataItem.population.toLocaleString('id-ID')} phn
+            html += `<div style="margin-top:4px;font-size:11px;color:#64748b">
+              Luas: <span style="font-weight:600;color:#1e293b">${Math.round(dataItem.area).toLocaleString('id-ID')} ha</span>
+              &nbsp;|&nbsp; Populasi: <span style="font-weight:600;color:#1e293b">${Math.round(dataItem.population).toLocaleString('id-ID')} phn</span>
             </div>`
           }
         }

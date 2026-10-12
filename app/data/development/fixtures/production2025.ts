@@ -1,4 +1,4 @@
-import { matchAfdelingIdentity } from '~/data/reference/identityMatcher'
+import { matchAfdelingIdentity } from '../../reference/identityMatcher.ts'
 /**
  * Canonical development fixture generated from the inspected workbook.
  * This module never parses XLSX in the browser and is not a live data source.
@@ -118,8 +118,8 @@ export function aggregateMonthly(records: ProductionRecord[]): MonthlyAggregate[
   return BULAN_LABELS.map((monthLabel, index) => ({
     month: index + 1,
     monthLabel,
-    actual: records.reduce((sum, record) => sum + (record.months[index]?.actual || 0), 0),
-    rkap: records.reduce((sum, record) => sum + (record.months[index]?.rkap || 0), 0),
+    actual: Math.round(records.reduce((sum, record) => sum + (record.months[index]?.actual || 0), 0)),
+    rkap: Math.round(records.reduce((sum, record) => sum + (record.months[index]?.rkap || 0), 0)),
   }))
 }
 
@@ -183,6 +183,8 @@ export function aggregateByPlantingYear(records: ProductionRecord[]): PlantingYe
   return Array.from(groups.values())
     .map((item) => ({
       ...item,
+      actual: Math.round(item.actual),
+      rkap: Math.round(item.rkap),
       productivity: item.area > 0 ? item.actual / item.area : null,
     }))
     .sort((a, b) => a.plantingYear - b.plantingYear)

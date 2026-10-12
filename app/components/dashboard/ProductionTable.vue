@@ -1,6 +1,6 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { ProductionRecord } from '~/data/development/production'
+import type { ProductionRecord } from '~/data/production/types'
 
 interface TableRow {
   sourceRow: number
@@ -263,10 +263,11 @@ const columns: Array<{
   <SharedVisualizationState :state="loading ? 'loading' : data.length ? 'populated' : 'empty'">
     <div class="space-y-4">
       <!-- TABLE TOOLBAR: Search, Local Filters, and Quick Sort -->
-      <div class="rounded-lg border border-slate-200/80 bg-slate-50/60 p-3 sm:p-3.5">
-        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <!-- Left: Search and Local Filters -->
-          <div class="flex flex-1 flex-wrap items-center gap-2.5">
+      <div class="rounded-lg border border-slate-200/80 bg-slate-50/60 p-3 sm:p-3.5 space-y-2.5">
+        <!-- Top Row: Search & Primary Filters on Left | Quick Sort & Reset on Right -->
+        <div class="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:justify-between">
+          <!-- Left: Search, Afdeling, Commodity -->
+          <div class="flex flex-1 flex-wrap items-center gap-2">
             <!-- Search Input -->
             <div class="relative min-w-[200px] flex-1 sm:max-w-xs">
               <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-slate-400" aria-hidden="true">
@@ -284,7 +285,7 @@ const columns: Array<{
                 v-if="searchQuery"
                 type="button"
                 aria-label="Bersihkan pencarian"
-                class="absolute inset-y-0 right-0 flex items-center pr-2 text-slate-400 hover:text-slate-600"
+                class="absolute inset-y-0 right-0 flex items-center pr-2 text-slate-400 hover:text-slate-600 cursor-pointer"
                 @click="searchQuery = ''"
               >
                 <svg class="size-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -292,8 +293,90 @@ const columns: Array<{
                 </svg>
               </button>
             </div>
+          </div>
 
-            <!-- Filter Afdeling -->
+          <!-- Right: Quick Sort and Reset Button -->
+          <div class="flex flex-wrap items-center gap-2 shrink-0">
+            <!-- Quick Sort Selector -->
+            <div class="flex items-center gap-1.5">
+              <span class="text-xs font-semibold text-slate-500">Urutkan:</span>
+              <select
+                :value="currentSortValue"
+                aria-label="Urutkan data"
+                class="h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                @change="onSortSelectChange"
+              >
+                <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
+                  {{ opt.label }}
+                </option>
+              </select>
+
+              <!-- Direction toggle button -->
+              <button
+                type="button"
+                :title="sortDirection === 'asc' ? 'Urutan Naik (Ascending)' : 'Urutan Turun (Descending)'"
+                class="flex h-9 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
+                @click="toggleDirection"
+              >
+                <svg
+                  class="size-3.5 transition-transform"
+                  :class="sortDirection === 'asc' ? 'rotate-180' : ''"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3" />
+                </svg>
+                <span>{{ sortDirection === 'asc' ? 'Naik' : 'Turun' }}</span>
+              </button>
+            </div>
+
+            <!-- Reset filters button -->
+            <button
+              v-if="hasActiveFilters"
+              type="button"
+              class="flex h-9 items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 cursor-pointer"
+              @click="resetFilters"
+            >
+              <svg class="size-3" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M4 2a1 1 0 0 1 1 1v2.101a7.002 7.002 0 0 1 11.601 2.566 1 1 0 1 1-1.885.666A5.002 5.002 0 0 0 5.999 7H9a1 1 0 0 1 0 2H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Zm.008 9.057a1 1 0 0 1 1.276.61A5.002 5.002 0 0 0 14.001 13H11a1 1 0 1 1 0-2h5a1 1 0 0 1 1 1v5a1 1 0 1 1-2 0v-2.101a7.002 7.002 0 0 1-11.601-2.566 1 1 0 0 1 .61-1.276Z" clip-rule="evenodd" />
+              </svg>
+              <span>Reset ({{ activeFilterCount }})</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2.5 pt-2 border-t border-slate-200/70">
+          <span class="text-xs font-medium text-slate-500">Filter Tambahan:</span>
+          <!-- Filter Tahun Tanam -->
+          <div class="min-w-[150px]">
+            <select
+              v-model="selectedPlantingYear"
+              aria-label="Filter tahun tanam"
+              class="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-700 transition-colors hover:border-slate-300 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+            >
+              <option value="">Semua Tahun Tanam</option>
+              <option v-for="yr in availablePlantingYears" :key="yr" :value="String(yr)">
+                TT {{ yr }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Filter Status Achievement (Sejajar dengan Tahun Tanam di bawah) -->
+          <div class="min-w-[165px]">
+            <select
+              v-model="selectedAchievementStatus"
+              aria-label="Filter status target"
+              class="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-700 transition-colors hover:border-slate-300 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+            >
+              <option value="">Semua Status</option>
+              <option value="on_target">Mencapai Target (≥ 100%)</option>
+              <option value="below_target">Di Bawah Target (&lt; 100%)</option>
+            </select>
+          </div>
+
+                      <!-- Filter Afdeling -->
             <div class="min-w-[140px]">
               <select
                 v-model="selectedAfdeling"
@@ -320,89 +403,10 @@ const columns: Array<{
                 </option>
               </select>
             </div>
-
-            <!-- Filter Status Achievement -->
-            <div class="min-w-[145px]">
-              <select
-                v-model="selectedAchievementStatus"
-                aria-label="Filter status target"
-                class="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-700 transition-colors hover:border-slate-300 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
-              >
-                <option value="">Semua Status</option>
-                <option value="on_target">Mencapai Target (≥ 100%)</option>
-                <option value="below_target">Di Bawah Target (&lt; 100%)</option>
-              </select>
-            </div>
-
-            <!-- Filter Tahun Tanam -->
-            <div class="min-w-[125px]">
-              <select
-                v-model="selectedPlantingYear"
-                aria-label="Filter tahun tanam"
-                class="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-700 transition-colors hover:border-slate-300 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
-              >
-                <option value="">Semua Tahun Tanam</option>
-                <option v-for="yr in availablePlantingYears" :key="yr" :value="String(yr)">
-                  TT {{ yr }}
-                </option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Right: Quick Sort and Reset -->
-          <div class="flex flex-wrap items-center gap-2">
-            <!-- Quick Sort Selector -->
-            <div class="flex items-center gap-1.5">
-              <span class="hidden text-xs font-semibold text-slate-500 xl:inline">Urutkan:</span>
-              <select
-                :value="currentSortValue"
-                aria-label="Urutkan data"
-                class="h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
-                @change="onSortSelectChange"
-              >
-                <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
-                  {{ opt.label }}
-                </option>
-              </select>
-
-              <!-- Direction toggle button -->
-              <button
-                type="button"
-                :title="sortDirection === 'asc' ? 'Urutan Naik (Ascending)' : 'Urutan Turun (Descending)'"
-                class="flex h-9 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
-                @click="toggleDirection"
-              >
-                <svg
-                  class="size-3.5 transition-transform"
-                  :class="sortDirection === 'asc' ? 'rotate-180' : ''"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  stroke-width="2.5"
-                >
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3" />
-                </svg>
-                <span>{{ sortDirection === 'asc' ? 'Naik' : 'Turun' }}</span>
-              </button>
-            </div>
-
-            <!-- Reset filters button -->
-            <button
-              v-if="hasActiveFilters"
-              type="button"
-              class="flex h-9 items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100"
-              @click="resetFilters"
-            >
-              <svg class="size-3" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M4 2a1 1 0 0 1 1 1v2.101a7.002 7.002 0 0 1 11.601 2.566 1 1 0 1 1-1.885.666A5.002 5.002 0 0 0 5.999 7H9a1 1 0 0 1 0 2H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Zm.008 9.057a1 1 0 0 1 1.276.61A5.002 5.002 0 0 0 14.001 13H11a1 1 0 1 1 0-2h5a1 1 0 0 1 1 1v5a1 1 0 1 1-2 0v-2.101a7.002 7.002 0 0 1-11.601-2.566 1 1 0 0 1 .61-1.276Z" clip-rule="evenodd" />
-              </svg>
-              <span>Reset ({{ activeFilterCount }})</span>
-            </button>
-          </div>
         </div>
 
         <!-- Filter status indicators & chips -->
-        <div v-if="hasActiveFilters" class="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-slate-200/70 pt-2 text-xs">
+        <div v-if="hasActiveFilters" class="flex flex-wrap items-center gap-1.5 border-t border-slate-200/70 pt-2 text-xs">
           <span class="text-slate-500">Filter aktif:</span>
 
           <span
@@ -410,7 +414,7 @@ const columns: Array<{
             class="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 font-medium text-slate-700 border border-slate-200"
           >
             Pencarian: "{{ searchQuery }}"
-            <button type="button" class="text-slate-400 hover:text-slate-700" @click="searchQuery = ''">×</button>
+            <button type="button" class="text-slate-400 hover:text-slate-700 cursor-pointer" @click="searchQuery = ''">×</button>
           </span>
 
           <span
@@ -418,7 +422,7 @@ const columns: Array<{
             class="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 font-medium text-slate-700 border border-slate-200"
           >
             {{ selectedAfdeling }}
-            <button type="button" class="text-slate-400 hover:text-slate-700" @click="selectedAfdeling = ''">×</button>
+            <button type="button" class="text-slate-400 hover:text-slate-700 cursor-pointer" @click="selectedAfdeling = ''">×</button>
           </span>
 
           <span
@@ -426,7 +430,7 @@ const columns: Array<{
             class="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 font-medium text-slate-700 border border-slate-200"
           >
             {{ selectedCommodity }}
-            <button type="button" class="text-slate-400 hover:text-slate-700" @click="selectedCommodity = ''">×</button>
+            <button type="button" class="text-slate-400 hover:text-slate-700 cursor-pointer" @click="selectedCommodity = ''">×</button>
           </span>
 
           <span
@@ -434,7 +438,7 @@ const columns: Array<{
             class="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 font-medium text-slate-700 border border-slate-200"
           >
             {{ selectedAchievementStatus === 'on_target' ? 'Target Tercapai' : 'Di Bawah Target' }}
-            <button type="button" class="text-slate-400 hover:text-slate-700" @click="selectedAchievementStatus = ''">×</button>
+            <button type="button" class="text-slate-400 hover:text-slate-700 cursor-pointer" @click="selectedAchievementStatus = ''">×</button>
           </span>
 
           <span
@@ -442,7 +446,7 @@ const columns: Array<{
             class="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 font-medium text-slate-700 border border-slate-200"
           >
             TT {{ selectedPlantingYear }}
-            <button type="button" class="text-slate-400 hover:text-slate-700" @click="selectedPlantingYear = ''">×</button>
+            <button type="button" class="text-slate-400 hover:text-slate-700 cursor-pointer" @click="selectedPlantingYear = ''">×</button>
           </span>
         </div>
       </div>
@@ -454,45 +458,43 @@ const columns: Array<{
             Menampilkan <strong class="font-semibold text-slate-700">{{ sorted.length }}</strong> dari total {{ rows.length }} baris data
           </template>
           <template v-else>
-            Total <strong class="font-semibold text-slate-700">{{ sorted.length }}</strong> baris data
+            Total <strong class="font-semibold text-slate-700">{{ rows.length }}</strong> baris data
           </template>
         </p>
 
         <div class="flex items-center gap-2">
-          <span>Tampilkan per halaman:</span>
+          <span>Baris per halaman:</span>
           <select
             v-model.number="pageSize"
             aria-label="Jumlah baris per halaman"
-            class="h-7 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700 hover:border-slate-300 focus:border-sky-500 focus:outline-none"
+            class="h-7 rounded border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 hover:border-slate-300 focus:border-sky-500 focus:outline-none"
           >
             <option :value="10">10</option>
             <option :value="12">12</option>
             <option :value="25">25</option>
             <option :value="50">50</option>
+            <option :value="100">100</option>
           </select>
         </div>
       </div>
 
-      <!-- TABLE OR EMPTY FILTER STATE -->
-      <div v-if="sorted.length === 0" class="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50 py-12 px-4 text-center">
-        <div class="flex size-11 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-          <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-          </svg>
-        </div>
-        <h4 class="mt-3 text-sm font-semibold text-slate-800">Tidak ada baris data yang cocok</h4>
-        <p class="mt-1 max-w-sm text-xs text-slate-500">
-          Tidak ditemukan data yang sesuai dengan pencarian atau filter yang dipilih. Coba sesuaikan kata kunci atau bersihkan filter.
-        </p>
+      <!-- EMPTY SEARCH RESULT STATE -->
+      <div
+        v-if="sorted.length === 0"
+        class="rounded-xl border border-dashed border-slate-300 bg-slate-50/50 p-8 text-center text-xs text-slate-500"
+      >
+        <p class="font-semibold text-slate-700">Tidak ada data yang cocok dengan kriteria filter</p>
+        <p class="mt-1">Coba ubah kata kunci pencarian atau reset filter di toolbar atas.</p>
         <button
           type="button"
-          class="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-sky-700 shadow-sm transition-colors hover:bg-slate-50"
+          class="mt-3 rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-sky-700 shadow-xs border border-slate-200 hover:bg-slate-50"
           @click="resetFilters"
         >
-          Reset Pencarian & Filter
+          Reset Semua Filter
         </button>
       </div>
 
+      <!-- DATA TABLE -->
       <div v-else class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
@@ -583,7 +585,7 @@ const columns: Array<{
         <div class="flex items-center gap-1.5">
           <button
             type="button"
-            class="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300"
+            class="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300 cursor-pointer"
             :disabled="currentPage === 1"
             @click="currentPage--"
           >
@@ -597,7 +599,7 @@ const columns: Array<{
 
           <button
             type="button"
-            class="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300"
+            class="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300 cursor-pointer"
             :disabled="currentPage === totalPages"
             @click="currentPage++"
           >

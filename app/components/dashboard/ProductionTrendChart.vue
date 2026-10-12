@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import VChart from 'vue-echarts'
-import type { MonthlyAggregate } from '~/data/development/production'
+import type { MonthlyAggregate } from '~/data/production/types'
 
 const props = defineProps<{
   data: MonthlyAggregate[]
@@ -20,7 +20,8 @@ const option = computed(() => ({
       for (const p of params) {
         const color = p.color as string
         const name = p.seriesName as string
-        const value = (p.value as number).toLocaleString('id-ID')
+        const rawVal = p.value as number || 0
+        const value = Math.round(rawVal).toLocaleString('id-ID')
         html += `<div style="display:flex;align-items:center;gap:6px;margin-top:3px">
           <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color}"></span>
           <span style="flex:1">${name}</span>
@@ -28,10 +29,10 @@ const option = computed(() => ({
         </div>`
       }
       if (params.length === 2) {
-        const actual = params[0]?.value as number || 0
-        const rkap = params[1]?.value as number || 0
+        const actual = Math.round(params[0]?.value as number || 0)
+        const rkap = Math.round(params[1]?.value as number || 0)
         const variance = actual - rkap
-        const achievement = rkap > 0 ? ((actual / rkap) * 100).toFixed(1) : '—'
+        const achievement = rkap > 0 ? ((actual / rkap) * 100).toFixed(1) : '?'
         html += `<div style="border-top:1px solid #e2e8f0;margin-top:6px;padding-top:6px;font-size:11px;color:#64748b">
           Variance: <span style="color:${variance >= 0 ? '#059669' : '#dc2626'};font-weight:600">${variance >= 0 ? '+' : ''}${(variance / 1000).toFixed(1)}K</span>
           &nbsp;|&nbsp; Achievement: <span style="font-weight:600">${achievement}%</span>

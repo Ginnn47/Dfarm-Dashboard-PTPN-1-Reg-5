@@ -1,6 +1,6 @@
 ﻿<script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import type { ProductionRecord } from '~/data/development/production'
+import type { ProductionRecord } from '~/data/production/types'
 
 interface StreamItem {
   key: string
