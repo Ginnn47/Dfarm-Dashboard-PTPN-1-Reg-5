@@ -1,11 +1,21 @@
 ﻿<script setup lang="ts">
 import { computed, watch } from 'vue'
 import { useSidebar } from '~/composables/useSidebar'
+import {
+  DashboardSquare02Icon,
+  Leaf01Icon,
+  Wallet01Icon,
+  SoilMoistureFieldIcon,
+  WarehouseIcon,
+  DatabaseSearchIcon,
+  Settings05Icon,
+} from '@hugeicons/core-free-icons'
+import { HugeiconsIcon } from '@hugeicons/vue'
 
 interface NavigationItem {
   label: string
   to: string
-  icon: 'home' | 'production' | 'finance' | 'investment-on-farm' | 'investment-off-farm' | 'data-source' | 'kpi-management'
+  icon: any
   status?: 'planned'
 }
 
@@ -29,23 +39,23 @@ const navigation: Array<{
   {
     label: 'Overview',
     items: [
-      { label: 'Dashboard', to: '/', icon: 'home' }
+      { label: 'Dashboard', to: '/', icon: DashboardSquare02Icon }
     ]
   },
   {
     label: 'Data Monitor',
     items: [
-      { label: 'Production', to: '/production', icon: 'production' },
-      { label: 'Finance', to: '/finance', icon: 'finance', status: 'planned' },
-      { label: 'Investment On Farm', to: '/investment/on-farm', icon: 'investment-on-farm', status: 'planned' },
-      { label: 'Investment Off Farm', to: '/investment/off-farm', icon: 'investment-off-farm', status: 'planned' }
+      { label: 'Production', to: '/production', icon: Leaf01Icon },
+      { label: 'Finance', to: '/finance', icon: Wallet01Icon, status: 'planned' },
+      { label: 'Investment On Farm', to: '/investment/on-farm', icon: SoilMoistureFieldIcon },
+      { label: 'Investment Off Farm', to: '/investment/off-farm', icon: WarehouseIcon, status: 'planned' }
     ]
   },
   {
     label: 'Data Source',
     items: [
-      { label: 'Data Source', to: '/data-source', icon: 'data-source' },
-      { label: 'KPI Management', to: '/kpi-management', icon: 'kpi-management' }
+      { label: 'Data Source', to: '/data-source', icon: DatabaseSearchIcon },
+      { label: 'KPI Management', to: '/kpi-management', icon: Settings05Icon }
     ]
   }
 ]
@@ -180,99 +190,13 @@ watch(
                 class="flex items-center"
                 :class="isDesktopCollapsed ? 'justify-center' : 'gap-3 min-w-0'"
               >
-                <!-- Home / Dashboard -->
-                <svg
-                  v-if="item.icon === 'home'"
+                <HugeiconsIcon
+                  :icon="item.icon"
+                  :size="20"
+                  :stroke-width="2.2"
                   class="size-5 shrink-0 transition-colors"
                   :class="isActive(item.to) ? 'text-sky-600' : 'text-slate-500 group-hover:text-slate-700'"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
-                </svg>
-
-                <!-- Production -->
-                <svg
-                  v-else-if="item.icon === 'production'"
-                  class="size-5 shrink-0 transition-colors"
-                  :class="isActive(item.to) ? 'text-sky-600' : 'text-slate-500 group-hover:text-slate-700'"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
-                </svg>
-
-                <!-- Finance -->
-                <svg
-                  v-else-if="item.icon === 'finance'"
-                  class="size-5 shrink-0 transition-colors"
-                  :class="isActive(item.to) ? 'text-sky-600' : 'text-slate-500 group-hover:text-slate-700'"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5Zm0 0h-4a2 2 0 0 0-2 2v0a2 2 0 0 0 2 2h4" />
-                </svg>
-
-                <!-- Investment On Farm -->
-                <svg
-                  v-else-if="item.icon === 'investment-on-farm'"
-                  class="size-5 shrink-0 transition-colors"
-                  :class="isActive(item.to) ? 'text-sky-600' : 'text-slate-500 group-hover:text-slate-700'"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 21V11m0 0a4 4 0 1 0-8 0c0 4 8 4 8 4m0-4a4 4 0 1 1 8 0c0 4-8 4-8 4" />
-                </svg>
-
-                <!-- Investment Off Farm -->
-                <svg
-                  v-else-if="item.icon === 'investment-off-farm'"
-                  class="size-5 shrink-0 transition-colors"
-                  :class="isActive(item.to) ? 'text-sky-600' : 'text-slate-500 group-hover:text-slate-700'"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5M13.5 6.75H15M9 10.5h1.5M13.5 10.5H15M9 14.25h1.5M13.5 14.25H15M9 18h1.5M13.5 18H15" />
-                </svg>
-
-                <!-- Data Source -->
-                <svg
-                  v-else-if="item.icon === 'data-source'"
-                  class="size-5 shrink-0 transition-colors"
-                  :class="isActive(item.to) ? 'text-sky-600' : 'text-slate-500 group-hover:text-slate-700'"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <ellipse cx="12" cy="5" rx="9" ry="3" />
-                  <path stroke-linecap="round" d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
-                  <path stroke-linecap="round" d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3" />
-                </svg>
-
-                <!-- KPI Management -->
-                <svg
-                  v-else-if="item.icon === 'kpi-management'"
-                  class="size-5 shrink-0 transition-colors"
-                  :class="isActive(item.to) ? 'text-sky-600' : 'text-slate-500 group-hover:text-slate-700'"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
-                </svg>
-
+                />
                 <span v-if="!isDesktopCollapsed" class="truncate">{{ item.label }}</span>
               </div>
 

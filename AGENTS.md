@@ -730,3 +730,39 @@ If yes, stop and reconsider the implementation.
 10. Validate every meaningful change.
 11. Do not silently expand milestone scope.
 12. Keep the architecture replaceable.
+
+---
+
+# 32. Investment On Farm Planning and Implementation Rules
+
+Investment On Farm is a separate domain dashboard. Its detailed planned
+interaction and visual specification belongs in `design.md`; its data and
+system boundaries belong in `architecture.md`.
+
+Before substantial On Farm work, read all three project documents and inspect
+the existing route, navigation, shared components, and data-layer boundaries.
+This planning documentation does not authorize dashboard implementation.
+
+Future implementation may reuse actual generic foundations where they fit:
+
+- the application shell and navigation
+- generic filter controls and filter-state patterns
+- card, chart-wrapper, table, status, and visualization-state patterns
+
+Do not treat a component as reusable solely from its filename. Production
+charts, production tables, production composables, fixtures, and source
+adapters remain isolated from On Farm business logic unless their implementation
+has been deliberately generalized without changing Production behavior.
+
+For On Farm data and KPIs:
+
+- use only validated source-to-display mappings and documented formulas
+- never invent fields, activity catalogues, RKAP-to-SAP mappings, or KPI rules
+- keep authoritative validation, reconciliation, and calculations outside Vue
+- distinguish reporting year from planting year
+- distinguish Activity codes from Cost Element codes
+- label mock/prototype data clearly; it is not authoritative company data
+
+Preserve the existing verification protocol and completion report. A future
+On Farm implementation must report its changed files, validation performed,
+known data limitations, and remaining dependency on approved data mappings.

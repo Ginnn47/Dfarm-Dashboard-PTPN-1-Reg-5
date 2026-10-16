@@ -1,4 +1,4 @@
-# DFARM Dashboard — System Architecture
+﻿# DFARM Dashboard — System Architecture
 
 > Version: 0.1
 > Status: Draft — Architecture Foundation
@@ -1112,7 +1112,7 @@ API contract, frontend structure, and business requirements remain stable.
 
 ---
 
-# 33. Phase 2.7 � Data Source Switching Architecture
+# 33. Phase 2.7 � Data Source Switching Architecture
 
 In Phase 2.7, the dashboard transitioned from directly importing local fixtures to consuming a source-agnostic data layer:
 
@@ -1158,3 +1158,68 @@ Core Architecture Rules:
 2. **Domain-Specific Active Source**: Each domain independently toggles between development (simulation fixture) and google-sheets (remote cloud spreadsheet) without affecting other domains.
 3. **Canonical Field Requirements**: Each domain defines explicit semantic entity requirements (e.g. eportingYear, ctualRevenue, 	argetHectares, ssetCode).
 4. **Concentrated Configuration Hub**: All domain-specific settings, connection tests, and sync frequencies are managed directly in /data-source with reactive isolation.
+---
+
+# 35. Implemented Investment On Farm Architecture (P0 Layered UX)
+
+## 35.1 Overview and Component Ownership
+
+The Investment On Farm domain monitors capital expenditure for plantation core crops (Tanaman Pokok 2026), consolidating SAP CO/PS actual ledger transactions (`ZESTHLE152`) against budget targets (`RKAP 2026`) with project mapping and reconciliation from `Rekap`.
+
+The implementation resides at `app/pages/investment/on-farm/index.vue` and uses a three-layer single-page UX:
+- `Layer 1`: Executive Summary (`OnFarmKpiCards.vue`, `OnFarmMonthlyLeadBarChart.vue` [full-width monthly lead], `OnFarmScurveChart.vue` [cumulative S-curve line chart], `OnFarmMonthlyAbsorptionChart.vue` [monthly absorption % chart], `OnFarmEstateBarChart.vue` [horizontal grouped bar chart with sorting], `OnFarmCommodityAnalyticsCard.vue` [center-total donut with Komoditas/Fase Tanam switch toggle, Ocean Earthy Glow palette, and interactive inline expandable drawer]).
+- `Layer 2`: Analytical Exploration (`OnFarmActivitySection.vue`, `OnFarmReconciliationBanner.vue`).
+- `Layer 3`: Detailed SAP Ledger (`OnFarmTransactionTable.vue`).
+- Presentation Drawer: `OnFarmProjectDrawer.vue`.
+- Layer Navigation Controller: `OnFarmLayerNavigation.vue`.
+
+## 35.2 State Ownership and Lifecycle
+
+1. **Global Filter State** (managed in `useOnFarmData.ts`):
+   - `selectedPeriod`: Active reporting cut-off month (defaults to detected active period 9).
+   - `isManualCutoff`: Boolean flag indicating manual override vs automatic SAP cut-off detection.
+   - `selectedEstate`, `selectedCommodity`, `selectedPhase`, `selectedAfdeling`: Scoped filter dimensions applied to both SAP actuals and RKAP budget plans.
+   - `selectedProject`: When non-null, focuses transactions and activity breakdowns on a specific Project Definition.
+   - State is reactive and 100% preserved during layer navigation and drawer interactions.
+2. **Layer Navigation State** (managed in `app/pages/investment/on-farm/index.vue`):
+   - `activeLayer`: Reactive ref (`'1' | '2' | '3'`), switching views via `v-show` to maintain DOM cache and ECharts instances.
+3. **Drawer Presentation State** (managed in `app/pages/investment/on-farm/index.vue`):
+   - `isDrawerOpen`: Boolean visibility flag.
+   - `drawerProjectCode`: Selected Project Definition string passed to `OnFarmProjectDrawer.vue`.
+   - Opening/closing the drawer has zero side-effects on global store or KPI calculations.
+
+## 35.3 Data Flow and Honest State Policy
+
+```text
+[Workbook: LM 19 Biaya Investasi Tanpok 2026 (1).xlsx]
+         │
+         ├── RKAP 2026     ──► parseBudgetPlans()     ──► store.budgetPlans
+         ├── ZESTHLE152    ──► parseSapTransactions() ──► store.transactions (authoritative actuals)
+         └── Rekap         ──► parseProjectMappings() ──► store.projectMappings & reconciliation
+                                                                │
+                                                    useOnFarmData()
+                                                                │
+                     ┌──────────────────────────────────────────┴─────────────────────────────────────────┐
+                     ▼                                          ▼                                         ▼
+            Layer 1: Executive                         Layer 2: Exploration                     Layer 3: Transactions
+            - kpiSummary (YTD/Annual)                  - activityBreakdown                      - filteredTransactionsYtd
+            - monthlyTrend (1–12 & S-Curve)            - projectWbsSummary                      - search & pagination
+            - commodityBreakdown                                                                - project context banner
+            - estateBreakdown
+                                                                │
+                                                                ▼ (user clicks project)
+                                                     OnFarmProjectDrawer
+                                                     - Authoritative SAP Actual
+                                                     - Honest RKAP State (1:1 vs Shared vs Unmapped)
+                                                     - Top Activities & Cost Elements
+                                                     - CTA: jump to Layer 3 with project filter
+```
+
+### Business Rule Enforcement
+1. **Authoritative Actuals**: SAP `ZESTHLE152` is the sole source of actual costs (`Rp 15.399.596.073`). Rekap values are never added to SAP actuals.
+2. **Reconciliation Warning**: Rekap discrepancy (`+Rp 162.643.874` in rubber commodity) is displayed transparently without modifying SAP actuals.
+3. **Negative Reversals**: Negative SAP values are strictly preserved as signed numbers.
+4. **Honest Budget Association in Drawer**:
+   - Direct 1-to-1 association is shown only when a project matches an explicit budget line.
+   - Multi-project SINUSA codes display consolidated program-level notes without artificial splits.
+   - Unmapped projects state that they are not mapped to SINUSA while remaining 100% accounted for in total actuals.

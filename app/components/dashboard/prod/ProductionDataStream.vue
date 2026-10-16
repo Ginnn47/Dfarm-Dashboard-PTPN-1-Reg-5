@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { ProductionRecord } from '~/data/production/types'
 
@@ -301,7 +301,7 @@ onBeforeUnmount(() => {
           Filter Tampilan:
         </span>
         <div class="w-36">
-          <DashboardFilterDropdown
+          <DashboardReusableFilterDropdown
             v-model="streamFilter"
             :options="streamFilterOptions"
             compact

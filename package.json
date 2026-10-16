@@ -11,6 +11,8 @@
     "test": "node --test tests/**/*.test.ts"
   },
   "dependencies": {
+    "@hugeicons/core-free-icons": "^4.3.5",
+    "@hugeicons/vue": "^1.0.8",
     "@nuxt/ui": "^4.11.3",
     "@pinia-orm/nuxt": "^2.0.0",
     "@pinia/nuxt": "^1.0.2",

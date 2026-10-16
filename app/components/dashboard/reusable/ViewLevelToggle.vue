@@ -3,22 +3,32 @@ import { computed } from 'vue'
 
 const props = withDefaults(
   defineProps<{
-    modelValue?: 'kebun' | 'afdeling'
+    modelValue?: string
+    leftLabel?: string
+    rightLabel?: string
+    leftValue?: string
+    rightValue?: string
+    activeColor?: string
     disabled?: boolean
   }>(),
   {
     modelValue: 'kebun',
+    leftLabel: 'Kebun',
+    rightLabel: 'Afdeling',
+    leftValue: 'kebun',
+    rightValue: 'afdeling',
+    activeColor: '#006e2d',
     disabled: false,
   }
 )
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: 'kebun' | 'afdeling'): void
+  (e: 'update:modelValue', value: string): void
 }>()
 
-const isAfdeling = computed({
-  get: () => props.modelValue === 'afdeling',
-  set: (val: boolean) => emit('update:modelValue', val ? 'afdeling' : 'kebun'),
+const isRight = computed({
+  get: () => props.modelValue === props.rightValue,
+  set: (val: boolean) => emit('update:modelValue', val ? props.rightValue : props.leftValue),
 })
 </script>
 
@@ -26,32 +36,36 @@ const isAfdeling = computed({
   <div class="inline-flex items-center gap-2 select-none">
     <span
       class="cursor-pointer text-xs sm:text-[13px] tracking-tight transition-colors"
-      :class="!isAfdeling ? 'font-bold text-slate-900' : 'font-medium text-slate-400 hover:text-slate-600'"
-      @click="isAfdeling = false"
+      :class="!isRight ? 'font-bold text-slate-900' : 'font-medium text-slate-400 hover:text-slate-600'"
+      @click="isRight = false"
     >
-      Kebun
+      {{ leftLabel }}
     </span>
 
     <label
       class="switch"
       :class="{ 'opacity-50 cursor-not-allowed': disabled }"
-      title="Beralih antara level Kebun dan Afdeling"
+      :title="`Beralih antara ${leftLabel} dan ${rightLabel}`"
     >
       <input
-        v-model="isAfdeling"
+        v-model="isRight"
         type="checkbox"
         :disabled="disabled"
-        aria-label="Toggle level Kebun atau Afdeling"
+        :aria-label="`Toggle ${leftLabel} atau ${rightLabel}`"
       />
-      <span class="slider" />
+      <span
+        class="slider"
+        :style="isRight && activeColor ? { backgroundColor: activeColor } : {}"
+      />
     </label>
 
     <span
       class="cursor-pointer text-xs sm:text-[13px] tracking-tight transition-colors"
-      :class="isAfdeling ? 'font-bold text-emerald-700' : 'font-medium text-slate-400 hover:text-slate-600'"
-      @click="isAfdeling = true"
+      :class="isRight ? 'font-bold' : 'font-medium text-slate-400 hover:text-slate-600'"
+      :style="isRight ? { color: activeColor } : {}"
+      @click="isRight = true"
     >
-      Afdeling
+      {{ rightLabel }}
     </span>
   </div>
 </template>

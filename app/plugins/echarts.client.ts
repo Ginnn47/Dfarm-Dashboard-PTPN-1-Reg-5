@@ -1,6 +1,6 @@
-﻿import { use } from 'echarts/core'
-import { BarChart, LineChart, PieChart } from 'echarts/charts'
-import { GridComponent, LegendComponent, TooltipComponent, TitleComponent, DataZoomComponent } from 'echarts/components'
+import { use } from 'echarts/core'
+import { BarChart, LineChart, PieChart, ScatterChart } from 'echarts/charts'
+import { GridComponent, LegendComponent, TooltipComponent, TitleComponent, DataZoomComponent, MarkLineComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 
 export default defineNuxtPlugin(() => {
@@ -10,10 +10,12 @@ export default defineNuxtPlugin(() => {
     BarChart,
     LineChart,
     PieChart,
+    ScatterChart,
     GridComponent,
     LegendComponent,
     TooltipComponent,
     TitleComponent,
     DataZoomComponent,
+    MarkLineComponent,
   ])
 })

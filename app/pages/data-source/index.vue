@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { useDevelopmentStore } from '~/data/development/productionStore'
 import {
@@ -8,6 +8,11 @@ import {
 } from '~/utils/productionExcelParser'
 import { useDataSource } from '~/composables/useDataSource'
 import type { DashboardDomainId } from '~/data/sources'
+import { useOnFarmStore } from '~/data/onfarm/onFarmStore'
+import { parseOnFarmWorkbook } from '~/utils/onFarmWorkbookParser'
+import type { OnFarmParseResult } from '~/data/onfarm/types'
+import { formatRupiahCompact, formatRupiahFull } from '~/utils/formatters'
+
 
 useHead({ title: 'Pusat Pengaturan Sumber Data | DFARM' })
 
@@ -26,8 +31,11 @@ const {
 // Progressive disclosure for advanced configuration
 const devStore = useDevelopmentStore()
 
+const onFarmStore = useOnFarmStore()
+
 onMounted(() => {
   devStore.initDevelopmentStore()
+  onFarmStore.initOnFarmStore()
 })
 
 // Top-level computed unwraps for safe SSR template access
@@ -151,6 +159,74 @@ function downloadSampleJson() {
   a.download = `sample_format_dfarm_${targetYearInput.value}.json`
   a.click()
   URL.revokeObjectURL(url)
+}
+
+
+// ==========================================
+// ON-FARM EXCEL (LM 19 2026) IMPORT STATE
+// ==========================================
+const isOnFarmParsing = ref(false)
+const onFarmParseResult = ref<OnFarmParseResult | null>(null)
+const onFarmFileName = ref<string | null>(null)
+const onFarmFileInputRef = ref<HTMLInputElement | null>(null)
+
+async function handleOnFarmFileInput(e: Event) {
+  const target = e.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+  await processOnFarmFile(file)
+}
+
+async function handleOnFarmFileDrop(e: DragEvent) {
+  e.preventDefault()
+  const file = e.dataTransfer?.files?.[0]
+  if (!file) return
+  await processOnFarmFile(file)
+}
+
+async function processOnFarmFile(file: File) {
+  isOnFarmParsing.value = true
+  onFarmParseResult.value = null
+  onFarmFileName.value = file.name
+
+  try {
+    const buffer = await file.arrayBuffer()
+    const res = await parseOnFarmWorkbook(buffer, 2026, file.name)
+    onFarmParseResult.value = res
+    showToast(
+      `Berhasil mengurai file Excel On-Farm (${res.transactions.length} transaksi SAP & ${res.budgetPlans.length} program RKAP).`,
+      'info'
+    )
+  } catch (err: any) {
+    showToast(err?.message || 'Gagal mengurai file Excel On-Farm.', 'warning')
+    onFarmParseResult.value = null
+  } finally {
+    isOnFarmParsing.value = false
+  }
+}
+
+function applyOnFarmImport() {
+  if (!onFarmParseResult.value || !onFarmParseResult.value.isValid) return
+  try {
+    const res = onFarmStore.applyParsedData(onFarmParseResult.value, onFarmFileName.value || undefined)
+    showToast(
+      `Sukses! ${res.transactionCount} transaksi SAP dan ${res.budgetPlanCount} program RKAP telah diterapkan. SAP Total: Rp ${res.sapTotal.toLocaleString('id-ID')}.`,
+      'success'
+    )
+    onFarmParseResult.value = null
+    onFarmFileName.value = null
+    if (onFarmFileInputRef.value) onFarmFileInputRef.value.value = ''
+  } catch (err: any) {
+    showToast(err?.message || 'Gagal menerapkan data On-Farm.', 'warning')
+  }
+}
+
+function resetOnFarmData() {
+  onFarmStore.resetOnFarmData()
+  onFarmParseResult.value = null
+  onFarmFileName.value = null
+  if (onFarmFileInputRef.value) onFarmFileInputRef.value.value = ''
+  showToast('Data Investasi On-Farm berhasil dikosongkan.', 'info')
 }
 
 const showAdvancedConfig = ref(false)
@@ -320,7 +396,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
       class="rounded-2xl border border-slate-200 bg-[#F7F9F8] p-8 text-center"
     >
       <div class="mx-auto flex size-12 items-center justify-center rounded-2xl bg-slate-200 text-slate-600">
-        <DashboardIcon name="comparison" :size="24" />
+        <DashboardReusableDashboardIcon name="comparison" :size="24" />
       </div>
       <h3 class="mt-3 text-lg font-bold text-[#26312D]">
         Modul {{ activeDomain.name }} Belum Tersedia
@@ -433,7 +509,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
               <div class="flex items-start justify-between gap-3">
                 <div class="flex items-center gap-3">
                   <span class="flex size-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800">
-                    <DashboardIcon name="table" :size="20" />
+                    <DashboardReusableDashboardIcon name="lab" :size="20" />
                   </span>
                   <div>
                     <div class="flex items-center gap-1.5">
@@ -496,7 +572,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
               <div class="flex items-start justify-between gap-3">
                 <div class="flex items-center gap-3">
                   <span class="flex size-10 items-center justify-center rounded-xl bg-amber-100 text-amber-800">
-                    <DashboardIcon name="comparison" :size="20" />
+                    <DashboardReusableDashboardIcon name="comparison" :size="20" />
                   </span>
                   <div>
                     <div class="flex items-center gap-1.5">
@@ -559,7 +635,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
           <div class="max-w-2xl">
             <div class="flex items-center gap-2">
               <span class="inline-flex size-6 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800">
-                <DashboardIcon name="table" :size="14" />
+                <DashboardReusableDashboardIcon name="lab" :size="16" />
               </span>
               <span class="text-xs font-bold uppercase tracking-wider text-emerald-700">
                 Penambahan Data Tahun 2026
@@ -709,7 +785,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
 
               <div v-if="!isParsingFile" class="space-y-1.5 pointer-events-none">
                 <span class="inline-flex size-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-                  <DashboardIcon name="table" :size="20" />
+                  <DashboardReusableDashboardIcon name="lab" :size="20" />
                 </span>
                 <p class="text-xs font-bold text-slate-800">
                   Klik untuk memilih file atau seret berkas .xlsx ke sini
@@ -916,6 +992,206 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
               >
                 Unduh Format Contoh (.json)
               </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      
+      <!-- D. MANAJEMEN DATA EXCEL INVESTASI ON-FARM (LM 19 2026) -->
+      <section
+        v-if="activeDomainId === 'investment-on-farm'"
+        class="overflow-hidden rounded-2xl border border-emerald-200/90 bg-white p-6 shadow-xs sm:p-7 space-y-6"
+      >
+        <div class="flex flex-wrap items-start justify-between gap-4 border-b border-[#E5EBE8] pb-5">
+          <div class="max-w-2xl">
+            <div class="flex items-center gap-2">
+              <span class="inline-flex size-6 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800">
+                <DashboardReusableDashboardIcon name="target" :size="14" />
+              </span>
+              <span class="text-xs font-bold uppercase tracking-wider text-emerald-700">
+                Sumber Data On-Farm (LM 19)
+              </span>
+            </div>
+            <h3 class="mt-1.5 text-lg font-bold text-[#26312D]">
+              Kelola Berkas Excel Investasi On-Farm 2026
+            </h3>
+            <p class="mt-1 text-xs leading-5 text-[#5E6A65]">
+              Unggah workbook Excel <strong>LM 19 Biaya Investasi Tanpok 2026</strong> (.xlsx). Sistem akan mengorkestrasi sheet <strong>ZESTHLE152</strong> (transaksi SAP), <strong>RKAP 2026</strong> (anggaran), dan <strong>Rekap</strong> (jembatan relasi proyek).
+            </p>
+          </div>
+
+          <!-- Dataset Status Pills -->
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="rounded-xl border border-emerald-200 bg-emerald-50/70 px-3.5 py-2 text-xs">
+              <span class="text-[11px] text-emerald-700 font-medium">Status Data:</span>
+              <p class="font-bold text-emerald-900 mt-0.5">
+                {{ onFarmStore.isLoaded.value ? 'Terpasang & Aktif' : 'Belum Ada Data' }}
+              </p>
+            </div>
+
+            <div v-if="onFarmStore.isLoaded.value" class="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs">
+              <span class="text-[11px] text-slate-500">Transaksi SAP:</span>
+              <p class="mt-0.5 font-bold text-slate-800">
+                {{ onFarmStore.transactionCount.value.toLocaleString('id-ID') }} Mutasi
+              </p>
+            </div>
+
+            <div v-if="onFarmStore.isLoaded.value" class="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs">
+              <span class="text-[11px] text-slate-500">Total Biaya SAP:</span>
+              <p class="mt-0.5 font-bold text-slate-900 tabular-nums">
+                {{ formatRupiahCompact(onFarmStore.totalActualCost.value) }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Loaded State Overview -->
+        <div v-if="onFarmStore.isLoaded.value && !onFarmParseResult" class="rounded-xl border border-emerald-200 bg-emerald-50/50 p-5 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="size-2 rounded-full bg-emerald-600" />
+                <h4 class="text-sm font-bold text-slate-900">
+                  Data Investasi On-Farm Siap Digunakan
+                </h4>
+              </div>
+              <p class="mt-1 text-xs text-slate-600">
+                File: <strong class="text-slate-800">{{ onFarmStore.metadata.value?.fileName || 'LM 19 Biaya Investasi Tanpok 2026.xlsx' }}</strong> ? Cut-off: Bulan {{ onFarmStore.metadata.value?.detectedActivePeriod || 9 }} ? {{ onFarmStore.budgetPlanCount.value }} Program RKAP
+              </p>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <button
+                type="button"
+                class="rounded-xl border border-rose-300 bg-white px-3.5 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 transition-colors shadow-2xs"
+                @click="resetOnFarmData"
+              >
+                Hapus Data On-Farm
+              </button>
+
+              <NuxtLink
+                to="/investment/on-farm"
+                class="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-800 transition-colors shadow-xs"
+              >
+                Buka Dashboard On-Farm ?
+              </NuxtLink>
+            </div>
+          </div>
+        </div>
+
+        <!-- Upload & Preview Box -->
+        <div class="space-y-4">
+          <!-- Dropzone -->
+          <div
+            class="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/60 p-8 text-center transition-colors hover:border-emerald-500 hover:bg-emerald-50/20 cursor-pointer"
+            @dragover.prevent
+            @drop="handleOnFarmFileDrop"
+            @click="onFarmFileInputRef?.click()"
+          >
+            <input
+              ref="onFarmFileInputRef"
+              type="file"
+              accept=".xlsx"
+              class="hidden"
+              @change="handleOnFarmFileInput"
+            />
+            <div class="flex size-12 items-center justify-center rounded-2xl bg-white text-emerald-700 shadow-xs border border-slate-200">
+              <svg class="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+            </div>
+            <p class="mt-3 text-sm font-bold text-slate-800">
+              {{ isOnFarmParsing ? 'Sedang mengurai workbook...' : 'Klik atau seret file LM 19 Biaya Investasi Tanpok (.xlsx) ke sini' }}
+            </p>
+            <p class="mt-1 text-xs text-slate-500">
+              Mendukung file Excel multi-sheet ZESTHLE152, RKAP 2026, dan Rekap
+            </p>
+          </div>
+
+          <!-- Parsed Preview Box -->
+          <div v-if="onFarmParseResult" class="rounded-2xl border border-sky-200 bg-sky-50/40 p-6 space-y-5">
+            <div class="flex flex-wrap items-start justify-between gap-4 border-b border-sky-200/80 pb-4">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="rounded bg-sky-100 px-2 py-0.5 text-xs font-bold text-sky-800">
+                    Hasil Pratinjau
+                  </span>
+                  <h4 class="text-sm font-bold text-slate-900">
+                    {{ onFarmFileName }}
+                  </h4>
+                </div>
+                <p class="mt-1 text-xs text-slate-600">
+                  Data siap diterapkan ke dalam penyimpanan lokal dashboard DFARM.
+                </p>
+              </div>
+
+              <div class="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  class="rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  @click="onFarmParseResult = null; onFarmFileName = null"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  class="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-800 shadow-xs"
+                  @click="applyOnFarmImport"
+                >
+                  Terapkan Data On-Farm
+                </button>
+              </div>
+            </div>
+
+            <!-- Preview Stats Grid -->
+            <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 text-xs">
+              <div class="rounded-xl border border-slate-200 bg-white p-3.5">
+                <span class="text-[11px] text-slate-500 uppercase font-semibold">Transaksi SAP</span>
+                <p class="mt-1 text-lg font-extrabold text-slate-900">
+                  {{ onFarmParseResult.transactions.length.toLocaleString('id-ID') }}
+                </p>
+                <p class="text-[10px] text-slate-400">Baris mutasi aktual riil</p>
+              </div>
+
+              <div class="rounded-xl border border-slate-200 bg-white p-3.5">
+                <span class="text-[11px] text-slate-500 uppercase font-semibold">Total Biaya SAP</span>
+                <p class="mt-1 text-lg font-extrabold text-slate-900">
+                  {{ formatRupiahCompact(onFarmParseResult.reconciliation.sapTotalActualYtd) }}
+                </p>
+                <p class="text-[10px] text-slate-400">Otoritatif (s/d Bulan {{ onFarmParseResult.metadata.detectedActivePeriod }})</p>
+              </div>
+
+              <div class="rounded-xl border border-slate-200 bg-white p-3.5">
+                <span class="text-[11px] text-slate-500 uppercase font-semibold">Program RKAP</span>
+                <p class="mt-1 text-lg font-extrabold text-slate-900">
+                  {{ onFarmParseResult.budgetPlans.length }}
+                </p>
+                <p class="text-[10px] text-slate-400">Usulan program SINUSA</p>
+              </div>
+
+              <div class="rounded-xl border border-slate-200 bg-white p-3.5">
+                <span class="text-[11px] text-slate-500 uppercase font-semibold">Status Rekonsiliasi</span>
+                <p class="mt-1 text-sm font-extrabold" :class="onFarmParseResult.reconciliation.hasDiscrepancy ? 'text-amber-700' : 'text-emerald-700'">
+                  {{ onFarmParseResult.reconciliation.hasDiscrepancy ? 'Discrepancy Warning' : 'Reconciled' }}
+                </p>
+                <p class="text-[10px] text-slate-500">
+                  Selisih: {{ formatRupiahCompact(onFarmParseResult.reconciliation.signedDifference) }}
+                </p>
+              </div>
+            </div>
+
+            <!-- Diagnostics Accordion / Details -->
+            <div class="rounded-xl border border-slate-200 bg-white p-4 text-xs space-y-2">
+              <span class="font-bold text-slate-900 uppercase text-[10px] tracking-wider">
+                Catatan Diagnostik & Audit Workbook:
+              </span>
+              <ul class="list-disc pl-5 space-y-1 text-slate-600">
+                <li>Header subtotal baris 1 ZESTHLE152 berhasil diabaikan dari detail transaksi.</li>
+                <li>{{ onFarmParseResult.diagnostics.emptyPaddingSkipped }} baris kosong padding SAP diabaikan secara aman.</li>
+                <li>{{ onFarmParseResult.diagnostics.negativeTransactionsCount }} transaksi bernilai minus (pembalik/koreksi) dipertahankan sebagai nilai bertanda (total: {{ formatRupiahCompact(onFarmParseResult.diagnostics.negativeTransactionsTotal) }}).</li>
+                <li>{{ onFarmParseResult.metadata.unmappedTransactionCount }} transaksi belum terpetakan ke SINUSA dikelompokkan ke <em>Belum Terpetakan</em> tanpa mengubah total belanja.</li>
+              </ul>
             </div>
           </div>
         </div>

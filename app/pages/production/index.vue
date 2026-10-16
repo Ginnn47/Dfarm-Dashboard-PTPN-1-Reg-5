@@ -1,4 +1,19 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
+import {
+  Plant03Icon,
+  AutoConversationsIcon,
+  DashboardSpeed01Icon,
+  City02Icon,
+  Analytics03Icon,
+  Activity04Icon,
+  Settings05Icon,
+  DatabaseSearchIcon,
+  BalanceScaleIcon,
+  TrendingUpIcon,
+  AlertCircleIcon,
+  Chart02Icon,
+  Calendar03Icon,
+} from '@hugeicons/core-free-icons'
 import { computed, ref } from 'vue'
 import {
   productionMonthOptions,
@@ -152,7 +167,7 @@ function formatCompact(value: number | null | undefined) {
       aria-label="Sumber data belum terhubung"
     >
       <div class="mx-auto flex size-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-200/80">
-        <DashboardIcon name="comparison" :size="28" />
+        <HugeiconsIcon :icon="DatabaseSearchIcon" :size="32" :stroke-width="2.2" class="text-amber-600" />
       </div>
       <div class="mt-4 inline-flex items-center gap-1.5 rounded-full bg-amber-100/70 px-3 py-1 text-xs font-semibold text-amber-800">
         <span class="size-2 rounded-full bg-amber-500 animate-pulse" />
@@ -197,7 +212,7 @@ function formatCompact(value: number | null | undefined) {
           </div>
           <p class="hidden text-xs text-slate-500 sm:block">{{ filteredRecords.length.toLocaleString('id-ID') }} record detail</p>
         </div>
-        <DashboardFilterBar
+        <DashboardProdFilterBar
           v-model="filters"
           :tahun-options="yearOptions"
           :bulan-options="productionMonthOptions"
@@ -215,82 +230,80 @@ function formatCompact(value: number | null | undefined) {
           <p v-if="selectedMonth" class="text-xs font-medium text-slate-500">Periode: {{ productionMonthOptions[selectedMonth - 1]?.label }} {{ filters.tahun || '(Semua Tahun)' }}</p>
         </div>
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          <DashboardMetricCard label="Total Produksi" icon="trend" :value="metrics.totalActual" :trend="rkapDifferencePercent" trend-label="vs RKAP" :status="metrics.variance != null && metrics.variance >= 0 ? 'positive' : 'negative'" context="Realisasi pada konteks filter" />
-          <DashboardMetricCard label="RKAP Produksi" icon="target" :value="metrics.totalRkap" status="neutral" context="Rencana pada konteks yang sama" />
-          <DashboardMetricCard label="Pencapaian" icon="achievement" :value="metrics.achievement == null ? null : `${metrics.achievement.toFixed(1)}%`" :empty="metrics.achievement == null" :status="(metrics.achievement || 0) >= 100 ? 'positive' : 'warning'" context="Realisasi / RKAP" />
-          <DashboardMetricCard label="Selisih" icon="variance" :value="metrics.variance" :empty="metrics.variance == null" :status="(metrics.variance || 0) >= 0 ? 'positive' : 'negative'" context="Realisasi - RKAP" />
-          <DashboardMetricCard label="Produktivitas (Protas)" icon="sprout" :value="metrics.productivity" :empty="metrics.productivity == null" status="positive" context="Rasio realisasi / luas; satuan sumber tidak tercantum" />
+          <DashboardReusableMetricCard label="Total Produksi" :icon="Analytics03Icon" tone="emerald" :value="metrics.totalActual" :trend="rkapDifferencePercent" trend-label="vs RKAP" :status="metrics.variance != null && metrics.variance >= 0 ? 'positive' : 'negative'" context="Realisasi pada konteks filter" />
+          <DashboardReusableMetricCard label="RKAP Produksi" :icon="Settings05Icon" tone="emerald" :value="metrics.totalRkap" status="neutral" context="Rencana pada konteks yang sama" />
+          <DashboardReusableMetricCard label="Pencapaian" :icon="DashboardSpeed01Icon" tone="emerald" :value="metrics.achievement == null ? null : `${metrics.achievement.toFixed(1)}%`" :empty="metrics.achievement == null" :status="(metrics.achievement || 0) >= 100 ? 'positive' : 'warning'" context="Realisasi / RKAP" />
+          <DashboardReusableMetricCard label="Selisih" :icon="BalanceScaleIcon" tone="emerald" :value="metrics.variance" :empty="metrics.variance == null" :status="(metrics.variance || 0) >= 0 ? 'positive' : 'negative'" context="Realisasi - RKAP" />
+          <DashboardReusableMetricCard label="Produktivitas (Protas)" :icon="Plant03Icon" tone="emerald" :value="metrics.productivity" :empty="metrics.productivity == null" status="positive" context="Rasio realisasi / luas; satuan sumber tidak tercantum" />
         </div>
       </section>
            <!-- Production Data Stream as passive attention layer -->
       <section aria-label="Production stream ticker">
-        <DashboardProductionDataStream :records="periodRecords" />
+        <DashboardProdProductionDataStream :records="periodRecords" />
       </section>
 
       <section class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_260px]">
-        <DashboardChartCard title="Tren Produksi" icon="trend" description="Realisasi dan RKAP bulanan dari fixture development." :state="monthlyData.length ? 'populated' : 'empty'" :footer="activeSourceMeta.workbook ? `Development Data · ${activeSourceMeta.workbook}` : activeSourceMeta.name">
-          <DashboardProductionTrendChart :data="monthlyData" />
-        </DashboardChartCard>
+        <DashboardReusableChartCard title="Tren Produksi" :icon="Chart02Icon" description="Realisasi dan RKAP bulanan dari fixture development." :state="monthlyData.length ? 'populated' : 'empty'" :footer="activeSourceMeta.workbook ? `Development Data · ${activeSourceMeta.workbook}` : activeSourceMeta.name">
+          <DashboardProdProductionTrendChart :data="monthlyData" />
+        </DashboardReusableChartCard>
         
         <aside
           class="overflow-hidden rounded-xl border border-emerald-800 bg-[#006e2d] p-5 text-white shadow-sm"
           style="background-image: linear-gradient(135deg, rgba(0, 62, 28, 0.78), rgba(0, 83, 41, 0.48)), url('/images/emerald-gold-botanical-waves.png'); background-position: 22% center; background-size: cover"
           aria-label="Analytical highlights"
         >
-          <div class="flex items-center gap-2"><span class="flex size-8 items-center justify-center rounded-lg bg-emerald-300/20 text-emerald-100"><DashboardIcon name="trend" :size="16" /></span><p class="text-xs font-bold uppercase tracking-[0.14em] text-amber-200">Sorotan analisis</p></div>
+          <div class="flex items-center gap-2"><HugeiconsIcon :icon="Activity04Icon" :size="24" :stroke-width="2.2" class="text-amber-200" /><p class="text-xs font-bold uppercase tracking-[0.14em] text-amber-200">Sorotan analisis</p></div>
           <dl class="mt-5 space-y-5">
-            <div class="border-b border-white/15 pb-5"><dt class="flex items-center gap-2 text-xs text-amber-200/75"><DashboardIcon name="trend" :size="14" class="text-amber-200" />Puncak produksi</dt><dd class="mt-1 text-lg font-semibold">{{ peakMonth?.monthLabel || 'Tidak tersedia' }}</dd><p class="mt-1 text-xs text-emerald-100/70">{{ formatCompact(peakMonth?.actual) }} realisasi</p></div>
-            <div class="border-b border-white/15 pb-5"><dt class="flex items-center gap-2 text-xs text-amber-200/75"><DashboardIcon name="estate" :size="14" class="text-amber-200" />Kebun teratas</dt><dd class="mt-1 text-lg font-semibold">{{ leadingEstate?.estate || 'Tidak tersedia' }}</dd><p class="mt-1 text-xs text-emerald-100/70">{{ formatCompact(leadingEstate?.actual) }} realisasi</p></div>
-            <div><dt class="flex items-center gap-2 text-xs text-amber-200/75"><DashboardIcon name="variance" :size="14" class="text-amber-200" />Perlu ditinjau</dt><dd class="mt-1 text-lg font-semibold">{{ belowTargetEstates }} kebun</dd><p class="mt-1 text-xs text-emerald-100/70">Memiliki selisih negatif terhadap RKAP pada konteks filter.</p></div>
+            <div class="border-b border-white/15 pb-5"><dt class="flex items-center gap-2 text-xs text-amber-200/75"><HugeiconsIcon :icon="TrendingUpIcon" :size="16" :stroke-width="2.2" class="text-amber-200 shrink-0" />Puncak produksi</dt><dd class="mt-1 text-lg font-semibold">{{ peakMonth?.monthLabel || 'Tidak tersedia' }}</dd><p class="mt-1 text-xs text-emerald-100/70">{{ formatCompact(peakMonth?.actual) }} realisasi</p></div>
+            <div class="border-b border-white/15 pb-5"><dt class="flex items-center gap-2 text-xs text-amber-200/75"><HugeiconsIcon :icon="City02Icon" :size="16" :stroke-width="2.2" class="text-amber-200 shrink-0" />Kebun teratas</dt><dd class="mt-1 text-lg font-semibold">{{ leadingEstate?.estate || 'Tidak tersedia' }}</dd><p class="mt-1 text-xs text-emerald-100/70">{{ formatCompact(leadingEstate?.actual) }} realisasi</p></div>
+            <div><dt class="flex items-center gap-2 text-xs text-amber-200/75"><HugeiconsIcon :icon="AlertCircleIcon" :size="16" :stroke-width="2.2" class="text-amber-200 shrink-0" />Perlu ditinjau</dt><dd class="mt-1 text-lg font-semibold">{{ belowTargetEstates }} kebun</dd><p class="mt-1 text-xs text-emerald-100/70">Memiliki selisih negatif terhadap RKAP pada konteks filter.</p></div>
           </dl>
         </aside>
       </section>
 
       <section class="grid gap-6 2xl:grid-cols-2">
         <!-- Produksi per Kebun / Afdeling dengan Toggle Switch -->
-        <DashboardChartCard
+        <DashboardReusableChartCard
           :title="estateChartTitle"
-          icon="estate"
+          :icon="City02Icon"
           :description="estateChartDescription"
           :state="currentEstateChartData.length ? 'populated' : 'empty'"
           :footer="estateChartFooter"
         >
           <template #actions>
-            <DashboardViewLevelToggle v-model="estateChartLevel" />
+            <DashboardReusableViewLevelToggle v-model="estateChartLevel" />
           </template>
-          <DashboardProductionByEstateChart
+          <DashboardProdProductionByEstateChart
             :data="currentEstateChartData"
             :view-level="estateChartLevel"
             :max-items="5"
           />
-        </DashboardChartCard>
+        </DashboardReusableChartCard>
 
-        <!-- Realisasi vs RKAP (Kebun / Afdeling) dengan Toggle Switch -->
-        <DashboardChartCard
+        <DashboardReusableChartCard
           :title="comparisonChartTitle"
-          icon="comparison"
-          icon-tone="amber"
+          :icon="AutoConversationsIcon"
           :description="comparisonChartDescription"
           :state="currentComparisonChartData.length ? 'populated' : 'empty'"
           :footer="comparisonChartFooter"
         >
           <template #actions>
-            <DashboardViewLevelToggle v-model="comparisonChartLevel" />
+            <DashboardReusableViewLevelToggle v-model="comparisonChartLevel" />
           </template>
-          <DashboardActualVsRKAPChart
+          <DashboardProdActualVsRKAPChart
             v-if="comparisonAvailable"
             :data="currentComparisonChartData"
             :view-level="comparisonChartLevel"
             :max-items="7"
           />
-        </DashboardChartCard>
+        </DashboardReusableChartCard>
       </section>
 
       <!-- Produksi berdasarkan Tahun Tanam (Layered Shadow Bar) -->
       <section>
-        <DashboardChartCard
+        <DashboardReusableChartCard
           title="Produksi berdasarkan Tahun Tanam"
-          icon="sprout"
+          :icon="Calendar03Icon"
           icon-tone="emerald"
           description="Tahun tanam analitis; tidak sama dengan tahun pelaporan. Menampilkan target acuan RKAP (shadow bar) dan realisasi dengan label persentase capaian."
           :state="plantingYearData.length ? 'populated' : 'empty'"
@@ -314,15 +327,15 @@ function formatCompact(value: number | null | undefined) {
               </button>
             </div>
           </template>
-          <DashboardProductionByPlantingYearChart :data="plantingYearData" :mode="plantingYearMode" />
-        </DashboardChartCard>
+          <DashboardProdProductionByPlantingYearChart :data="plantingYearData" :mode="plantingYearMode" />
+        </DashboardReusableChartCard>
       </section>
 
       <section>
         <div class="mb-4"><p class="text-xs font-bold uppercase tracking-[0.14em] text-sky-700">Detail</p><h2 class="mt-1 text-xl font-bold text-slate-900">Detail Produksi</h2></div>
-        <DashboardChartCard title="Detail kebun dan tahun tanam" icon="table" :description="tableDescription" :state="periodRecords.length ? 'populated' : 'empty'" :footer="activeSourceMeta.sheet ? `Source sheet: ${activeSourceMeta.sheet}` : activeSourceMeta.name">
-          <DashboardProductionTable :data="periodRecords" :page-size="12" />
-        </DashboardChartCard>
+        <DashboardReusableChartCard title="Detail kebun dan tahun tanam" :icon="DatabaseSearchIcon" :description="tableDescription" :state="periodRecords.length ? 'populated' : 'empty'" :footer="activeSourceMeta.sheet ? `Source sheet: ${activeSourceMeta.sheet}` : activeSourceMeta.name">
+          <DashboardProdProductionTable :data="periodRecords" :page-size="12" />
+        </DashboardReusableChartCard>
       </section>
     </template>
   </div>

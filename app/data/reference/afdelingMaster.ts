@@ -1817,3 +1817,71 @@ export const afdelingMasterRecords: AfdelingMasterRecord[] = [
     "afdKey": "BEGAL"
   }
 ]
+
+/**
+ * Normalizes and formats afdeling description to standard "Afd. ..."
+ * e.g. "AFD. SUMBER CANTING" -> "Afd. Sumber Canting"
+ * e.g. "Af.d Pancurejo" -> "Afd. Pancurejo"
+ */
+export function formatAfdelingName(raw: string | null | undefined): string {
+  if (!raw) return ''
+  const trimmed = raw.trim()
+  const upper = trimmed.toUpperCase()
+  if (upper.startsWith('AFD.') || upper.startsWith('AFD ') || upper.startsWith('AF.D.') || upper.startsWith('AF.D ')) {
+    const withoutPrefix = trimmed.replace(/^(AFD\.|AFD|AF\.D\.|AF\.D)\s*/i, '').trim()
+    const words = withoutPrefix.split(/\s+/).map((word) => {
+      if (word.toUpperCase() === 'PG/WR') return 'PG/WR'
+      if (word.toUpperCase() === 'PAL') return 'PAL'
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    })
+    return `Afd. ${words.join(' ')}`
+  }
+  return trimmed
+}
+
+/**
+ * Checks if a string is a raw unmapped afdeling code or number
+ * e.g. "AFD01", "AFD07", "01", "AFD 02"
+ */
+export function isRawAfdelingCode(str: string | null | undefined): boolean {
+  if (!str) return false
+  const upper = str.trim().toUpperCase()
+  return /^AFD\s*\d+$/i.test(upper) || /^\d+$/.test(upper)
+}
+
+// Build pre-computed index for O(1) lookups
+const masterAfdLookup = new Map<string, string>()
+for (const r of afdelingMasterRecords) {
+  const formatted = formatAfdelingName(r.afdName)
+  const code = (r.afdCode || '').toUpperCase().trim()
+  if (!code) continue
+
+  if (r.plantCode) masterAfdLookup.set(`${r.plantCode.toUpperCase().trim()}|${code}`, formatted)
+  if (r.primaryEstate) masterAfdLookup.set(`${r.primaryEstate.toUpperCase().trim()}|${code}`, formatted)
+  if (r.plantDesc) masterAfdLookup.set(`${r.plantDesc.toUpperCase().trim()}|${code}`, formatted)
+  if (r.plantKey) masterAfdLookup.set(`${r.plantKey.toUpperCase().trim()}|${code}`, formatted)
+}
+
+/**
+ * Resolves an authoritative Afdeling name from enterprise master reference data.
+ */
+export function getMasterAfdelingName(
+  plantCode?: string | null,
+  estateName?: string | null,
+  afdelingCode?: string | null
+): string | null {
+  if (!afdelingCode) return null
+  const code = afdelingCode.toUpperCase().trim()
+  const p = (plantCode || '').toUpperCase().trim()
+  const e = (estateName || '').toUpperCase().trim()
+  const eClean = e.replace('KEBUN', '').trim()
+  const eKey = e.replace(/[^A-Z0-9]/g, '')
+
+  return (
+    (p ? masterAfdLookup.get(`${p}|${code}`) : null) ||
+    (e ? masterAfdLookup.get(`${e}|${code}`) : null) ||
+    (eClean ? masterAfdLookup.get(`${eClean}|${code}`) : null) ||
+    (eKey ? masterAfdLookup.get(`${eKey}|${code}`) : null) ||
+    null
+  )
+}

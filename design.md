@@ -1,4 +1,4 @@
-# DFARM Dashboard — Design System & UI Specification
+﻿# DFARM Dashboard — Design System & UI Specification
 
 > Version: 0.1
 > Status: Draft — Frontend Foundation
@@ -1881,3 +1881,84 @@ Google Sheets        → Future
 The Stitch screenshot is currently treated as
 the primary visual reference for the first implementation,
 not as a permanent restriction on the final dashboard.
+
+---
+
+# 54. Investment On Farm Dashboard (Implemented P0 Layered Architecture)
+
+This specification defines the visual hierarchy, component architecture, and interaction
+model for the DFARM Investment On Farm monitoring domain.
+
+## 54.1 Navigation Architecture — Three-Layer Single-Page UX
+
+To prevent cognitive overload from stacking dense financial tables, multiple ECharts,
+and granular SAP transactions on a single vertical scroll, the dashboard organizes
+content into **three dedicated analytical layers** on the `/investment/on-farm` route:
+
+```text
+[Global Filter Bar: Periode (Bulan Cutoff), Kebun, Afdeling, Komoditi, Fase Tanam]
+[Layer Navigation Tabs: Layer 1 | Layer 2 | Layer 3]
+  │
+  ├── Layer 1 — Ringkasan Eksekutif (Executive Summary)
+  │     ├── 5 Reusable Metric Cards (Realisasi SAP YTD, Target RKAP YTD, Pagu Tahunan, Deviasi, Serapan %)
+  │     ├── Alokasi Bulanan Realisasi SAP vs RKAP (Discrete Monthly Bars 1–12)
+  │     ├── Kurva S Realisasi Kumulatif vs Target RKAP (Cumulative S-Curve through Cutoff)
+  │     ├── Porsi Kontribusi Komoditas (Donut Chart) & Komparasi Kebun Top 10 (Horizontal Bar)
+  │     ├── Tabel Rekapitulasi Komoditas (Realisasi, Pagu YTD, Deviasi, Serapan %)
+  │     └── Quick Navigation Footer to Layer 2 & Layer 3
+  │
+  ├── Layer 2 — Eksplorasi Analitikal (Analytical Exploration)
+  │     ├── Reconciliation Discrepancy Banner (SAP Authoritative vs Rekap Reported)
+  │     ├── Penelusuran Aktivitas Lapangan (Top Activity Chips & Filter)
+  │     ├── Rincian Struktur Proyek WBS & Beban Akuntansi Cost Element (Click opens Drawer)
+  │     └── Navigation Footer to Layer 1 & Layer 3
+  │
+  └── Layer 3 — Rincian Jurnal SAP (SAP Transaction Details)
+        ├── Context Indicator Banner (when focused on a single project from Drawer)
+        └── Jurnal Mutasi Riil SAP CO/PS ZESTHLE152 (Search, Pagination, Signed Negative Costs)
+```
+
+### Layer Navigation State Rules
+- Single-page view using Vue `v-show` conditional rendering to preserve chart instances, scroll states, and pagination without reloading.
+- Global filter state (`selectedPeriod`, `isManualCutoff`, `selectedEstate`, `selectedCommodity`, `selectedPhase`, `selectedAfdeling`) is 100% preserved and shared across all three layers.
+- Active layer is highlighted with an accent ring, icon, and distinct status tag.
+
+## 54.2 Project Summary Drawer (`OnFarmProjectDrawer.vue`)
+
+Clicking on any project in Layer 2 (via the Project Definition link or the `Ringkasan →` action button) opens a responsive slide-out drawer (`440–512px` desktop, full-width mobile) rather than navigating immediately to the transaction log.
+
+### Drawer Information Hierarchy & Honest Data States
+1. **Header & Business Context**:
+   - Project Definition code (monospace font).
+   - Estate, Commodity, and Afdeling.
+   - Mapping Status Badge (`Mapped Rekap` vs `Belum Terpetakan`).
+2. **Authoritative SAP Realization**:
+   - Total signed actual cost YTD (`formatRupiahFull`).
+   - Transaction count and distinct WBS element count.
+   - Negative reversals count and signed nominal (transparent audit trail).
+3. **Honest RKAP Budget Association**:
+   - **Direct 1-to-1 Association**: Displayed only when the project's SINUSA code maps directly to an RKAP line item for that estate/commodity. Shows RKAP YTD and absorption percentage.
+   - **Consolidated / Shared Program (1-to-N)**: When multiple projects share a single SINUSA program code, the drawer states: *"Pagu Anggaran diatur pada level Program SINUSA. Pemisahan pagu ke tingkat individual proyek WBS tidak tercantum pada dokumen RKAP 2026."* (No artificial budget split or false absorption percentage is fabricated).
+   - **Unmapped State**: Explicitly displays: *"Belum Terpetakan: Proyek ini belum memiliki relasi kode program SINUSA pada lembar Rekap. Realisasi SAP tetap tercatat 100% pada total regional."*
+4. **WBS Breakdown & Top Activities**:
+   - Scrollable listing of all distinct WBS elements under this project with transaction counts and sub-totals.
+   - Top 5 field activities (`activityCode`, description, cost, share %).
+   - Top 5 cost elements (`costElement`, description, cost).
+5. **Primary Call to Action (CTA)**:
+   - Button: `Lihat Jurnal Transaksi (N Mutasi) →`
+   - Closes the drawer, sets `selectedProject = projectDefinition`, and automatically navigates to **Layer 3**.
+
+## 54.3 Context-Preserving Transition to Layer 3
+
+When Layer 3 is accessed from the drawer for a specific project:
+- A context banner appears above the transaction table:
+  `Filter Konteks Proyek Aktif: [KODE_PROYEK] · N mutasi ditemukan`
+- An instant clear button (`✕ Tampilkan Seluruh Proyek`) allows the user to restore the full transaction scope without losing other global filters.
+- All transaction attributes (Period, Kebun, Afdeling, Commodity, Project, WBS, Activity, Cost Element, Signed IDR Amount) remain searchable and paginated.
+
+## 54.4 Minimalist Icon Styling & Enterprise Theme Standards
+
+- Replaces arbitrary icon containers with 32px bold (`stroke-width="2.2"`) standalone **Hugeicons** without background boxes (`no-bg`).
+- **Production Theme**: Emerald green (`text-emerald-700`).
+- **On-Farm Theme**: Sky blue (`text-sky-600` / `text-sky-700`).
+- Every card on a page features a unique, contextually appropriate icon (zero repeating icons per page).

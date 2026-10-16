@@ -2,7 +2,7 @@
 defineProps<{
   title: string
   description?: string
-  icon?: 'trend' | 'target' | 'achievement' | 'variance' | 'sprout' | 'estate' | 'comparison' | 'table'
+  icon?: any
   iconTone?: 'sky' | 'emerald' | 'amber' | 'rose'
   state?: 'loading' | 'empty' | 'error' | 'unavailable' | 'populated'
   emptyTitle?: string
@@ -20,18 +20,22 @@ defineEmits<{
 <template>
   <div class="flex h-full flex-col rounded-xl border border-slate-200 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md">
     <div class="flex min-h-[72px] items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
-      <div class="flex min-w-0 items-start gap-3">
-        <span
-          v-if="icon"
-          class="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl"
-          :class="{
-            'bg-emerald-100 text-emerald-700': !iconTone || iconTone === 'sky' || iconTone === 'emerald',
-            'bg-amber-100 text-amber-700': iconTone === 'amber',
-            'bg-rose-100 text-rose-700': iconTone === 'rose',
-          }"
-        >
-          <DashboardIcon :name="icon" :size="18" />
-        </span>
+      <div class="flex min-w-0 items-start gap-3.5">
+        <!-- Minimalist 32px Bold Icon (No BG container) -->
+        <div v-if="icon" class="shrink-0 flex items-center justify-center pt-0.5">
+          <DashboardReusableDashboardIcon
+            :icon="typeof icon !== 'string' ? icon : undefined"
+            :name="typeof icon === 'string' ? icon : undefined"
+            :size="32"
+            :stroke-width="2.2"
+            :class="{
+              'text-sky-600': iconTone === 'sky',
+              'text-emerald-700': !iconTone || iconTone === 'emerald',
+              'text-amber-600': iconTone === 'amber',
+              'text-rose-600': iconTone === 'rose',
+            }"
+          />
+        </div>
         <div>
           <h3 class="text-sm font-semibold text-slate-800">{{ title }}</h3>
           <p v-if="description" class="mt-0.5 text-xs text-slate-500">{{ description }}</p>

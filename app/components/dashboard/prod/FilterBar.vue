@@ -82,7 +82,7 @@ const fullTahunTanamOptions = computed<FilterOption[]>(() => [
   <div class="flex flex-wrap items-end gap-3">
     <div class="min-w-[140px] flex-1 sm:flex-initial">
       <label class="mb-1.5 block text-xs font-semibold text-slate-500">Tahun</label>
-      <DashboardFilterDropdown
+      <DashboardReusableFilterDropdown
         :model-value="modelValue.tahun"
         :options="fullTahunOptions"
         :disabled="loading"
@@ -93,7 +93,7 @@ const fullTahunTanamOptions = computed<FilterOption[]>(() => [
 
     <div v-if="bulanOptions?.length" class="min-w-[140px] flex-1 sm:flex-initial">
       <label class="mb-1.5 block text-xs font-semibold text-slate-500">Periode</label>
-      <DashboardFilterDropdown
+      <DashboardReusableFilterDropdown
         :model-value="modelValue.bulan"
         :options="fullBulanOptions"
         :disabled="loading"
@@ -104,7 +104,7 @@ const fullTahunTanamOptions = computed<FilterOption[]>(() => [
 
     <div class="min-w-[140px] flex-1 sm:flex-initial">
       <label class="mb-1.5 block text-xs font-semibold text-slate-500">Komoditas</label>
-      <DashboardFilterDropdown
+      <DashboardReusableFilterDropdown
         :model-value="modelValue.komoditas"
         :options="fullKomoditasOptions"
         :disabled="loading"
@@ -115,7 +115,7 @@ const fullTahunTanamOptions = computed<FilterOption[]>(() => [
 
     <div class="min-w-[160px] flex-1 sm:flex-initial">
       <label class="mb-1.5 block text-xs font-semibold text-slate-500">Kebun</label>
-      <DashboardFilterDropdown
+      <DashboardReusableFilterDropdown
         :model-value="modelValue.kebun"
         :options="fullKebunOptions"
         :disabled="loading"
@@ -128,7 +128,7 @@ const fullTahunTanamOptions = computed<FilterOption[]>(() => [
       <label class="mb-1.5 block text-xs font-semibold text-slate-500">
         Afdeling <span v-if="afdelingUnavailable" class="font-normal">(tidak tersedia)</span>
       </label>
-      <DashboardFilterDropdown
+      <DashboardReusableFilterDropdown
         :model-value="modelValue.afdeling"
         :options="fullAfdelingOptions"
         :disabled="loading || afdelingUnavailable"
@@ -139,7 +139,7 @@ const fullTahunTanamOptions = computed<FilterOption[]>(() => [
 
     <div v-if="showTahunTanam" class="min-w-[140px] flex-1 sm:flex-initial">
       <label class="mb-1.5 block text-xs font-semibold text-slate-500">Tahun Tanam</label>
-      <DashboardFilterDropdown
+      <DashboardReusableFilterDropdown
         :model-value="modelValue.tahunTanam"
         :options="fullTahunTanamOptions"
         :disabled="loading"

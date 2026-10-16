@@ -19,5 +19,24 @@ export default defineNuxtConfig({
     renderer: ['canvas', 'svg'],
     charts: ['BarChart', 'LineChart'],
     components: ['GridComponent', 'TooltipComponent', 'LegendComponent']
+  },
+
+  vite: {
+    plugins: [
+      {
+        name: 'vite-plugin-app-manifest-fallback',
+        enforce: 'pre',
+        resolveId(id) {
+          if (id === '#app-manifest') {
+            return '\0virtual:#app-manifest'
+          }
+        },
+        load(id) {
+          if (id === '\0virtual:#app-manifest') {
+            return 'export default {}'
+          }
+        }
+      }
+    ]
   }
 })
