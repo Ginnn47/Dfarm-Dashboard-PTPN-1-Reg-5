@@ -15,13 +15,13 @@ const props = defineProps<{
     cumulativeBudget: number
   }>
   cutOffPeriod: number
+  analysisRangeLabel: string
 }>()
 
 const months = computed(() => props.monthlyTrend.map((m) => m.monthLabel))
 
 const absorptionOption = computed(() => {
   const data = props.monthlyTrend.map((m) => {
-    if (m.period > props.cutOffPeriod) return '-'
     if (m.isAvailable && m.actual !== null && m.budget > 0) {
       return Number(((m.actual / m.budget) * 100).toFixed(1))
     }
@@ -45,13 +45,12 @@ const absorptionOption = computed(() => {
       formatter: (params: any[]) => {
         const pIdx = params[0]?.dataIndex ?? 0
         const item = props.monthlyTrend[pIdx]
-        const isPastCutoff = item ? item.period > props.cutOffPeriod : false
         let str = `<div class="font-bold text-xs mb-1.5 pb-1 border-b border-slate-100 flex items-center justify-between gap-4">
-          <span>Bulan ${pIdx + 1} (${item?.monthLabel})</span>
-          ${isPastCutoff ? '<span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">Di Luar Cut-off</span>' : '<span class="text-[10px] bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded font-semibold">Aktif</span>'}
+          <span>Bulan ${item?.period ?? ''} (${item?.monthLabel})</span>
+          <span class="text-[10px] bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded font-semibold">Dalam Rentang</span>
         </div>`
 
-        if (!isPastCutoff && item?.isAvailable && item?.actual !== null && item.budget > 0) {
+        if (item?.isAvailable && item?.actual !== null && item.budget > 0) {
           const abs = (item.actual / item.budget) * 100
           const selisih = item.actual - item.budget
           const isHemat = selisih <= 0
@@ -75,7 +74,7 @@ const absorptionOption = computed(() => {
             </span>
           </div>`
         } else {
-          str += `<div class="text-xs text-amber-600 italic py-1">Data belum tersedia / di luar cut-off pelaporan</div>`
+          str += `<div class="text-xs text-amber-600 italic py-1">Data realisasi atau alokasi belum tersedia pada bulan ini</div>`
         }
 
         return str
@@ -146,7 +145,7 @@ const absorptionOption = computed(() => {
 <template>
   <ChartCard
     title="Serapan Anggaran per Bulan"
-    description="Rasio persentase serapan belanja modal bulanan terhadap alokasi pagu anggaran RKAP"
+    :description="`Berapa persen rasio efektivitas serapan belanja modal pada rentang ${analysisRangeLabel} terhadap alokasi pagu anggaran?`"
     :icon="Analytics03Icon"
     icon-tone="sky"
   >
@@ -158,7 +157,7 @@ const absorptionOption = computed(() => {
 
     <template #footer>
       <div class="flex items-center justify-between text-[11px] text-slate-500 w-full">
-        <span>Garis putus-putus = Ambang batas target 100% (serapan berimbang)</span>
+        <span>Rentang {{ analysisRangeLabel }} · garis putus-putus = ambang target 100%</span>
         <div class="flex items-center gap-3">
           <span class="inline-flex items-center gap-1.5"><span class="size-2 rounded-full bg-emerald-600" /> &le; 100% (Hemat)</span>
           <span class="inline-flex items-center gap-1.5"><span class="size-2 rounded-full bg-rose-600" /> &gt; 100% (Defisit)</span>

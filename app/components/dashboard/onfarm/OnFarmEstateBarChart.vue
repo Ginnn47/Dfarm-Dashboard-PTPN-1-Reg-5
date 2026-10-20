@@ -12,6 +12,7 @@ const props = defineProps<{
     variance: number
     absorption: number | null
   }>
+  analysisRangeLabel?: string
 }>()
 
 type SortOption = 'realisasi-desc' | 'rkap-desc' | 'serapan-desc' | 'serapan-asc' | 'deviasi-desc'
@@ -147,10 +148,10 @@ const barOption = computed(() => {
 </script>
 
 <template>
-  <section aria-label="Komparasi Realisasi SAP vs RKAP per Kebun" class="w-full">
+  <section aria-label="Perbandingan Realisasi antar Kebun" class="w-full">
     <ChartCard
-      title="Komparasi Realisasi SAP vs RKAP per Kebun"
-      description="Perbandingan serapan belanja aktual SAP terhadap target anggaran RKAP per unit kebun (Diagram Batang Horizontal)"
+      title="Perbandingan Realisasi antar Kebun"
+      :description="`Bagaimana perbandingan serapan belanja aktual SAP terhadap target anggaran RKAP di setiap unit kebun pada rentang ${analysisRangeLabel || 'aktif'}?`"
       :icon="City02Icon"
       icon-tone="sky"
     >
@@ -181,7 +182,7 @@ const barOption = computed(() => {
 
       <template #footer>
         <div class="flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-500 w-full">
-          <span>* Menampilkan {{ sortedEstates.length }} unit kebun perkebunan. Batang biru = Realisasi SAP, Batang abu-abu = Target RKAP.</span>
+          <span>* Rentang {{ analysisRangeLabel || 'aktif' }} · {{ sortedEstates.length }} unit kebun. Biru = Realisasi SAP, abu-abu = Target RKAP.</span>
           <div class="flex items-center gap-3">
             <span class="inline-flex items-center gap-1.5 font-medium">
               <span class="h-3 w-4 rounded-sm bg-sky-600 inline-block" /> Realisasi SAP

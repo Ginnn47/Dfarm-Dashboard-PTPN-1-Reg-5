@@ -1,5 +1,5 @@
 ﻿<script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useDevelopmentStore } from '~/data/development/productionStore'
 import {
   parseProductionWorkbook,
@@ -12,6 +12,25 @@ import { useOnFarmStore } from '~/data/onfarm/onFarmStore'
 import { parseOnFarmWorkbook } from '~/utils/onFarmWorkbookParser'
 import type { OnFarmParseResult } from '~/data/onfarm/types'
 import { formatRupiahCompact, formatRupiahFull } from '~/utils/formatters'
+import { useLeadMeasureStore } from '~/data/leadmeasure/leadMeasureStore'
+import { parseLeadMeasureWorkbook } from '~/utils/leadMeasureWorkbookParser'
+import type { LeadMeasureDataset } from '~/data/leadmeasure/types'
+import {
+  Target02Icon,
+  Leaf01Icon,
+  Upload02Icon,
+  ArrowRight01Icon,
+  Analytics03Icon,
+  File02Icon,
+  CheckmarkCircle02Icon,
+  InformationCircleIcon,
+  RefreshIcon,
+  FlashIcon,
+  DatabaseSearchIcon,
+  CoinsDollarIcon,
+  Plant03Icon
+} from '@hugeicons/core-free-icons'
+import { HugeiconsIcon } from '@hugeicons/vue'
 
 
 useHead({ title: 'Pusat Pengaturan Sumber Data | DFARM' })
@@ -32,11 +51,40 @@ const {
 const devStore = useDevelopmentStore()
 
 const onFarmStore = useOnFarmStore()
+const leadMeasureStore = useLeadMeasureStore()
+const route = useRoute()
+
+const leadMeasureParseResult = ref<LeadMeasureDataset | null>(null)
+const leadMeasureFileName = ref<string | null>(null)
+const isLeadMeasureParsing = ref(false)
+const leadMeasureFileInputRef = ref<HTMLInputElement | null>(null)
+const prodSubTab = ref<'masterfield' | 'lead-measure'>('masterfield')
+
+function syncFromRouteQuery() {
+  if (route.query.domain === 'investment-on-farm' || route.query.tab === 'on-farm') {
+    setActiveDomain('investment-on-farm')
+  } else if (route.query.tab === 'lead-measure') {
+    setActiveDomain('production')
+    prodSubTab.value = 'lead-measure'
+  } else if (route.query.domain === 'production' || route.query.tab === 'masterfield') {
+    setActiveDomain('production')
+    prodSubTab.value = 'masterfield'
+  }
+}
 
 onMounted(() => {
   devStore.initDevelopmentStore()
   onFarmStore.initOnFarmStore()
+  leadMeasureStore.initLeadMeasureStore()
+  syncFromRouteQuery()
 })
+
+watch(
+  () => [route.query.domain, route.query.tab],
+  () => {
+    syncFromRouteQuery()
+  }
+)
 
 // Top-level computed unwraps for safe SSR template access
 const activeReportingYears = computed(() => devStore.activeReportingYears.value || [2025])
@@ -229,6 +277,67 @@ function resetOnFarmData() {
   showToast('Data Investasi On-Farm berhasil dikosongkan.', 'info')
 }
 
+async function processLeadMeasureFile(file: File) {
+  isLeadMeasureParsing.value = true
+  leadMeasureParseResult.value = null
+  leadMeasureFileName.value = file.name
+
+  try {
+    const buffer = await file.arrayBuffer()
+    const res = await parseLeadMeasureWorkbook(buffer, 2026)
+    leadMeasureParseResult.value = res
+    showToast(
+      `Berhasil mengurai file Excel Lead Measure Karet (${res.estates.length} kebun & ${res.observations.length} observasi).`,
+      'info'
+    )
+  } catch (err: any) {
+    showToast(err?.message || 'Gagal mengurai file Excel Lead Measure Karet.', 'warning')
+    leadMeasureParseResult.value = null
+  } finally {
+    isLeadMeasureParsing.value = false
+  }
+}
+
+async function handleLeadMeasureFileChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+  await processLeadMeasureFile(file)
+}
+
+async function handleLeadMeasureFileDrop(event: DragEvent) {
+  const file = event.dataTransfer?.files?.[0]
+  if (!file) return
+  await processLeadMeasureFile(file)
+}
+
+function applyLeadMeasureImport() {
+  if (!leadMeasureParseResult.value) return
+  try {
+    const res = leadMeasureStore.applyParsedData(
+      leadMeasureParseResult.value,
+      leadMeasureFileName.value || undefined
+    )
+    showToast(
+      `Sukses! Data Lead Measure Karet (${res.estateCount} kebun, ${res.observationCount} observasi) berhasil diterapkan ke dashboard.`,
+      'success'
+    )
+    leadMeasureParseResult.value = null
+    leadMeasureFileName.value = null
+    if (leadMeasureFileInputRef.value) leadMeasureFileInputRef.value.value = ''
+  } catch (err: any) {
+    showToast(err?.message || 'Gagal menerapkan data Lead Measure Karet.', 'warning')
+  }
+}
+
+function resetLeadMeasureData() {
+  leadMeasureStore.resetLeadMeasureData(true)
+  leadMeasureParseResult.value = null
+  leadMeasureFileName.value = null
+  if (leadMeasureFileInputRef.value) leadMeasureFileInputRef.value.value = ''
+  showToast('Data Lead Measure Karet dikembalikan ke data contoh (mock sample).', 'info')
+}
+
 const showAdvancedConfig = ref(false)
 
 // User feedback notification
@@ -415,8 +524,12 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
       </div>
     </section>
 
-    <!-- MAIN ACTIVE DOMAIN AREA (PRODUCTION) -->
+    <!-- MAIN ACTIVE DOMAIN AREA -->
     <div v-else class="space-y-8">
+      <!-- ========================================================== -->
+      <!-- 1. DOMAIN: PRODUKSI PERKEBUNAN                           -->
+      <!-- ========================================================== -->
+      <div v-if="activeDomainId === 'production'" class="space-y-8">
       <!-- B. SUMBER DATA AKTIF (PRIMARY SPOTLIGHT) -->
       <section aria-labelledby="active-source-heading">
         <div class="overflow-hidden rounded-2xl border-2 border-[#1DC82B] bg-white p-6 shadow-xs sm:p-7">
@@ -631,6 +744,30 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
         v-if="activeDomainId === 'production'"
         class="overflow-hidden rounded-2xl border border-emerald-200/90 bg-white p-6 shadow-xs sm:p-7 space-y-6"
       >
+        <!-- Sub-Module Tab Switcher for Production Domain -->
+        <div class="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-4">
+          <button
+            type="button"
+            class="flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all"
+            :class="prodSubTab === 'masterfield' ? 'bg-emerald-700 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+            @click="prodSubTab = 'masterfield'"
+          >
+            <HugeiconsIcon :icon="Leaf01Icon" :size="16" />
+            <span>Data Panen &amp; Masterfield Produksi</span>
+          </button>
+          <button
+            type="button"
+            class="flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all"
+            :class="prodSubTab === 'lead-measure' ? 'bg-emerald-700 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+            @click="prodSubTab = 'lead-measure'"
+          >
+            <HugeiconsIcon :icon="Target02Icon" :size="16" />
+            <span>Lead Measure Karet (2026 - LEAD MEASURE KARET.xlsx)</span>
+          </button>
+        </div>
+
+        <!-- Masterfield Container -->
+        <div v-show="prodSubTab === 'masterfield'" class="space-y-6">
         <div class="flex flex-wrap items-start justify-between gap-4 border-b border-[#E5EBE8] pb-5">
           <div class="max-w-2xl">
             <div class="flex items-center gap-2">
@@ -680,7 +817,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
             <div>
               <div class="flex items-center gap-2">
                 <span class="flex size-7 items-center justify-center rounded-lg bg-sky-100 text-sky-700 font-bold text-xs">
-                  ?
+                  <HugeiconsIcon :icon="FlashIcon" :size="16" />
                 </span>
                 <h4 class="text-sm font-bold text-slate-900">
                   Opsi Cepat: Muat Contoh Data 2026
@@ -712,7 +849,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                 class="flex w-full items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-sky-700 cursor-pointer"
                 @click="triggerPreset2026"
               >
-                <span>?</span>
+                <HugeiconsIcon :icon="FlashIcon" :size="15" />
                 <span>Aktifkan Data 2026 (Preset Lengkap)</span>
               </button>
 
@@ -722,7 +859,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                 class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-800 cursor-pointer"
                 @click="triggerResetBaseline"
               >
-                ? Reset ke Baseline 2025 (Hapus Data Tambahan)
+                Reset ke Baseline 2025 (Hapus Data Tambahan)
               </button>
             </div>
           </div>
@@ -732,7 +869,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <span class="flex size-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs">
-                  ??
+                  <HugeiconsIcon :icon="Upload02Icon" :size="16" />
                 </span>
                 <h4 class="text-sm font-bold text-slate-900">
                   Unggah Berkas Excel (.xlsx) / JSON
@@ -809,7 +946,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
             >
               <div class="flex items-center justify-between">
                 <span class="font-bold" :class="parseResult.summary.isValid ? 'text-emerald-900' : 'text-amber-900'">
-                  Analisis Berkas Excel ? {{ parseResult.summary.reportingYear }}
+                  Analisis Berkas Excel · {{ parseResult.summary.reportingYear }}
                 </span>
                 <span class="rounded bg-white px-2 py-0.5 font-bold shadow-xs text-[11px]" :class="parseResult.summary.isValid ? 'text-emerald-700' : 'text-amber-700'">
                   {{ uploadedFileName }}
@@ -880,7 +1017,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                   class="text-[11px] font-bold text-slate-700 hover:text-emerald-700 flex items-center gap-1 cursor-pointer"
                   @click="showDiagnosticsDetail = !showDiagnosticsDetail"
                 >
-                  <span>{{ showDiagnosticsDetail ? '? Sembunyikan' : '? Lihat' }} Rincian Diagnostik Worksheet ({{ parseResult.summary.worksheetDiagnostics.length }} sheet)</span>
+                  <span>{{ showDiagnosticsDetail ? '▲ Sembunyikan' : '▼ Lihat' }} Rincian Diagnostik Worksheet ({{ parseResult.summary.worksheetDiagnostics.length }} sheet)</span>
                 </button>
                 <div v-if="showDiagnosticsDetail" class="mt-2 overflow-x-auto rounded-lg border border-slate-200 bg-white">
                   <table class="w-full text-left text-[11px]">
@@ -924,7 +1061,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                   :disabled="!parseResult.summary.isValid"
                   @click="applyImportedData"
                 >
-                  ? Terapkan Data Ini ke Dashboard
+                  Terapkan Data Ini ke Dashboard
                 </button>
                 <button
                   type="button"
@@ -946,11 +1083,11 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
             @click="showFormatGuide = !showFormatGuide"
           >
             <span class="flex items-center gap-2">
-              <span>??</span>
+              <HugeiconsIcon :icon="File02Icon" :size="15" />
               <span>Panduan Struktur Kolom Excel & Skrip CLI (Node.js)</span>
             </span>
             <span class="text-slate-400 font-normal">
-              {{ showFormatGuide ? 'Tutup ?' : 'Buka Panduan ?' }}
+              {{ showFormatGuide ? 'Tutup ▲' : 'Buka Panduan ▼' }}
             </span>
           </button>
 
@@ -995,21 +1132,331 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
             </div>
           </div>
         </div>
+        </div>
+
+        <!-- Lead Measure Karet Container -->
+        <div v-show="prodSubTab === 'lead-measure'" class="space-y-6">
+          <div class="flex flex-wrap items-start justify-between gap-4 border-b border-[#E5EBE8] pb-5">
+            <div class="max-w-2xl">
+              <div class="flex items-center gap-2">
+                <span class="inline-flex size-6 items-center justify-center rounded-lg bg-sky-100 text-emerald-800">
+                  <HugeiconsIcon :icon="Target02Icon" :size="16" />
+                </span>
+                <span class="text-xs font-bold uppercase tracking-wider text-emerald-700">
+                  Sumber Data Lead Measure Karet 2026
+                </span>
+              </div>
+              <h3 class="mt-1.5 text-lg font-bold text-[#26312D]">
+                Kelola Berkas Excel Lead Measure Karet 2026
+              </h3>
+              <p class="mt-1 text-xs leading-5 text-[#5E6A65]">
+                Unggah workbook Excel <strong>2026 - LEAD MEASURE KARET.xlsx</strong> (.xlsx). Sistem membaca evaluasi efektivitas penyadapan karet (15 kebun, metrik % Produksi, % HKD Sadap, Per Tapper, DRC) serta rekonsiliasi data observasi harian.
+              </p>
+            </div>
+
+            <!-- Dataset Status Pills -->
+            <div class="flex flex-wrap items-center gap-2">
+              <div class="rounded-xl border border-sky-200 bg-sky-50/70 px-3.5 py-2 text-xs">
+              <span class="text-[11px] text-sky-700 font-medium">Status Data:</span>
+              <p class="font-bold text-sky-900 mt-0.5">
+                  {{ leadMeasureStore.isCustom.value ? 'Data Kustom Aktif' : 'Data Contoh (Mock)' }}
+                </p>
+              </div>
+
+              <div class="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs">
+                <span class="text-[11px] text-slate-500">Unit Kebun:</span>
+                <p class="mt-0.5 font-bold text-slate-800">
+                  {{ leadMeasureStore.estates.value.length }} Kebun
+                </p>
+              </div>
+
+              <div class="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs">
+                <span class="text-[11px] text-slate-500">Total Observasi:</span>
+                <p class="mt-0.5 font-bold text-slate-900 tabular-nums">
+                  {{ leadMeasureStore.observations.value.length.toLocaleString('id-ID') }}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Active Dataset Info Banner -->
+          <div class="rounded-xl border border-emerald-200 bg-emerald-50/50 p-5 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="size-2 rounded-full" :class="leadMeasureStore.isCustom.value ? 'bg-emerald-600' : 'bg-amber-500'" />
+                  <h4 class="text-sm font-bold text-slate-900">
+                    {{ leadMeasureStore.isCustom.value ? 'Data Kustom Lead Measure Karet Terpasang' : 'Menggunakan Dataset Contoh (Mock Default)' }}
+                  </h4>
+                </div>
+                <p class="mt-1 text-xs text-slate-600">
+                  Sumber: <strong class="text-slate-800">{{ leadMeasureStore.dataset.value?.metadata?.fileName || 'Data Contoh (Mock Evaluasi Karet)' }}</strong> • {{ leadMeasureStore.estates.value.length }} Kebun • {{ leadMeasureStore.observations.value.length.toLocaleString('id-ID') }} Observasi Evaluasi
+                </p>
+              </div>
+
+              <div class="flex items-center gap-3">
+                <button
+                  v-if="leadMeasureStore.isCustom.value"
+                  type="button"
+                  class="rounded-xl border border-rose-300 bg-white px-3.5 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 transition-colors shadow-2xs cursor-pointer"
+                  @click="resetLeadMeasureData"
+                >
+                  Reset ke Data Contoh
+                </button>
+
+                <NuxtLink
+                  to="/production/lead-measure-karet"
+                  class="inline-flex items-center gap-1.5 rounded-xl bg-emerald-700 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-800 transition-colors shadow-xs"
+                >
+                  <span>Buka Dashboard Lead Measure</span>
+                  <HugeiconsIcon :icon="ArrowRight01Icon" :size="14" />
+                </NuxtLink>
+              </div>
+            </div>
+          </div>
+
+          <!-- Upload Dropzone -->
+          <div class="space-y-4">
+            <div
+              class="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/60 p-8 text-center transition-colors hover:border-sky-500 hover:bg-sky-50/20 cursor-pointer"
+              @dragover.prevent
+              @drop.prevent="handleLeadMeasureFileDrop"
+              @click="leadMeasureFileInputRef?.click()"
+            >
+              <input
+                ref="leadMeasureFileInputRef"
+                type="file"
+                accept=".xlsx"
+                class="hidden"
+                @change="handleLeadMeasureFileChange"
+              />
+              <div class="flex size-12 items-center justify-center rounded-2xl bg-white text-emerald-700 shadow-xs border border-slate-200">
+                <HugeiconsIcon :icon="Upload02Icon" :size="24" />
+              </div>
+              <p class="mt-3 text-sm font-bold text-slate-800">
+                {{ isLeadMeasureParsing ? 'Sedang mengurai workbook...' : 'Klik atau seret file 2026 - LEAD MEASURE KARET (.xlsx) ke sini' }}
+              </p>
+              <p class="mt-1 text-xs text-slate-500">
+                Mendukung format Sheet6 (15 Kebun, % Produksi, % HKD Sadap, Per Tapper, DRC)
+              </p>
+            </div>
+
+            <!-- Parsed Preview Box -->
+            <div v-if="leadMeasureParseResult" class="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-6 space-y-5">
+              <div class="flex flex-wrap items-start justify-between gap-4 border-b border-emerald-200/80 pb-4">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="rounded bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
+                      Hasil Pratinjau
+                    </span>
+                    <h4 class="text-sm font-bold text-slate-900">
+                      {{ leadMeasureFileName }}
+                    </h4>
+                  </div>
+                  <p class="mt-1 text-xs text-slate-600">
+                    Data siap diterapkan ke dalam penyimpanan lokal dashboard DFARM.
+                  </p>
+                </div>
+
+                <div class="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    class="rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                    @click="leadMeasureParseResult = null; leadMeasureFileName = null"
+                  >
+                    Batal
+                  </button>
+
+                  <button
+                    type="button"
+                    class="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-800 cursor-pointer"
+                    @click="applyLeadMeasureImport"
+                  >
+                    Terapkan Data ke Dashboard Lead Measure
+                  </button>
+                </div>
+              </div>
+
+              <!-- Summary Metrics Preview Grid -->
+              <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div class="rounded-xl bg-white p-3.5 border border-sky-100 shadow-2xs">
+                  <span class="text-[11px] text-slate-500 font-medium">Kebun Terdeteksi</span>
+                  <p class="text-base font-bold text-slate-800 mt-1">
+                    {{ leadMeasureParseResult.estates.length }} Kebun
+                  </p>
+                </div>
+                <div class="rounded-xl bg-white p-3.5 border border-sky-100 shadow-2xs">
+                  <span class="text-[11px] text-slate-500 font-medium">Observasi Data</span>
+                  <p class="text-base font-bold text-emerald-700 mt-1">
+                    {{ leadMeasureParseResult.observations.length.toLocaleString('id-ID') }} Baris
+                  </p>
+                </div>
+                <div class="rounded-xl bg-white p-3.5 border border-sky-100 shadow-2xs">
+                  <span class="text-[11px] text-slate-500 font-medium">Tahun Pelaporan</span>
+                  <p class="text-base font-bold text-slate-800 mt-1">
+                    {{ leadMeasureParseResult.availableYears.join(', ') }}
+                  </p>
+                </div>
+                <div class="rounded-xl bg-white p-3.5 border border-sky-100 shadow-2xs">
+                  <span class="text-[11px] text-slate-500 font-medium">Rekonsiliasi EvaPro</span>
+                  <p class="text-base font-bold mt-1" :class="leadMeasureParseResult.reconciliation?.discrepancies.length ? 'text-amber-600' : 'text-emerald-700'">
+                    {{ leadMeasureParseResult.reconciliation?.discrepancies.length ? leadMeasureParseResult.reconciliation.discrepancies.length + ' Selisih' : '100% Cocok' }}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       
-      <!-- D. MANAJEMEN DATA EXCEL INVESTASI ON-FARM (LM 19 2026) -->
-      <section
-        v-if="activeDomainId === 'investment-on-farm'"
-        class="overflow-hidden rounded-2xl border border-emerald-200/90 bg-white p-6 shadow-xs sm:p-7 space-y-6"
+      </div>
+
+      <!-- ========================================================== -->
+      <!-- 2. DOMAIN: INVESTASI ON-FARM                             -->
+      <!-- ========================================================== -->
+      <div v-else-if="activeDomainId === 'investment-on-farm'" class="space-y-8">
+        <!-- B. SUMBER DATA AKTIF ON-FARM (PRIMARY SPOTLIGHT) -->
+        <section aria-labelledby="active-source-onfarm-heading">
+          <div class="overflow-hidden rounded-2xl border-2 border-sky-500 bg-white p-6 shadow-xs sm:p-7">
+            <div class="flex flex-wrap items-start justify-between gap-5">
+              <div class="max-w-2xl">
+                <div class="flex items-center gap-2">
+                  <span class="text-[11px] font-bold uppercase tracking-wider text-[#5E6A65]">
+                    Sumber Data Aktif Saat Ini
+                  </span>
+                  <span
+                    class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold"
+                    :class="onFarmStore.isLoaded.value
+                      ? 'bg-sky-100 text-sky-800 border border-sky-300'
+                      : 'bg-amber-100 text-amber-800 border border-amber-300'"
+                  >
+                    <span
+                      class="size-2 rounded-full"
+                      :class="onFarmStore.isLoaded.value ? 'bg-sky-600' : 'bg-amber-500 animate-pulse'"
+                    />
+                    {{ onFarmStore.isLoaded.value ? 'Terpasang & Aktif' : 'Belum Ada Data' }}
+                  </span>
+                </div>
+
+                <h2 id="active-source-onfarm-heading" class="mt-2 text-2xl font-bold tracking-tight text-[#26312D]">
+                  Development Data (LM 19 2026)
+                </h2>
+
+                <p class="mt-2 text-sm leading-6 text-[#5E6A65]">
+                  Monitoring realisasi belanja investasi tanaman pokok perkebunan · Konsolidasi transaksi SAP CO/PS (ZESTHLE152) terhadap Target RKAP 2026 dan Lembar Rekap.
+                </p>
+
+                <div class="mt-4 flex flex-wrap items-center gap-6 text-xs text-[#5E6A65]">
+                  <div>
+                    <span class="text-[#808D87]">Tipe Sumber:</span>
+                    <strong class="ml-1 text-[#26312D]">Workbook Excel Multi-Sheet (Lokal / Browser)</strong>
+                  </div>
+                  <div>
+                    <span class="text-[#808D87]">Cakupan:</span>
+                    <strong class="ml-1 text-[#26312D]">
+                      {{ onFarmStore.transactionCount.value.toLocaleString('id-ID') }} Transaksi SAP · {{ onFarmStore.budgetPlanCount.value }} Program RKAP
+                    </strong>
+                  </div>
+                  <div>
+                    <span class="text-[#808D87]">Total Biaya SAP:</span>
+                    <strong class="ml-1 text-sky-900 font-mono font-bold">
+                      Rp {{ formatRupiahCompact(onFarmStore.totalActualCost.value) }}
+                    </strong>
+                  </div>
+                  <div>
+                    <span class="text-[#808D87]">Status Sistem:</span>
+                    <strong class="ml-1" :class="onFarmStore.isLoaded.value ? 'text-sky-700' : 'text-amber-700'">
+                      {{ onFarmStore.isLoaded.value ? 'Operasional Penuh' : 'Menunggu Berkas' }}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex flex-col items-end gap-2">
+                <NuxtLink
+                  to="/investment/on-farm"
+                  class="inline-flex items-center gap-2 rounded-xl bg-sky-700 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-sky-800 transition-colors"
+                >
+                  Buka Dashboard On-Farm →
+                </NuxtLink>
+                <span class="text-[11px] text-[#808D87]">
+                  Cut-off aktif: Bulan {{ onFarmStore.metadata.value?.detectedActivePeriod || 9 }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- C. PILIHAN SUMBER DATA ON-FARM -->
+        <section aria-labelledby="options-onfarm-heading" class="space-y-4">
+          <div>
+            <h3 id="options-onfarm-heading" class="text-lg font-bold text-[#26312D]">
+              Pilihan Sumber Data Investasi On-Farm
+            </h3>
+            <p class="text-xs text-[#5E6A65]">
+              Pilih kanal integrasi data belanja investasi tanaman pokok.
+            </p>
+          </div>
+
+          <div class="grid gap-6 md:grid-cols-2">
+            <!-- Card 1: Development Data (LM 19 2026) -->
+            <div class="flex flex-col justify-between rounded-2xl border-2 border-sky-500 bg-white p-6 shadow-xs">
+              <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="flex size-7 items-center justify-center rounded-lg bg-sky-100 text-sky-800 font-bold text-xs">
+                      <HugeiconsIcon :icon="File02Icon" :size="16" />
+                    </span>
+                    <h4 class="text-base font-bold text-[#26312D]">
+                      Development Data (Excel LM 19)
+                    </h4>
+                  </div>
+                  <span class="rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-bold text-sky-800 border border-sky-300">
+                    ● Terhubung & Aktif
+                  </span>
+                </div>
+                <p class="text-xs leading-5 text-[#5E6A65]">
+                  Data workbook multi-sheet tervalidasi: sheet ZESTHLE152 untuk mutasi ledger SAP, sheet RKAP 2026 untuk pagu anggaran, dan sheet Rekap sebagai jembatan relasi proyek.
+                </p>
+              </div>
+            </div>
+
+            <!-- Card 2: Cloud / SAP RFC Connector -->
+            <div class="flex flex-col justify-between rounded-2xl border border-[#E5EBE8] bg-[#F7F9F8] p-6">
+              <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="flex size-7 items-center justify-center rounded-lg bg-slate-200 text-slate-600 font-bold text-xs">
+                      <HugeiconsIcon :icon="DatabaseSearchIcon" :size="16" />
+                    </span>
+                    <h4 class="text-base font-bold text-[#26312D]">
+                      SAP CO/PS Live Connector
+                    </h4>
+                  </div>
+                  <span class="rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+                    Phase 3.1 Preview
+                  </span>
+                </div>
+                <p class="text-xs leading-5 text-[#5E6A65]">
+                  Integrasi langsung ke SAP S/4HANA atau SAP ECC via RFC/OData connector. Belum aktif pada tahap pengembangan ini.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- D. MANAJEMEN DATA EXCEL INVESTASI ON-FARM (LM 19 2026) -->
+        <section
+          class="overflow-hidden rounded-2xl border border-sky-200/90 bg-white p-6 shadow-xs sm:p-7 space-y-6"
       >
         <div class="flex flex-wrap items-start justify-between gap-4 border-b border-[#E5EBE8] pb-5">
           <div class="max-w-2xl">
             <div class="flex items-center gap-2">
-              <span class="inline-flex size-6 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800">
-                <DashboardReusableDashboardIcon name="target" :size="14" />
+              <span class="inline-flex size-6 items-center justify-center rounded-lg bg-sky-100 text-sky-800">
+                <HugeiconsIcon :icon="Plant03Icon" :size="14" />
               </span>
-              <span class="text-xs font-bold uppercase tracking-wider text-emerald-700">
+              <span class="text-xs font-bold uppercase tracking-wider text-sky-700">
                 Sumber Data On-Farm (LM 19)
               </span>
             </div>
@@ -1047,17 +1494,17 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
         </div>
 
         <!-- Loaded State Overview -->
-        <div v-if="onFarmStore.isLoaded.value && !onFarmParseResult" class="rounded-xl border border-emerald-200 bg-emerald-50/50 p-5 space-y-4">
+        <div v-if="onFarmStore.isLoaded.value && !onFarmParseResult" class="rounded-xl border border-sky-200 bg-sky-50/50 p-5 space-y-4">
           <div class="flex flex-wrap items-center justify-between gap-4">
             <div>
               <div class="flex items-center gap-2">
-                <span class="size-2 rounded-full bg-emerald-600" />
+                <span class="size-2 rounded-full bg-sky-600" />
                 <h4 class="text-sm font-bold text-slate-900">
                   Data Investasi On-Farm Siap Digunakan
                 </h4>
               </div>
               <p class="mt-1 text-xs text-slate-600">
-                File: <strong class="text-slate-800">{{ onFarmStore.metadata.value?.fileName || 'LM 19 Biaya Investasi Tanpok 2026.xlsx' }}</strong> ? Cut-off: Bulan {{ onFarmStore.metadata.value?.detectedActivePeriod || 9 }} ? {{ onFarmStore.budgetPlanCount.value }} Program RKAP
+                File: <strong class="text-slate-800">{{ onFarmStore.metadata.value?.fileName || 'LM 19 Biaya Investasi Tanpok 2026.xlsx' }}</strong> · Cut-off: Bulan {{ onFarmStore.metadata.value?.detectedActivePeriod || 9 }} · {{ onFarmStore.budgetPlanCount.value }} Program RKAP
               </p>
             </div>
 
@@ -1072,9 +1519,9 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
 
               <NuxtLink
                 to="/investment/on-farm"
-                class="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-800 transition-colors shadow-xs"
+                class="rounded-xl bg-sky-700 px-4 py-2 text-xs font-semibold text-white hover:bg-sky-800 transition-colors shadow-xs"
               >
-                Buka Dashboard On-Farm ?
+                Buka Dashboard On-Farm →
               </NuxtLink>
             </div>
           </div>
@@ -1096,10 +1543,8 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
               class="hidden"
               @change="handleOnFarmFileInput"
             />
-            <div class="flex size-12 items-center justify-center rounded-2xl bg-white text-emerald-700 shadow-xs border border-slate-200">
-              <svg class="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-              </svg>
+            <div class="flex size-12 items-center justify-center rounded-2xl bg-white text-sky-700 shadow-xs border border-slate-200">
+              <HugeiconsIcon :icon="Upload02Icon" :size="24" />
             </div>
             <p class="mt-3 text-sm font-bold text-slate-800">
               {{ isOnFarmParsing ? 'Sedang mengurai workbook...' : 'Klik atau seret file LM 19 Biaya Investasi Tanpok (.xlsx) ke sini' }}
@@ -1136,7 +1581,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                 </button>
                 <button
                   type="button"
-                  class="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-800 shadow-xs"
+                  class="rounded-xl bg-sky-700 px-4 py-2 text-xs font-semibold text-white hover:bg-sky-800 shadow-xs"
                   @click="applyOnFarmImport"
                 >
                   Terapkan Data On-Farm
@@ -1196,6 +1641,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
           </div>
         </div>
       </section>
+      </div>
 
       <!-- D. ADVANCED CONFIGURATION (PROGRESSIVE DISCLOSURE) -->
       <section class="rounded-2xl border border-[#E5EBE8] bg-white overflow-hidden shadow-xs">

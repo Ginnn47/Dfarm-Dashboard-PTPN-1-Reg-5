@@ -1,149 +1,112 @@
 ﻿<script setup lang="ts">
 import {
-  DashboardSpeed01Icon,
-  Activity04Icon,
-  DatabaseSearchIcon,
+  AiSearchLinesIcon,
+  ZoomInAreaIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/vue'
 
-defineProps<{
-  modelValue: '1' | '2' | '3'
-  transactionCount?: number
-  projectCount?: number
-}>()
+const props = withDefaults(
+  defineProps<{
+    modelValue: '1' | '2' | '3'
+    option1Title?: string
+    option2Title?: string
+    transactionCount?: number
+    projectCount?: number
+  }>(),
+  {
+    option1Title: 'General Summary',
+    option2Title: 'Detail Section',
+  }
+)
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', val: '1' | '2' | '3'): void
+  (e: 'update:modelValue', val: '1' | '2'): void
 }>()
+
+function selectSection(val: '1' | '2') {
+  emit('update:modelValue', val)
+}
+
+function onKeydown(e: KeyboardEvent, val: '1' | '2') {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault()
+    selectSection(val)
+  } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    e.preventDefault()
+    selectSection(props.modelValue === '1' ? '2' : '1')
+  }
+}
 </script>
 
 <template>
   <nav
-    class="rounded-xl border border-slate-200/90 bg-white p-1.5 shadow-2xs"
-    aria-label="Navigasi Tingkat Layer Analisis On-Farm"
+    class="flex justify-center w-full my-2"
+    aria-label="Navigasi Section On-Farm"
   >
-    <div class="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
-      <!-- Layer 1 Tab -->
+    <div
+      role="tablist"
+      aria-label="Pilihan Tampilan Section Analisis"
+      class="relative flex items-center w-full max-w-[1000px] h-[40px] bg-white rounded-full border-2 border-sky-500 p-1 shadow-2xs select-none"
+    >
+      <!-- Sliding Active Light-Blue Background Pill -->
+      <div
+        class="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-full bg-sky-100/90 transition-transform duration-300 ease-in-out pointer-events-none z-0"
+        :class="modelValue === '2' ? 'translate-x-full' : 'translate-x-0'"
+        aria-hidden="true"
+      />
+
+      <!-- Option 1: General Summary (Section 1) -->
       <button
         type="button"
-        class="group flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all duration-150"
-        :class="modelValue === '1'
-          ? 'border-sky-500 bg-sky-50/70 text-sky-950 shadow-2xs ring-1 ring-sky-500/30'
-          : 'border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900'"
-        @click="emit('update:modelValue', '1')"
+        role="tab"
+        :aria-selected="modelValue === '1'"
+        aria-controls="section-panel-1"
+        data-section="Section 1"
+        aria-label="General Summary (Section 1)"
+        class="group relative z-10 flex w-1/2 h-full items-center justify-center gap-2.5 px-3 sm:px-4 rounded-full transition-colors duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
+        @click="selectSection('1')"
+        @keydown="onKeydown($event, '1')"
       >
         <HugeiconsIcon
-          :icon="DashboardSpeed01Icon"
+          :icon="AiSearchLinesIcon"
           :size="20"
           :stroke-width="2.2"
-          class="shrink-0 transition-colors"
+          class="shrink-0 transition-colors duration-200"
           :class="modelValue === '1' ? 'text-sky-600' : 'text-slate-400 group-hover:text-slate-600'"
         />
-        <div class="min-w-0 flex-1">
-          <div class="flex items-center gap-1.5">
-            <span
-              class="text-[10px] font-bold uppercase tracking-wider transition-colors"
-              :class="modelValue === '1' ? 'text-sky-700' : 'text-slate-400 group-hover:text-slate-600'"
-            >
-              Layer 1
-            </span>
-            <span class="text-slate-300">·</span>
-            <span class="truncate text-xs font-bold text-slate-900 sm:text-[13px]">
-              Ringkasan Eksekutif
-            </span>
-            <span
-              v-if="modelValue === '1'"
-              class="ml-auto shrink-0 rounded-full bg-sky-100 px-1.5 py-0.2 text-[9px] font-bold text-sky-800"
-            >
-              Aktif
-            </span>
-          </div>
-          <p class="truncate text-[11px] leading-tight text-slate-500">
-            Kondisi Belanja, Pagu, Komoditas & Kebun
-          </p>
-        </div>
+        <span
+          class="text-xs sm:text-[13px] tracking-tight transition-colors duration-200 truncate"
+          :class="modelValue === '1' ? 'font-bold text-sky-950' : 'font-medium text-slate-500 group-hover:text-slate-700'"
+        >
+          {{ option1Title }}
+        </span>
       </button>
 
-      <!-- Layer 2 Tab -->
+      <!-- Option 2: Detail Section (Section 2) -->
       <button
         type="button"
-        class="group flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all duration-150"
-        :class="modelValue === '2'
-          ? 'border-sky-500 bg-sky-50/70 text-sky-950 shadow-2xs ring-1 ring-sky-500/30'
-          : 'border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900'"
-        @click="emit('update:modelValue', '2')"
+        role="tab"
+        :aria-selected="modelValue === '2'"
+        aria-controls="section-panel-2"
+        data-section="Section 2"
+        aria-label="Detail Section (Section 2)"
+        class="group relative z-10 flex w-1/2 h-full items-center justify-center gap-2.5 px-3 sm:px-4 rounded-full transition-colors duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
+        @click="selectSection('2')"
+        @keydown="onKeydown($event, '2')"
       >
         <HugeiconsIcon
-          :icon="Activity04Icon"
+          :icon="ZoomInAreaIcon"
           :size="20"
           :stroke-width="2.2"
-          class="shrink-0 transition-colors"
+          class="shrink-0 transition-colors duration-200"
           :class="modelValue === '2' ? 'text-sky-600' : 'text-slate-400 group-hover:text-slate-600'"
         />
-        <div class="min-w-0 flex-1">
-          <div class="flex items-center gap-1.5">
-            <span
-              class="text-[10px] font-bold uppercase tracking-wider transition-colors"
-              :class="modelValue === '2' ? 'text-sky-700' : 'text-slate-400 group-hover:text-slate-600'"
-            >
-              Layer 2
-            </span>
-            <span class="text-slate-300">·</span>
-            <span class="truncate text-xs font-bold text-slate-900 sm:text-[13px]">
-              Eksplorasi Analitikal
-            </span>
-            <span
-              v-if="modelValue === '2'"
-              class="ml-auto shrink-0 rounded-full bg-sky-100 px-1.5 py-0.2 text-[9px] font-bold text-sky-800"
-            >
-              Aktif
-            </span>
-          </div>
-          <p class="truncate text-[11px] leading-tight text-slate-500">
-            Aktivitas Lapangan & Proyek WBS ({{ projectCount || 0 }} Proyek)
-          </p>
-        </div>
-      </button>
-
-      <!-- Layer 3 Tab -->
-      <button
-        type="button"
-        class="group flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all duration-150"
-        :class="modelValue === '3'
-          ? 'border-sky-500 bg-sky-50/70 text-sky-950 shadow-2xs ring-1 ring-sky-500/30'
-          : 'border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900'"
-        @click="emit('update:modelValue', '3')"
-      >
-        <HugeiconsIcon
-          :icon="DatabaseSearchIcon"
-          :size="20"
-          :stroke-width="2.2"
-          class="shrink-0 transition-colors"
-          :class="modelValue === '3' ? 'text-sky-600' : 'text-slate-400 group-hover:text-slate-600'"
-        />
-        <div class="min-w-0 flex-1">
-          <div class="flex items-center gap-1.5">
-            <span
-              class="text-[10px] font-bold uppercase tracking-wider transition-colors"
-              :class="modelValue === '3' ? 'text-sky-700' : 'text-slate-400 group-hover:text-slate-600'"
-            >
-              Layer 3
-            </span>
-            <span class="text-slate-300">·</span>
-            <span class="truncate text-xs font-bold text-slate-900 sm:text-[13px]">
-              Jurnal Mutasi SAP
-            </span>
-            <span
-              v-if="modelValue === '3'"
-              class="ml-auto shrink-0 rounded-full bg-sky-100 px-1.5 py-0.2 text-[9px] font-bold text-sky-800"
-            >
-              Aktif
-            </span>
-          </div>
-          <p class="truncate text-[11px] leading-tight text-slate-500">
-            {{ transactionCount ? transactionCount.toLocaleString('id-ID') : 0 }} Detail Mutasi Riil
-          </p>
-        </div>
+        <span
+          class="text-xs sm:text-[13px] tracking-tight transition-colors duration-200 truncate"
+          :class="modelValue === '2' ? 'font-bold text-sky-950' : 'font-medium text-slate-500 group-hover:text-slate-700'"
+        >
+          {{ option2Title }}
+        </span>
       </button>
     </div>
   </nav>

@@ -1,15 +1,90 @@
-import { getMasterAfdelingName, formatAfdelingName, isRawAfdelingCode } from '../data/reference/afdelingMaster.ts'
+﻿import { getMasterAfdelingName, formatAfdelingName, isRawAfdelingCode } from '../data/reference/afdelingMaster.ts'
+import { normalizePhase } from '../utils/onFarmWorkbookParser.ts'
 import { ref, computed, watch } from 'vue'
 import { useOnFarmStore } from '../data/onfarm/onFarmStore.ts'
 import type {
   OnFarmActualTransaction,
   OnFarmBudgetPlan,
   OnFarmKpiSummary,
+  OnFarmRangePreset,
 } from '../data/onfarm/types.ts'
 
-export const NON_AFDELING_LABEL = 'Non-Afdeling / Sentral'
+export const AGRONOMIC_PHASE_ORDER: Record<string, number> = {
+  'PEMBIBITAN': 10,
+  'ENTRES': 20,
+  'PERSEMAIAN': 30,
+  'TTAD': 40,
+  'TTI': 50,
+  'TBM I': 60,
+  'TBM 1': 60,
+  'TBM': 60,
+  'TBM II': 70,
+  'TBM 2': 70,
+  'TBM III': 80,
+  'TBM 3': 80,
+  'TBM IV': 90,
+  'TBM 4': 90,
+  'TBM V <': 100,
+  'TBM 5 <': 100,
+  'TM': 110,
+  'TDP I': 120,
+  'TDP 1': 120,
+  'TDP II': 130,
+  'TDP 2': 130,
+  'TDP III': 140,
+  'TDP 3': 140,
+  'LAINNYA': 999,
+}
+
+export function getPhaseAgronomicRank(phase: string): number {
+  const normalized = (phase || '').trim().toUpperCase()
+  if (AGRONOMIC_PHASE_ORDER[normalized] !== undefined) {
+    return AGRONOMIC_PHASE_ORDER[normalized]
+  }
+  if (normalized.startsWith('PEMBIBITAN')) return 10
+  if (normalized.startsWith('ENTRES')) return 20
+  if (normalized.startsWith('PERSEMAIAN')) return 30
+  if (normalized.startsWith('TTAD')) return 40
+  if (normalized.startsWith('TTI')) return 50
+  if (normalized.startsWith('TBM I') || normalized.startsWith('TBM 1')) return 60
+  if (normalized.startsWith('TBM II') || normalized.startsWith('TBM 2')) return 70
+  if (normalized.startsWith('TBM III') || normalized.startsWith('TBM 3')) return 80
+  if (normalized.startsWith('TBM IV') || normalized.startsWith('TBM 4')) return 90
+  if (normalized.startsWith('TBM V') || normalized.startsWith('TBM 5')) return 100
+  if (normalized.startsWith('TBM')) return 60
+  if (normalized.startsWith('TM')) return 110
+  if (normalized.startsWith('TDP I') || normalized.startsWith('TDP 1')) return 120
+  if (normalized.startsWith('TDP II') || normalized.startsWith('TDP 2')) return 130
+  if (normalized.startsWith('TDP III') || normalized.startsWith('TDP 3')) return 140
+  if (normalized.includes('LAIN') || normalized === '') return 999
+  return 500
+}
+
+export function sortPhasesByAgronomicOrder(a: string, b: string): number {
+  const rankA = getPhaseAgronomicRank(a)
+  const rankB = getPhaseAgronomicRank(b)
+  if (rankA !== rankB) return rankA - rankB
+  return a.localeCompare(b, 'id-ID')
+}
+
+const NON_AFDELING_LABEL = 'Non-Afdeling / Sentral'
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
+
+function clampMonth(value: number, maxMonth: number): number {
+  return Math.max(1, Math.min(maxMonth, Math.round(value)))
+}
+
+function isFixedRangePreset(value: OnFarmRangePreset): value is 'q1' | 'q2' | 'q3' | 'q4' | 'sem1' | 'sem2' {
+  return value === 'q1' || value === 'q2' || value === 'q3' || value === 'q4' || value === 'sem1' || value === 'sem2'
+}
+
+function presetRange(preset: Exclude<OnFarmRangePreset, 'custom' | 'ytd'>): [number, number] {
+  if (preset === 'sem1') return [1, 6]
+  if (preset === 'sem2') return [7, 12]
+  const quarter = Number(preset.slice(1))
+  return [(quarter - 1) * 3 + 1, quarter * 3]
+}
 
 function normalizeCommodity(codeOrName: string): string {
   const upper = (codeOrName || '').toUpperCase().trim()
@@ -29,6 +104,14 @@ export function useOnFarmData() {
   const selectedYear = ref<number>(2026)
   const selectedPeriod = ref<number>(9) // Default s/d September (auto-detect sync)
   const isManualCutoff = ref<boolean>(false)
+
+  // Rentang disiapkan sebagai draft dan baru memengaruhi dashboard setelah Terapkan.
+  const analysisRangePreset = ref<OnFarmRangePreset>('ytd')
+  const analysisRangeStartMonth = ref<number>(1)
+  const analysisRangeEndMonth = ref<number>(9)
+  const draftAnalysisRangePreset = ref<OnFarmRangePreset>('ytd')
+  const draftAnalysisRangeStartMonth = ref<number>(1)
+  const draftAnalysisRangeEndMonth = ref<number>(9)
 
   const selectedEstate = ref<string>('ALL')
   const selectedCommodity = ref<string>('ALL')
@@ -53,11 +136,90 @@ export function useOnFarmData() {
     }
   )
 
+  function normalizeAnalysisRange(
+    preset: OnFarmRangePreset,
+    start: number,
+    end: number,
+    maxMonth: number,
+  ): { preset: OnFarmRangePreset; start: number; end: number } {
+    const cutOff = clampMonth(maxMonth, 12)
+    if (preset === 'ytd') {
+      return { preset, start: 1, end: cutOff }
+    }
+
+    let normalizedStart = clampMonth(start, cutOff)
+    let normalizedEnd = clampMonth(end, cutOff)
+    if (normalizedStart > normalizedEnd) normalizedEnd = normalizedStart
+
+    if (isFixedRangePreset(preset)) {
+      const [presetStart, presetEnd] = presetRange(preset)
+      if (presetEnd <= cutOff) {
+        return { preset, start: presetStart, end: presetEnd }
+      }
+      // Preset yang tidak lengkap setelah cut-off menjadi rentang kustom valid.
+      normalizedStart = Math.min(presetStart, cutOff)
+      normalizedEnd = cutOff
+      return { preset: 'custom', start: normalizedStart, end: normalizedEnd }
+    }
+
+    return { preset: 'custom', start: normalizedStart, end: normalizedEnd }
+  }
+
+  function clampAnalysisRanges() {
+    const active = normalizeAnalysisRange(
+      analysisRangePreset.value,
+      analysisRangeStartMonth.value,
+      analysisRangeEndMonth.value,
+      selectedPeriod.value,
+    )
+    analysisRangePreset.value = active.preset
+    analysisRangeStartMonth.value = active.start
+    analysisRangeEndMonth.value = active.end
+
+    const draft = normalizeAnalysisRange(
+      draftAnalysisRangePreset.value,
+      draftAnalysisRangeStartMonth.value,
+      draftAnalysisRangeEndMonth.value,
+      selectedPeriod.value,
+    )
+    draftAnalysisRangePreset.value = draft.preset
+    draftAnalysisRangeStartMonth.value = draft.start
+    draftAnalysisRangeEndMonth.value = draft.end
+  }
+
   watch(selectedPeriod, (val) => {
     if (val !== detectedPeriod.value) {
       isManualCutoff.value = true
     }
+    clampAnalysisRanges()
+  }, { flush: 'sync' })
+
+  const analysisRangeLabel = computed(() => {
+    const start = analysisRangeStartMonth.value
+    const end = analysisRangeEndMonth.value
+    return start === end
+      ? (MONTH_LABELS[start - 1] || '')
+      : `${MONTH_LABELS[start - 1] || ''}–${MONTH_LABELS[end - 1] || ''}`
   })
+
+  function monthlyBudget(plan: OnFarmBudgetPlan, period: number): number {
+    const allocation = plan.monthlyAllocations.find((item) => item.period === period)
+    if (!allocation) return 0
+
+    // Older persisted snapshots only contain cumulativeBudget. Derive the monthly value
+    // so an upgraded dashboard keeps rendering their existing RKAP data correctly.
+    if (typeof allocation.budgetCost === 'number') return allocation.budgetCost
+    const previous = plan.monthlyAllocations.find((item) => item.period === period - 1)
+    return (allocation.cumulativeBudget || 0) - (previous?.cumulativeBudget || 0)
+  }
+
+  function sumBudgetInAnalysisRange(plan: OnFarmBudgetPlan): number {
+    let total = 0
+    for (let period = analysisRangeStartMonth.value; period <= analysisRangeEndMonth.value; period++) {
+      total += monthlyBudget(plan, period)
+    }
+    return total
+  }
 
   // Kamus afdeling per kebun dari Rekap
   const estateAfdDict = computed(() => {
@@ -137,12 +299,12 @@ export function useOnFarmData() {
   const availablePhases = computed(() => {
     const set = new Set<string>()
     for (const tx of store.transactions.value) {
-      if (tx.phase) set.add(tx.phase.trim())
+      if (tx.phase) set.add(normalizePhase(tx.phase))
     }
     for (const plan of store.budgetPlans.value) {
-      if (plan.phase) set.add(plan.phase.trim())
+      if (plan.phase) set.add(normalizePhase(plan.phase))
     }
-    return Array.from(set).sort()
+    return Array.from(set).sort(sortPhasesByAgronomicOrder)
   })
 
   const availableAfdelings = computed(() => {
@@ -162,7 +324,7 @@ export function useOnFarmData() {
           name = estateAfdDict.value.get(`${estFull}|${code}`) || estateAfdDict.value.get(`${est}|${code}`)
         }
         if (!name || name === 'Afd.' || name === '-' || isRawAfdelingCode(name)) {
-          name = getMasterAfdelingName(tx.plantCode, tx.estateName, tx.afdelingCode) || null
+          name = getMasterAfdelingName(tx.plantCode, tx.estateName, tx.afdelingCode) || undefined
         }
       }
       if (name && name !== 'Afd.' && name !== '-' && !isRawAfdelingCode(name)) {
@@ -223,7 +385,7 @@ export function useOnFarmData() {
         const comm = normalizeCommodity(tx.commodityNormalized || tx.commodityCode)
         if (comm !== selectedCommodity.value) return false
       }
-      if (selectedPhase.value !== 'ALL' && tx.phase.toUpperCase() !== selectedPhase.value.toUpperCase()) {
+      if (selectedPhase.value !== 'ALL' && normalizePhase(tx.phase).toUpperCase() !== normalizePhase(selectedPhase.value).toUpperCase()) {
         return false
       }
       if (selectedAfdeling.value !== 'ALL') {
@@ -236,7 +398,7 @@ export function useOnFarmData() {
             name = estateAfdDict.value.get(`${estFull}|${code}`) || estateAfdDict.value.get(`${est}|${code}`)
           }
           if (!name || name === 'Afd.' || name === '-' || isRawAfdelingCode(name)) {
-            name = getMasterAfdelingName(tx.plantCode, tx.estateName, tx.afdelingCode) || null
+            name = getMasterAfdelingName(tx.plantCode, tx.estateName, tx.afdelingCode) || undefined
           }
         }
         const hasValidName = Boolean(name && name !== 'Afd.' && name !== '-' && !isRawAfdelingCode(name))
@@ -266,10 +428,13 @@ export function useOnFarmData() {
     })
   })
 
-  // Filtered Transactions YTD (through selected cut-off period)
-  const filteredTransactionsYtd = computed(() => {
-    return filteredTransactionsAllPeriods.value.filter((tx) => tx.period <= selectedPeriod.value)
+  // Transactions in the committed analysis range. The YTD alias remains for existing consumers.
+  const filteredTransactionsRange = computed(() => {
+    return filteredTransactionsAllPeriods.value.filter(
+      (tx) => tx.period >= analysisRangeStartMonth.value && tx.period <= analysisRangeEndMonth.value,
+    )
   })
+  const filteredTransactionsYtd = filteredTransactionsRange
 
   // Filtered Budget Plans
   const filteredBudgetPlans = computed(() => {
@@ -288,7 +453,7 @@ export function useOnFarmData() {
       if (selectedCommodity.value !== 'ALL' && plan.commodity !== selectedCommodity.value) {
         return false
       }
-      if (selectedPhase.value !== 'ALL' && plan.phase.toUpperCase() !== selectedPhase.value.toUpperCase()) {
+      if (selectedPhase.value !== 'ALL' && normalizePhase(plan.phase).toUpperCase() !== normalizePhase(selectedPhase.value).toUpperCase()) {
         return false
       }
       return true
@@ -297,11 +462,10 @@ export function useOnFarmData() {
 
   // Core KPIs
   const kpiSummary = computed<OnFarmKpiSummary>(() => {
-    const actualYtd = filteredTransactionsYtd.value.reduce((sum, tx) => sum + tx.actualCost, 0)
+    const actualYtd = filteredTransactionsRange.value.reduce((sum, tx) => sum + tx.actualCost, 0)
 
-    const cutIdx = Math.max(0, Math.min(11, selectedPeriod.value - 1))
     const rkapYtd = filteredBudgetPlans.value.reduce(
-      (sum, p) => sum + (p.monthlyAllocations[cutIdx]?.cumulativeBudget || 0),
+      (sum, p) => sum + sumBudgetInAnalysisRange(p),
       0
     )
 
@@ -310,12 +474,14 @@ export function useOnFarmData() {
     const absorptionYtd = rkapYtd > 0 ? (actualYtd / rkapYtd) * 100 : null
     const absorptionAnnual = annualRkap > 0 ? (actualYtd / annualRkap) * 100 : null
 
-    const hasData = store.transactions.value.some((tx) => tx.period === selectedPeriod.value)
+    const hasData = store.transactions.value.some(
+      (tx) => tx.period >= analysisRangeStartMonth.value && tx.period <= analysisRangeEndMonth.value,
+    )
 
     let mappedCount = 0
     let unmappedCount = 0
     let unmappedCost = 0
-    for (const tx of filteredTransactionsYtd.value) {
+    for (const tx of filteredTransactionsRange.value) {
       if (tx.mappingStatus === 'mapped') mappedCount++
       else {
         unmappedCount++
@@ -330,53 +496,48 @@ export function useOnFarmData() {
       variance,
       absorptionYtd,
       absorptionAnnual,
-      transactionCount: filteredTransactionsYtd.value.length,
+      transactionCount: filteredTransactionsRange.value.length,
       mappedCount,
       unmappedCount,
       unmappedCost,
       cutOffPeriod: selectedPeriod.value,
       isManualCutoff: isManualCutoff.value,
       hasDataForCutoff: hasData,
+      rangePreset: analysisRangePreset.value,
+      rangeStartMonth: analysisRangeStartMonth.value,
+      rangeEndMonth: analysisRangeEndMonth.value,
+      rangeLabel: analysisRangeLabel.value,
     }
   })
 
-  // Monthly Trend (January - December)
+  // Monthly trend contracts its x-axis to the committed analysis range.
   const monthlyTrend = computed(() => {
-    const maxPeriod = detectedPeriod.value
     const trend = []
 
     let runningActual = 0
-    for (let m = 1; m <= 12; m++) {
-      const isPeriodAvailable = m <= maxPeriod
+    let runningBudget = 0
+    for (let m = analysisRangeStartMonth.value; m <= analysisRangeEndMonth.value; m++) {
+      const monthActual = filteredTransactionsAllPeriods.value
+        .filter((tx) => tx.period === m)
+        .reduce((sum, tx) => sum + tx.actualCost, 0)
 
-      const monthActual = isPeriodAvailable
-        ? filteredTransactionsAllPeriods.value
-            .filter((tx) => tx.period === m)
-            .reduce((sum, tx) => sum + tx.actualCost, 0)
-        : null
-
-      if (monthActual !== null) {
-        runningActual += monthActual
-      }
+      runningActual += monthActual
 
       const mIdx = m - 1
       const monthBudget = filteredBudgetPlans.value.reduce(
-        (sum, p) => sum + (p.monthlyAllocations[mIdx]?.budgetCost || 0),
+        (sum, p) => sum + monthlyBudget(p, m),
         0
       )
-      const cumulativeBudget = filteredBudgetPlans.value.reduce(
-        (sum, p) => sum + (p.monthlyAllocations[mIdx]?.cumulativeBudget || 0),
-        0
-      )
+      runningBudget += monthBudget
 
       trend.push({
         period: m,
-        monthLabel: MONTH_LABELS[mIdx],
-        isAvailable: isPeriodAvailable,
+        monthLabel: MONTH_LABELS[mIdx] || '',
+        isAvailable: true,
         actual: monthActual,
         budget: monthBudget,
-        cumulativeActual: isPeriodAvailable ? runningActual : null,
-        cumulativeBudget,
+        cumulativeActual: runningActual,
+        cumulativeBudget: runningBudget,
       })
     }
 
@@ -403,7 +564,6 @@ export function useOnFarmData() {
       map.set(tx.commodityNormalized, cur)
     }
 
-    const cutIdx = Math.max(0, Math.min(11, selectedPeriod.value - 1))
     for (const plan of filteredBudgetPlans.value) {
       const cur = map.get(plan.commodity) || {
         commodity: plan.commodity,
@@ -411,7 +571,7 @@ export function useOnFarmData() {
         rkapYtd: 0,
         count: 0,
       }
-      cur.rkapYtd += plan.monthlyAllocations[cutIdx]?.cumulativeBudget || 0
+      cur.rkapYtd += sumBudgetInAnalysisRange(plan)
       map.set(plan.commodity, cur)
     }
 
@@ -435,7 +595,7 @@ export function useOnFarmData() {
       .sort((a, b) => b.actualCost - a.actualCost || b.rkapYtd - a.rkapYtd)
   })
 
-  // Breakdown by Phase (Fase Tanam)
+  // Breakdown by Phase (Fase Tanam) - Sorted by Agronomic Order
   const phaseBreakdown = computed(() => {
     const map = new Map<string, { phase: string; name: string; actualCost: number; rkapYtd: number; count: number }>()
 
@@ -444,7 +604,7 @@ export function useOnFarmData() {
     }
 
     for (const tx of filteredTransactionsYtd.value) {
-      const p = (tx.phase || 'Lainnya').trim() || 'Lainnya'
+      const p = normalizePhase(tx.phase) || 'Lainnya'
       const cur = map.get(p) || {
         phase: p,
         name: p,
@@ -457,9 +617,8 @@ export function useOnFarmData() {
       map.set(p, cur)
     }
 
-    const cutIdx = Math.max(0, Math.min(11, selectedPeriod.value - 1))
     for (const plan of filteredBudgetPlans.value) {
-      const p = (plan.phase || 'Lainnya').trim() || 'Lainnya'
+      const p = normalizePhase(plan.phase) || 'Lainnya'
       const cur = map.get(p) || {
         phase: p,
         name: p,
@@ -467,7 +626,7 @@ export function useOnFarmData() {
         rkapYtd: 0,
         count: 0,
       }
-      cur.rkapYtd += plan.monthlyAllocations[cutIdx]?.cumulativeBudget || 0
+      cur.rkapYtd += sumBudgetInAnalysisRange(plan)
       map.set(p, cur)
     }
 
@@ -488,7 +647,7 @@ export function useOnFarmData() {
           sharePercent,
         }
       })
-      .sort((a, b) => b.actualCost - a.actualCost || b.rkapYtd - a.rkapYtd)
+      .sort((a, b) => sortPhasesByAgronomicOrder(a.phase, b.phase))
   })
 
   // Breakdown by Estate (Grouped Bar Chart)
@@ -503,11 +662,10 @@ export function useOnFarmData() {
       map.set(e, cur)
     }
 
-    const cutIdx = Math.max(0, Math.min(11, selectedPeriod.value - 1))
     for (const plan of filteredBudgetPlans.value) {
       const e = plan.estateName || 'Tidak Diketahui'
       const cur = map.get(e) || { estate: e, actualCost: 0, rkapYtd: 0, count: 0 }
-      cur.rkapYtd += plan.monthlyAllocations[cutIdx]?.cumulativeBudget || 0
+      cur.rkapYtd += sumBudgetInAnalysisRange(plan)
       map.set(e, cur)
     }
 
@@ -614,6 +772,27 @@ export function useOnFarmData() {
     searchQuery.value = ''
     selectedPeriod.value = detectedPeriod.value
     isManualCutoff.value = false
+    analysisRangePreset.value = 'ytd'
+    analysisRangeStartMonth.value = 1
+    analysisRangeEndMonth.value = detectedPeriod.value
+    draftAnalysisRangePreset.value = 'ytd'
+    draftAnalysisRangeStartMonth.value = 1
+    draftAnalysisRangeEndMonth.value = detectedPeriod.value
+  }
+
+  function applyAnalysisRange() {
+    const range = normalizeAnalysisRange(
+      draftAnalysisRangePreset.value,
+      draftAnalysisRangeStartMonth.value,
+      draftAnalysisRangeEndMonth.value,
+      selectedPeriod.value,
+    )
+    analysisRangePreset.value = range.preset
+    analysisRangeStartMonth.value = range.start
+    analysisRangeEndMonth.value = range.end
+    draftAnalysisRangePreset.value = range.preset
+    draftAnalysisRangeStartMonth.value = range.start
+    draftAnalysisRangeEndMonth.value = range.end
   }
 
   function setCutoffPeriod(p: number, manual: boolean = true) {
@@ -628,6 +807,13 @@ export function useOnFarmData() {
     selectedPeriod,
     isManualCutoff,
     detectedPeriod,
+    analysisRangePreset,
+    analysisRangeStartMonth,
+    analysisRangeEndMonth,
+    analysisRangeLabel,
+    draftAnalysisRangePreset,
+    draftAnalysisRangeStartMonth,
+    draftAnalysisRangeEndMonth,
     selectedEstate,
     selectedCommodity,
     selectedPhase,
@@ -648,6 +834,7 @@ export function useOnFarmData() {
 
     // Data Sets
     filteredTransactionsAllPeriods,
+    filteredTransactionsRange,
     filteredTransactionsYtd,
     filteredBudgetPlans,
 
@@ -656,6 +843,8 @@ export function useOnFarmData() {
     monthlyTrend,
     commodityBreakdown,
     phaseBreakdown,
+    sortPhasesByAgronomicOrder,
+    getPhaseAgronomicRank,
     estateBreakdown,
     activityBreakdown,
     costElementBreakdown,
@@ -663,6 +852,7 @@ export function useOnFarmData() {
 
     // Actions
     resetFilters,
+    applyAnalysisRange,
     setCutoffPeriod,
   }
 }

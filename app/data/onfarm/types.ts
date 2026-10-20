@@ -155,6 +155,9 @@ export interface OnFarmFilterState {
   year: number
   period: number               // Bulan cut-off (1..12)
   isManualCutoff: boolean
+  rangePreset: OnFarmRangePreset
+  rangeStartMonth: number      // Awal rentang analisis (1..12)
+  rangeEndMonth: number        // Akhir rentang analisis (1..12, tidak melebihi cut-off)
   estate: string               // 'ALL' | nama kebun
   afdeling: string             // 'ALL' | nama afdeling
   commodity: string            // 'ALL' | nama komoditas
@@ -164,7 +167,11 @@ export interface OnFarmFilterState {
   searchQuery: string
 }
 
+export type OnFarmRangePreset = 'ytd' | 'q1' | 'q2' | 'q3' | 'q4' | 'sem1' | 'sem2' | 'custom'
+
 export interface OnFarmKpiSummary {
+  // Field legacy ini kini selalu merepresentasikan rentang analisis aktif,
+  // bukan otomatis Januari hingga cut-off.
   actualYtd: number
   rkapYtd: number
   annualRkap: number
@@ -178,4 +185,8 @@ export interface OnFarmKpiSummary {
   cutOffPeriod: number
   isManualCutoff: boolean
   hasDataForCutoff: boolean
+  rangePreset: OnFarmRangePreset
+  rangeStartMonth: number
+  rangeEndMonth: number
+  rangeLabel: string
 }

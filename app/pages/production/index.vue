@@ -1,6 +1,8 @@
 ﻿<script setup lang="ts">
 import {
   Plant03Icon,
+  Leaf01Icon,
+  Upload02Icon,
   AutoConversationsIcon,
   DashboardSpeed01Icon,
   City02Icon,
@@ -27,11 +29,15 @@ useHead({ title: 'Production Monitoring | DFARM' })
 const filters = ref<ProductionDashboardFilters>({
   tahun: '2025',
   bulan: '',
+  rentangPreset: 'ytd',
+  bulanAwal: '1',
+  bulanAkhir: '12',
   komoditas: '',
   kebun: '',
   afdeling: '',
   tahunTanam: '',
 })
+const draftFilters = ref<ProductionDashboardFilters>({ ...filters.value })
 const plantingYearMode = ref<'actual' | 'productivity'>('actual')
 const estateChartLevel = ref<'kebun' | 'afdeling'>('kebun')
 const comparisonChartLevel = ref<'kebun' | 'afdeling'>('kebun')
@@ -60,7 +66,23 @@ const {
   leadingEstate,
   belowTargetEstates,
   selectedMonth,
+  selectedRange,
 } = useProductionDashboard(filters)
+
+const productionRangeLabel = computed(() => {
+  const start = productionMonthOptions[selectedRange.value.start - 1]?.label || ''
+  const end = productionMonthOptions[selectedRange.value.end - 1]?.label || ''
+  return start === end ? start : `${start}–${end}`
+})
+
+function applyProductionFilters() {
+  filters.value = { ...draftFilters.value }
+}
+
+function resetProductionFilters() {
+  filters.value = { tahun: '', bulan: '', rentangPreset: 'ytd', bulanAwal: '1', bulanAkhir: '12', komoditas: '', kebun: '', afdeling: '', tahunTanam: '' }
+  draftFilters.value = { ...filters.value }
+}
 
 const currentEstateChartData = computed(() =>
   estateChartLevel.value === 'afdeling' ? afdelingData.value : estateData.value
@@ -116,49 +138,47 @@ function formatCompact(value: number | null | undefined) {
 
 <template>
   <div class="space-y-7 pb-10">
-    <!-- Header Section with Active Source Information -->
-    <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div class="border-l-4 border-sky-600 px-5 py-6 sm:px-7 sm:py-7">
-        <div class="flex flex-wrap items-start justify-between gap-5">
-          <div class="max-w-3xl">
-            <p class="text-xs font-bold uppercase tracking-[0.16em] text-sky-700">DFARM M2.6 / Production Dashboard Prototype</p>
-            <h1 class="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Production Monitoring</h1>
-            <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600">Monitor produksi, pencapaian RKAP, dan produktivitas berdasarkan periode, komoditas, kebun, dan tahun tanam.</p>
-          </div>
+    <!-- Header Section -->
+    <header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-5">
+      <div>
+        <!-- Breadcrumbs -->
+        <nav aria-label="Breadcrumb" class="flex items-center gap-1.5 text-xs font-semibold text-slate-400 mb-1">
+          <NuxtLink to="/production" class="hover:text-emerald-700 transition-colors flex items-center gap-1">
+            <HugeiconsIcon :icon="Leaf01Icon" :size="14" />
+            Dashboard Produksi
+          </NuxtLink>
+          <span>/</span>
+          <span class="text-emerald-700">Production Monitoring</span>
+        </nav>
 
-          <!-- Dynamic Source Indicator & Link to Data Source -->
-          <div class="min-w-[240px] rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
-            <div class="flex items-center justify-between gap-2">
-              <div class="flex items-center gap-2 font-semibold text-slate-800">
-                <span
-                  class="size-2 rounded-full"
-                  :class="activeSourceMeta.status === 'available' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'"
-                  aria-hidden="true"
-                />
-                {{ activeSourceMeta.name }}
-              </div>
-              <span
-                class="rounded px-1.5 py-0.5 text-[10px] font-semibold"
-                :class="activeSourceMeta.status === 'available' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
-              >
-                {{ activeSourceMeta.statusLabel }}
-              </span>
-            </div>
-            <p v-if="activeSourceMeta.workbook" class="mt-1 text-slate-500 truncate" :title="activeSourceMeta.workbook">
-              Source: {{ activeSourceMeta.workbook }}
-            </p>
-            <p v-else class="mt-1 text-slate-500">
-              Source: Cloud API Integration
-            </p>
-            <div class="mt-2 pt-2 border-t border-slate-200/60 flex items-center justify-between">
-              <NuxtLink to="/data-source" class="font-semibold text-emerald-700 hover:text-emerald-800 transition-colors">
-                Kelola di Data Source →
-              </NuxtLink>
-            </div>
-          </div>
-        </div>
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+          Production Monitoring
+        </h1>
+        <p class="mt-1 text-xs sm:text-sm text-slate-500">
+          Monitor produksi, pencapaian RKAP, dan produktivitas berdasarkan periode, komoditas, kebun, dan tahun tanam.
+        </p>
       </div>
-    </section>
+
+      <!-- Active Source Information & Link to Data Source -->
+      <div class="flex items-center gap-3">
+        <NuxtLink
+          to="/data-source"
+          class="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-2xs"
+          title="Klik untuk mengelola atau memperbarui data di Data Source"
+        >
+          <span
+            class="size-2 rounded-full shrink-0"
+            :class="activeSourceMeta.status === 'available' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'"
+            aria-hidden="true"
+          />
+          <span class="font-bold">{{ activeSourceMeta.name }}</span>
+          <span class="text-emerald-300">|</span>
+          <span class="font-medium text-emerald-950 truncate max-w-[260px]">
+            {{ activeSourceMeta.workbook || 'Data Produksi 2026.xlsx' }}
+          </span>
+        </NuxtLink>
+      </div>
+    </header>
 
     <!-- NOT-CONNECTED STATE (STEP 9) FOR UNCONFIGURED SOURCES (E.G. GOOGLE SHEETS) -->
     <section
@@ -213,7 +233,7 @@ function formatCompact(value: number | null | undefined) {
           <p class="hidden text-xs text-slate-500 sm:block">{{ filteredRecords.length.toLocaleString('id-ID') }} record detail</p>
         </div>
         <DashboardProdFilterBar
-          v-model="filters"
+          v-model="draftFilters"
           :tahun-options="yearOptions"
           :bulan-options="productionMonthOptions"
           :komoditas-options="commodityOptions"
@@ -221,13 +241,15 @@ function formatCompact(value: number | null | undefined) {
           :afdeling-options="afdelingOptions"
           :tahun-tanam-options="plantingYearOptions"
           show-tahun-tanam
+          @apply="applyProductionFilters"
+          @reset="resetProductionFilters"
         />
       </section>
 
       <section aria-labelledby="metric-summary">
         <div class="mb-4 flex items-end justify-between gap-4">
           <div><p class="text-xs font-bold uppercase tracking-[0.14em] text-sky-700">Ringkasan</p><h2 id="metric-summary" class="mt-1 text-xl font-bold text-slate-900">Kondisi produksi</h2></div>
-          <p v-if="selectedMonth" class="text-xs font-medium text-slate-500">Periode: {{ productionMonthOptions[selectedMonth - 1]?.label }} {{ filters.tahun || '(Semua Tahun)' }}</p>
+          <p class="text-xs font-medium text-slate-500">Rentang: {{ productionRangeLabel }} {{ filters.tahun || '(Semua Tahun)' }}</p>
         </div>
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <DashboardReusableMetricCard label="Total Produksi" :icon="Analytics03Icon" tone="emerald" :value="metrics.totalActual" :trend="rkapDifferencePercent" trend-label="vs RKAP" :status="metrics.variance != null && metrics.variance >= 0 ? 'positive' : 'negative'" context="Realisasi pada konteks filter" />
@@ -243,7 +265,7 @@ function formatCompact(value: number | null | undefined) {
       </section>
 
       <section class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_260px]">
-        <DashboardReusableChartCard title="Tren Produksi" :icon="Chart02Icon" description="Realisasi dan RKAP bulanan dari fixture development." :state="monthlyData.length ? 'populated' : 'empty'" :footer="activeSourceMeta.workbook ? `Development Data · ${activeSourceMeta.workbook}` : activeSourceMeta.name">
+        <DashboardReusableChartCard title="Tren Produksi" :icon="Chart02Icon" description="Realisasi dan RKAP bulanan dari fixture development." :state="monthlyData.length ? 'populated' : 'empty'" :footer="activeSourceMeta.workbook ? `Data Development· ${activeSourceMeta.workbook}` : activeSourceMeta.name">
           <DashboardProdProductionTrendChart :data="monthlyData" />
         </DashboardReusableChartCard>
         

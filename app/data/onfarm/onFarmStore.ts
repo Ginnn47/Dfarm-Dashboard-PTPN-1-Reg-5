@@ -1,4 +1,5 @@
 import { getMasterAfdelingName, formatAfdelingName, isRawAfdelingCode } from '../reference/afdelingMaster.ts'
+import { normalizePhase } from '../../utils/onFarmWorkbookParser.ts'
 import { ref, computed } from 'vue'
 import type {
   OnFarmBudgetPlan,
@@ -125,6 +126,11 @@ function sanitizeOnFarmSnapshot(parsed: any) {
         p.estateName !== 'KEBUN' &&
         p.commodity !== 'KOMODITI'
     )
+    for (const p of parsed.budgetPlans) {
+      if (p && p.phase) {
+        p.phase = normalizePhase(p.phase)
+      }
+    }
   }
 
   // 2. Build estate afdeling dictionary from mappings
@@ -151,6 +157,9 @@ function sanitizeOnFarmSnapshot(parsed: any) {
       else if (comm === 'KP RO' || comm.includes('ROBUSTA')) tx.commodityNormalized = 'Kopi Robusta'
       else if (comm === 'KKO' || comm === 'KK' || comm.includes('KAKAO')) tx.commodityNormalized = 'Kakao Edel'
       else if (comm === 'TEH' || comm === 'TH' || comm.includes('TEH')) tx.commodityNormalized = 'Teh'
+      if (tx.phase) {
+        tx.phase = normalizePhase(tx.phase)
+      }
 
       // Afdeling enrichment & master reference lookup
       let afdName = tx.afdelingName?.trim()

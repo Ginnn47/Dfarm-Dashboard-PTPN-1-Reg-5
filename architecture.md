@@ -1160,18 +1160,17 @@ Core Architecture Rules:
 4. **Concentrated Configuration Hub**: All domain-specific settings, connection tests, and sync frequencies are managed directly in /data-source with reactive isolation.
 ---
 
-# 35. Implemented Investment On Farm Architecture (P0 Layered UX)
+# 35. Implemented Investment On Farm Architecture (Two-Section UX & Downward Inline Drawer)
 
 ## 35.1 Overview and Component Ownership
 
 The Investment On Farm domain monitors capital expenditure for plantation core crops (Tanaman Pokok 2026), consolidating SAP CO/PS actual ledger transactions (`ZESTHLE152`) against budget targets (`RKAP 2026`) with project mapping and reconciliation from `Rekap`.
 
-The implementation resides at `app/pages/investment/on-farm/index.vue` and uses a three-layer single-page UX:
-- `Layer 1`: Executive Summary (`OnFarmKpiCards.vue`, `OnFarmMonthlyLeadBarChart.vue` [full-width monthly lead], `OnFarmScurveChart.vue` [cumulative S-curve line chart], `OnFarmMonthlyAbsorptionChart.vue` [monthly absorption % chart], `OnFarmEstateBarChart.vue` [horizontal grouped bar chart with sorting], `OnFarmCommodityAnalyticsCard.vue` [center-total donut with Komoditas/Fase Tanam switch toggle, Ocean Earthy Glow palette, and interactive inline expandable drawer]).
-- `Layer 2`: Analytical Exploration (`OnFarmActivitySection.vue`, `OnFarmReconciliationBanner.vue`).
-- `Layer 3`: Detailed SAP Ledger (`OnFarmTransactionTable.vue`).
-- Presentation Drawer: `OnFarmProjectDrawer.vue`.
-- Layer Navigation Controller: `OnFarmLayerNavigation.vue`.
+The implementation resides at `app/pages/investment/on-farm/index.vue` and employs a **Two-Section Single-Page Architecture** adhering strictly to the user-mandated **"Section"** terminology:
+- `Section 1`: Ringkasan Eksekutif (`OnFarmKpiCards.vue`, `OnFarmMonthlyLeadBarChart.vue` [Realisasi SAP dibandingkan Rencana Anggaran], `OnFarmScurveChart.vue` [Perkembangan Belanja Kumulatif], `OnFarmMonthlyAbsorptionChart.vue` [Serapan Anggaran per Bulan], `OnFarmEstateBarChart.vue` [Perbandingan Realisasi antar Kebun with 5 sorting modes], `OnFarmCommodityAnalyticsCard.vue` [Distribusi Belanja menurut Komoditas / Fase Tanam with Center-total Donut, ViewLevelToggle switch, and interactive inline expandable drawer]).
+- `Section 2`: Eksplorasi Proyek & Aktivitas (`OnFarmActivitySection.vue` [2-Line smooth horizontal scrollable Activity Chips with hidden scrollbar; Project WBS and Cost Element tables with downward inline drawer expansion], `OnFarmReconciliationBanner.vue`).
+- Presentation Drawer: `OnFarmProjectDrawer.vue` (Downward inline expandable card embedded directly beneath the project table row with 4-card metric grid matching `OnFarmCommodityAnalyticsCard.vue`, Tab 1: Struktur WBS & Aktivitas, and Tab 2: Embedded searchable & paginated Jurnal Transaksi).
+- Section Navigation Controller: `OnFarmLayerNavigation.vue` (Pill-shaped segmented toggle switch with `AiSearchLinesIcon` [General Summary] and `ZoomInAreaIcon` [Detail Section], animated sliding light-blue active pill, and keyboard navigation; Layer 3 retired from main navigation).
 
 ## 35.2 State Ownership and Lifecycle
 
@@ -1181,8 +1180,8 @@ The implementation resides at `app/pages/investment/on-farm/index.vue` and uses 
    - `selectedEstate`, `selectedCommodity`, `selectedPhase`, `selectedAfdeling`: Scoped filter dimensions applied to both SAP actuals and RKAP budget plans.
    - `selectedProject`: When non-null, focuses transactions and activity breakdowns on a specific Project Definition.
    - State is reactive and 100% preserved during layer navigation and drawer interactions.
-2. **Layer Navigation State** (managed in `app/pages/investment/on-farm/index.vue`):
-   - `activeLayer`: Reactive ref (`'1' | '2' | '3'`), switching views via `v-show` to maintain DOM cache and ECharts instances.
+2. **Section Navigation State** (managed in `app/pages/investment/on-farm/index.vue`):
+   - `activeSection`: Reactive ref (`'1' | '2'`), switching views via `v-show` to maintain DOM cache and ECharts instances. `activeLayer` is retained as an alias for backwards compatibility.
 3. **Drawer Presentation State** (managed in `app/pages/investment/on-farm/index.vue`):
    - `isDrawerOpen`: Boolean visibility flag.
    - `drawerProjectCode`: Selected Project Definition string passed to `OnFarmProjectDrawer.vue`.
@@ -1200,19 +1199,21 @@ The implementation resides at `app/pages/investment/on-farm/index.vue` and uses 
                                                     useOnFarmData()
                                                                 │
                      ┌──────────────────────────────────────────┴─────────────────────────────────────────┐
-                     ▼                                          ▼                                         ▼
-            Layer 1: Executive                         Layer 2: Exploration                     Layer 3: Transactions
-            - kpiSummary (YTD/Annual)                  - activityBreakdown                      - filteredTransactionsYtd
-            - monthlyTrend (1–12 & S-Curve)            - projectWbsSummary                      - search & pagination
-            - commodityBreakdown                                                                - project context banner
-            - estateBreakdown
-                                                                │
-                                                                ▼ (user clicks project)
-                                                     OnFarmProjectDrawer
-                                                     - Authoritative SAP Actual
-                                                     - Honest RKAP State (1:1 vs Shared vs Unmapped)
-                                                     - Top Activities & Cost Elements
-                                                     - CTA: jump to Layer 3 with project filter
+                     ▼                                                                                    ▼
+            Section 1: Executive Summary                                                 Section 2: Exploration
+            - kpiSummary (YTD/Annual)                                                    - activityBreakdown (chips & filters)
+            - monthlyTrend (1–12 & S-Curve)                                              - projectWbsSummary
+            - commodityBreakdown                                                         - costElementBreakdown
+            - estateBreakdown                                                                     │
+                                                                                                  ▼ (user clicks project)
+                                                                                         OnFarmProjectDrawer
+                                                                                         ├── Tab 1: Ringkasan Proyek
+                                                                                         │   - Authoritative SAP Actual
+                                                                                         │   - Honest RKAP State (1:1 vs Shared vs Unmapped)
+                                                                                         │   - WBS Structure & Cost Elements
+                                                                                         └── Tab 2: Jurnal Transaksi
+                                                                                             - Real-time search & pagination
+                                                                                             - Signed SAP costs & negative reversals
 ```
 
 ### Business Rule Enforcement

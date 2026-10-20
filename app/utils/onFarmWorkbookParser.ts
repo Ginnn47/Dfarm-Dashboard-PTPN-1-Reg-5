@@ -1,4 +1,4 @@
-import { getMasterAfdelingName, formatAfdelingName, isRawAfdelingCode } from '../data/reference/afdelingMaster.ts'
+﻿import { getMasterAfdelingName, formatAfdelingName, isRawAfdelingCode } from '../data/reference/afdelingMaster.ts'
 import type {
   OnFarmBudgetPlan,
   OnFarmActualTransaction,
@@ -109,7 +109,7 @@ export async function extractZipEntries(buffer: ArrayBuffer): Promise<Map<string
   return files
 }
 
-function parseSharedStrings(xmlStr: string): string[] {
+export function parseSharedStrings(xmlStr: string): string[] {
   const strings: string[] = []
   const siRegex = /<si>([\s\S]*?)<\/si>/g
   let match: RegExpExecArray | null
@@ -159,6 +159,28 @@ export function parseRowCells(rowXml: string, sharedStrings: string[]): Map<stri
   }
 
   return cellMap
+}
+
+export function normalizePhase(phase: string | null | undefined): string {
+  if (!phase) return ''
+  const trimmed = phase.trim()
+  const upper = trimmed.toUpperCase()
+  if (upper === 'TBM' || upper === 'TBM 1' || upper === 'TBM-1' || upper === 'TBM_1') {
+    return 'TBM I'
+  }
+  if (upper === 'TBM 2' || upper === 'TBM-2' || upper === 'TBM_2') {
+    return 'TBM II'
+  }
+  if (upper === 'TBM 3' || upper === 'TBM-3' || upper === 'TBM_3') {
+    return 'TBM III'
+  }
+  if (upper === 'TBM 4' || upper === 'TBM-4' || upper === 'TBM_4') {
+    return 'TBM IV'
+  }
+  if (upper === 'TBM 5' || upper === 'TBM 5 <' || upper === 'TBM V <' || upper === 'TBM-5') {
+    return 'TBM V <'
+  }
+  return trimmed
 }
 
 function normalizeCommodity(codeOrName: string): string {
@@ -242,7 +264,7 @@ function parseRkapSheet(
       sinusaCode: sinusa,
       estateName: kebun,
       commodity: normalizeCommodity(commodity),
-      phase: cells.get('C') || '',
+      phase: normalizePhase(cells.get('C')),
       plantingYear: cells.get('D') || '-',
       areaHa,
       unitPricePerHa: unitPrice,
@@ -318,7 +340,7 @@ function parseSapSheet(
       afdelingName: null,
       blockCode: cells.get('E') || null,
       plantingYear: cells.get('F') || '-',
-      phase: cells.get('G') || '',
+      phase: normalizePhase(cells.get('G')),
       commodityCode: commodityRaw,
       commodityNormalized: normalizeCommodity(commodityRaw),
       projectDefinition: projectDef,
@@ -706,3 +728,4 @@ export async function parseOnFarmWorkbook(
     isValid: rkapPlans.length > 0 && sapTransactions.length > 0,
   }
 }
+

@@ -18,25 +18,25 @@ defineProps<{
 <template>
   <section aria-label="Ringkasan Indikator Kinerja Utama Belanja On-Farm">
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-      <!-- 1. REALISASI SAP (YTD) - Blue Accent -->
+      <!-- 1. REALISASI SAP (rentang aktif) - Blue Accent -->
       <DashboardReusableMetricCard
-        label="REALISASI SAP (YTD)"
+        label="REALISASI SAP"
         :icon="Analytics03Icon"
         accent="border-t-blue-600"
         icon-color="text-blue-600"
         :value="formatRupiahCompact(kpis.actualYtd)"
-        :context="`s/d Bln ${kpis.cutOffPeriod} (${kpis.transactionCount.toLocaleString('id-ID')} mutasi)`"
+        :context="`${kpis.rangeLabel} (${kpis.transactionCount.toLocaleString('id-ID')} mutasi)`"
         :title="formatRupiahFull(kpis.actualYtd)"
       />
 
-      <!-- 2. TARGET RKAP (YTD) - Amber/Orange Accent -->
+      <!-- 2. TARGET RKAP (rentang aktif) - Amber/Orange Accent -->
       <DashboardReusableMetricCard
-        label="TARGET RKAP (YTD)"
+        label="TARGET RKAP"
         :icon="Settings05Icon"
         accent="border-t-amber-500"
         icon-color="text-amber-500"
         :value="formatRupiahCompact(kpis.rkapYtd)"
-        :context="`Pagu kumulatif s/d Bln ${kpis.cutOffPeriod}`"
+        :context="`Alokasi rentang ${kpis.rangeLabel}`"
         :title="formatRupiahFull(kpis.rkapYtd)"
       />
 
@@ -69,7 +69,7 @@ defineProps<{
         accent="border-t-emerald-600"
         icon-color="text-emerald-600"
         :value="formatPercent(kpis.absorptionYtd)"
-        :context="`vs Pagu 1 Thn: ${formatPercent(kpis.absorptionAnnual)}`"
+        :context="`Rentang ${kpis.rangeLabel} vs pagu 1 thn: ${formatPercent(kpis.absorptionAnnual)}`"
       />
     </div>
   </section>

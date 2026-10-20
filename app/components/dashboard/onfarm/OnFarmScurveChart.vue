@@ -15,15 +15,15 @@ const props = defineProps<{
     cumulativeBudget: number
   }>
   cutOffPeriod: number
+  analysisRangeLabel: string
 }>()
 
 const months = computed(() => props.monthlyTrend.map((m) => m.monthLabel))
 
 const scurveOption = computed(() => {
-  const actualLine = props.monthlyTrend.map((m) => {
-    if (m.period > props.cutOffPeriod) return null
-    return m.isAvailable && m.cumulativeActual !== null ? m.cumulativeActual : null
-  })
+  const actualLine = props.monthlyTrend.map((m) => (
+    m.isAvailable && m.cumulativeActual !== null ? m.cumulativeActual : null
+  ))
 
   const budgetLine = props.monthlyTrend.map((m) => m.cumulativeBudget)
 
@@ -38,10 +38,9 @@ const scurveOption = computed(() => {
       formatter: (params: any[]) => {
         const pIdx = params[0]?.dataIndex ?? 0
         const item = props.monthlyTrend[pIdx]
-        const isPastCutoff = item ? item.period > props.cutOffPeriod : false
         let str = `<div class="font-bold text-xs mb-1.5 pb-1 border-b border-slate-100 flex items-center justify-between gap-4">
-          <span>Kumulatif s/d Bln ${pIdx + 1} (${item?.monthLabel})</span>
-          ${isPastCutoff ? '<span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">Di Luar Cut-off</span>' : '<span class="text-[10px] bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded font-semibold">Aktif</span>'}
+          <span>Kumulatif Rentang s/d Bln ${item?.period ?? ''} (${item?.monthLabel})</span>
+          <span class="text-[10px] bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded font-semibold">Dalam Rentang</span>
         </div>`
 
         let cumAct: number | null = null
@@ -49,7 +48,7 @@ const scurveOption = computed(() => {
 
         for (const p of params) {
           if (p.seriesName === 'Realisasi Kumulatif') {
-            if (!isPastCutoff && p.value !== null && p.value !== undefined && p.value !== '-') {
+            if (p.value !== null && p.value !== undefined && p.value !== '-') {
               cumAct = Number(p.value)
               str += `<div class="flex items-center justify-between gap-4 text-xs py-0.5">
                 <span class="text-slate-600 flex items-center gap-1.5">${p.marker} Realisasi Kumulatif:</span>
@@ -150,8 +149,8 @@ const scurveOption = computed(() => {
 
 <template>
   <ChartCard
-    title="Kurva S Realisasi Kumulatif vs Target RKAP"
-    description="Akumulasi belanja modal berjalan terhadap target kurva S pagu belanja tahun 2026"
+    title="Perkembangan Belanja Kumulatif"
+    description="Sejauh mana belanja riil terakumulasi dibandingkan target rencana kurva S anggaran tahun 2026?"
     :icon="TrendingUpIcon"
     icon-tone="sky"
   >
@@ -163,7 +162,7 @@ const scurveOption = computed(() => {
 
     <template #footer>
       <span class="text-[11px] text-slate-500">
-        Cut-off aktif: s/d Bulan {{ cutOffPeriod }} ? Garis realisasi berhenti pada batas periode data riil
+        Rentang {{ analysisRangeLabel }} · data SAP tersedia s/d Bulan {{ cutOffPeriod }}
       </span>
     </template>
   </ChartCard>

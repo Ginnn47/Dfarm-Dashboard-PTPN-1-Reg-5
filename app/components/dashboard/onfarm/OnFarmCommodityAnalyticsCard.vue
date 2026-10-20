@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import ChartCard from '../reusable/ChartCard.vue'
 import ViewLevelToggle from '../reusable/ViewLevelToggle.vue'
-import { Plant03Icon, ChevronDownIcon } from '@hugeicons/core-free-icons'
+import { BanknoteArrowUpIcon, ChevronDownIcon, InformationCircleIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/vue'
 import { formatRupiahCompact, formatRupiahFull, formatPercent } from '~/utils/formatters'
 
@@ -21,6 +21,7 @@ export interface AnalyticsDimensionItem {
 const props = defineProps<{
   commodityData: AnalyticsDimensionItem[]
   phaseData?: AnalyticsDimensionItem[]
+  analysisRangeLabel?: string
 }>()
 
 // Switch Mode: 'komoditas' or 'fase'
@@ -50,6 +51,7 @@ const OCEAN_EARTHY_GLOW = [
   '#8AB17D', // Top 4: Sage Green
   '#F4A261', // Top 5: Sandy Earth Orange
   '#F0E3D8', // Top 6: Soft Sand Glow
+  '#00E285',
 ]
 
 // Dynamic items based on active switch mode
@@ -107,14 +109,24 @@ const donutOption = computed(() => {
       formatter: (p: any) => {
         const val = formatRupiahFull(p.value)
         const pct = total > 0 ? ((p.value / total) * 100).toFixed(1).replace('.', ',') + '%' : '0%'
-        const modeLabel = isRkapMode ? 'Pagu Target RKAP YTD' : 'Realisasi Belanja SAP'
+        const modeLabel = isRkapMode ? 'Pagu Target RKAP Rentang' : 'Realisasi Belanja SAP'
         const modeScope = isRkapMode ? 'dari total pagu RKAP' : 'dari total realisasi'
         const toneColor = isRkapMode ? '#D97706' : '#059669'
+        let explanationHtml = ''
+        if (dimensionMode.value === 'fase' && p.name === 'Lainnya') {
+          explanationHtml = `
+            <div style="color:#64748b;font-size:11px;margin-top:8px;padding-top:6px;border-top:1px dashed #cbd5e1;line-height:1.4">
+              <span style="font-weight:600;color:#334155">Penjelasan:</span> Transaksi penyesuaian/koreksi operasional di buku besar SAP (ZESTHLE152) yang belum memiliki atribut fase tanam. Rincian proyek tetap dicatat utuh.
+            </div>
+          `
+        }
+
         return `
           <div style="font-weight:700;color:#0f172a;font-size:13px;margin-bottom:2px">${p.name}</div>
           <div style="font-size:11px;color:#64748b;margin-bottom:2px">${modeLabel}</div>
           <div style="font-size:13px;font-weight:700;color:#0f172a;font-family:monospace">${val}</div>
           <div style="color:${toneColor};font-weight:600;font-size:11px;margin-top:2px">${pct} ${modeScope}</div>
+          ${explanationHtml}
         `
       },
     },
@@ -122,7 +134,7 @@ const donutOption = computed(() => {
       {
         name: `Kontribusi ${dimLabel}`,
         type: 'pie',
-        radius: ['56%', '80%'],
+        radius: ['56%', '85%'],
         center: ['50%', '50%'],
         avoidLabelOverlap: false,
         itemStyle: {
@@ -146,15 +158,15 @@ const donutOption = computed(() => {
 
 <template>
   <section
-    :aria-label="dimensionMode === 'komoditas' ? 'Analisis Anggaran per Komoditas' : 'Analisis Anggaran per Fase Tanam'"
+    :aria-label="dimensionMode === 'komoditas' ? 'Distribusi Belanja menurut Komoditas' : 'Distribusi Belanja menurut Fase Tanam'"
     class="w-full"
   >
     <ChartCard
-      :title="dimensionMode === 'komoditas' ? 'Analisis Anggaran per Komoditas' : 'Analisis Anggaran per Fase Tanam'"
+      :title="dimensionMode === 'komoditas' ? 'Distribusi Belanja menurut Komoditas' : 'Distribusi Belanja menurut Fase Tanam'"
       :description="dimensionMode === 'komoditas'
-        ? 'Distribusi serapan belanja aktual, porsi kontribusi portofolio, dan perbandingan pagu target RKAP per komoditi'
-        : 'Distribusi serapan belanja aktual, porsi kontribusi portofolio, dan perbandingan pagu target RKAP per fase tanam perkebunan'"
-      :icon="Plant03Icon"
+        ? `Komoditas mana yang menyerap alokasi belanja terbesar pada rentang ${analysisRangeLabel || 'aktif'} dan bagaimana porsinya terhadap total portofolio?`
+        : `Fase tanam mana yang menyerap alokasi belanja terbesar pada rentang ${analysisRangeLabel || 'aktif'} dalam siklus agronomi tanaman perkebunan?`"
+      :icon="BanknoteArrowUpIcon"
       icon-tone="sky"
     >
       <template #actions>
@@ -183,7 +195,7 @@ const donutOption = computed(() => {
             <!-- Center Total Text inside Donut Hole -->
             <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center px-4">
               <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                {{ isRkapOnlyMode ? 'Pagu RKAP YTD' : 'Total Realisasi' }}
+                {{ isRkapOnlyMode ? 'Pagu RKAP Rentang' : 'Total Realisasi' }}
               </span>
               <span class="text-base sm:text-lg font-extrabold font-mono text-slate-900 tabular-nums">
                 {{ formatRupiahCompact(isRkapOnlyMode ? totalRkap : totalCost) }}
@@ -229,6 +241,13 @@ const donutOption = computed(() => {
                 <div class="min-w-0">
                   <div class="text-xs font-bold text-slate-800 truncate flex items-center gap-1.5">
                     <span>{{ c.name }}</span>
+                    <span
+                      v-if="dimensionMode === 'fase' && c.name === 'Lainnya'"
+                      class="rounded-sm bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.2 text-[9px] font-semibold"
+                      title="Transaksi penyesuaian/koreksi operasional buku besar SAP ZESTHLE152 tanpa atribut kode fase tanam"
+                    >
+                      Non-Fase / Koreksi SAP
+                    </span>
                     <span
                       v-if="expandedItem === c.name"
                       class="rounded-sm bg-sky-100 px-1 py-0.2 text-[9px] font-semibold text-sky-800"
@@ -304,6 +323,20 @@ const donutOption = computed(() => {
                 </span>
               </div>
 
+              <!-- Explanation callout for 'Lainnya' in Fase mode -->
+              <div
+                v-if="c.name === 'Lainnya' && dimensionMode === 'fase'"
+                class="rounded-lg bg-sky-50/80 border border-sky-200 p-2.5 text-xs text-sky-900 flex items-start gap-2"
+              >
+                <HugeiconsIcon :icon="InformationCircleIcon" :size="16" class="shrink-0 text-sky-600 mt-0.5" />
+                <div class="space-y-0.5">
+                  <span class="font-bold block text-slate-800">Mengapa Masuk Kategori 'Lainnya'?</span>
+                  <p class="text-[11px] leading-relaxed text-slate-600">
+                    Kategori ini menampung transaksi mutasi penyesuaian/koreksi operasional pada buku besar SAP (sheet <strong>ZESTHLE152</strong>) yang tidak mencantumkan kode fase tanam. Angka realisasi tetap dihitung 100% utuh agar rekonsiliasi finansial akurat, dan rincian transaksi proyek dapat ditelusuri pada Section 2 melalui Ringkasan Proyek &amp; Jurnal Transaksi.
+                  </p>
+                </div>
+              </div>
+
               <!-- Compact 4-Card Operational Metrics Grid -->
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 <div class="rounded-lg bg-slate-50 p-2.5 border border-slate-100">
@@ -317,7 +350,7 @@ const donutOption = computed(() => {
                 </div>
 
                 <div class="rounded-lg bg-slate-50 p-2.5 border border-slate-100">
-                  <span class="text-[10px] uppercase font-bold text-slate-500 block">Pagu RKAP YTD</span>
+                  <span class="text-[10px] uppercase font-bold text-slate-500 block">Pagu RKAP Rentang</span>
                   <span class="text-xs font-mono font-extrabold text-slate-800 block tabular-nums mt-0.5">
                     {{ formatRupiahCompact(c.rkapYtd) }}
                   </span>
@@ -357,7 +390,7 @@ const donutOption = computed(() => {
       <template #footer>
         <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 w-full">
           <span>
-            Total Realisasi: {{ formatRupiahFull(totalCost) }} ? Total Pagu RKAP YTD: {{ formatRupiahFull(totalRkap) }}
+            Total Realisasi: {{ formatRupiahFull(totalCost) }} ? Total Pagu RKAP Rentang: {{ formatRupiahFull(totalRkap) }}
           </span>
           <span>
             Klik {{ dimensionMode === 'komoditas' ? 'komoditas' : 'fase tanam' }} untuk membuka rincian inline drawer

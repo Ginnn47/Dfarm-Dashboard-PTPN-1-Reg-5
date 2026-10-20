@@ -1,11 +1,10 @@
 ﻿<script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { Plant03Icon } from '@hugeicons/core-free-icons'
+import { ref, onMounted, computed } from 'vue'
+import { Plant03Icon, Leaf01Icon, Upload02Icon, DatabaseSearchIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/vue'
 import { useOnFarmData } from '~/composables/useOnFarmData'
 import OnFarmFilterBar from '~/components/dashboard/onfarm/OnFarmFilterBar.vue'
 import OnFarmLayerNavigation from '~/components/dashboard/onfarm/OnFarmLayerNavigation.vue'
-import OnFarmProjectDrawer from '~/components/dashboard/onfarm/OnFarmProjectDrawer.vue'
 import OnFarmReconciliationBanner from '~/components/dashboard/onfarm/OnFarmReconciliationBanner.vue'
 import OnFarmKpiCards from '~/components/dashboard/onfarm/OnFarmKpiCards.vue'
 import OnFarmMonthlyLeadBarChart from '~/components/dashboard/onfarm/OnFarmMonthlyLeadBarChart.vue'
@@ -23,18 +22,27 @@ const MONTH_NAMES = [
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
 ]
 
-// Three-Layer Navigation State: '1' (Summary), '2' (Exploration), '3' (Transaction Journal)
-const activeLayer = ref<'1' | '2' | '3'>('1')
+// Two-Section Navigation State: '1' (Ringkasan Eksekutif), '2' (Eksplorasi Proyek & Aktivitas)
+const activeSection = ref<'1' | '2'>('1')
+const activeLayer = activeSection
 
 // Project Summary Drawer State
 const isDrawerOpen = ref<boolean>(false)
 const drawerProjectCode = ref<string | null>(null)
+const isGlobalLedgerOpen = ref(false)
 
 const {
   store,
   selectedPeriod,
   isManualCutoff,
   detectedPeriod,
+  analysisRangePreset,
+  analysisRangeStartMonth,
+  analysisRangeEndMonth,
+  analysisRangeLabel,
+  draftAnalysisRangePreset,
+  draftAnalysisRangeStartMonth,
+  draftAnalysisRangeEndMonth,
   selectedEstate,
   selectedCommodity,
   selectedPhase,
@@ -51,7 +59,7 @@ const {
   availableAfdelings,
   availableActivities,
 
-  filteredTransactionsYtd,
+  filteredTransactionsRange,
   kpiSummary,
   monthlyTrend,
   commodityBreakdown,
@@ -62,7 +70,12 @@ const {
   projectWbsSummary,
 
   resetFilters,
+  applyAnalysisRange,
 } = useOnFarmData()
+
+const activeWorkbookName = computed(() => {
+  return store.metadata.value?.fileName || 'LM 19 Biaya Investasi Tanpok 2026.xlsx'
+})
 
 onMounted(() => {
   store.initOnFarmStore()
@@ -78,10 +91,21 @@ function closeDrawer() {
   isDrawerOpen.value = false
 }
 
-function handleViewTransactions(projectCode: string) {
-  selectedProject.value = projectCode
-  isDrawerOpen.value = false
-  activeLayer.value = '3'
+function handleViewTransactions(payload: string | { projectCode: string; wbsElement?: string }) {
+  const code = typeof payload === 'string' ? payload : payload.projectCode
+  selectedProject.value = code
+  if (typeof payload === 'object' && payload.wbsElement) {
+    searchQuery.value = payload.wbsElement
+  }
+  isGlobalLedgerOpen.value = true
+  if (typeof document !== 'undefined') {
+    setTimeout(() => {
+      const el = document.getElementById('section2-transaction-ledger')
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' })
+      }
+    }, 100)
+  }
 }
 
 function clearProjectFilter() {
@@ -91,6 +115,44 @@ function clearProjectFilter() {
 
 <template>
   <div class="mx-auto max-w-7xl space-y-7 pb-16">
+    <!-- Header Section -->
+    <header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-5">
+      <div>
+        <!-- Breadcrumbs -->
+        <nav aria-label="Breadcrumb" class="flex items-center gap-1.5 text-xs font-semibold text-slate-400 mb-1">
+          <NuxtLink to="/investment/on-farm" class="hover:text-sky-600 transition-colors flex items-center gap-1">
+            <HugeiconsIcon :icon="Leaf01Icon" :size="14" />
+            Investasi Tanaman Pokok
+          </NuxtLink>
+          <span>/</span>
+          <span class="text-sky-700">Investment On Farm</span>
+        </nav>
+
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+          Investment On Farm
+        </h1>
+        <p class="mt-1 text-xs sm:text-sm text-slate-500">
+          Monitoring realisasi belanja investasi tanaman pokok perkebunan terhadap Target.
+        </p>
+      </div>
+
+      <!-- Active Source Information & Link to Data Source -->
+      <div class="flex items-center gap-3">
+        <NuxtLink
+          to="/data-source"
+          class="inline-flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3.5 py-2 text-xs font-semibold text-sky-800 hover:bg-sky-100 transition-colors shadow-2xs"
+          title="Klik untuk mengelola atau memperbarui data di Data Source"
+        >
+          <span class="size-2 rounded-full bg-emerald-500 shrink-0" aria-hidden="true" />
+          <span class="font-bold">Development Data</span>
+          <span class="text-sky-300">|</span>
+          <span class="font-medium text-sky-950 truncate max-w-[260px]">
+            {{ activeWorkbookName }}
+          </span>
+        </NuxtLink>
+      </div>
+    </header>
+
     <!-- Empty / Not Loaded State -->
     <div
       v-if="!store.isLoaded.value"
@@ -117,100 +179,56 @@ function clearProjectFilter() {
 
     <!-- Active Populated Dashboard -->
     <template v-else>
-      <!-- Page Header with Active Source Information -->
-      <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
-        <div class="border-l-4 border-sky-600 px-5 py-6 sm:px-7 sm:py-7">
-          <div class="flex flex-wrap items-start justify-between gap-5">
-            <div class="max-w-3xl">
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="inline-flex items-center rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-semibold text-sky-800 border border-sky-200">
-                  Investasi On-Farm
-                </span>
-                <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
-                  <span class="size-1.5 rounded-full bg-sky-600" />
-                  Tahun Anggaran 2026
-                </span>
-                <span
-                  class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold border transition-colors"
-                  :class="isManualCutoff ? 'bg-amber-50 text-amber-900 border-amber-300' : 'bg-sky-50 text-sky-800 border-sky-200'"
-                >
-                  <span class="size-1.5 rounded-full" :class="isManualCutoff ? 'bg-amber-600' : 'bg-sky-600'" />
-                  Cut-off: s/d Bulan {{ selectedPeriod }} ({{ MONTH_NAMES[selectedPeriod - 1] }})
-                </span>
-              </div>
-              <h1 class="mt-2.5 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
-                Investment On Farm
-              </h1>
-              <p class="mt-2 max-w-2xl text-xs leading-relaxed text-slate-600 sm:text-sm">
-                Monitoring realisasi belanja investasi tanaman pokok perkebunan · Konsolidasi transaksi SAP CO/PS (ZESTHLE152) terhadap Target RKAP 2026.
-              </p>
-            </div>
 
-            <!-- Dynamic Source Indicator & Link to Data Source -->
-            <div class="min-w-[260px] rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
-              <div class="flex items-center justify-between gap-2">
-                <div class="flex items-center gap-2 font-semibold text-slate-800">
-                  <span class="size-2 rounded-full bg-emerald-500" aria-hidden="true" />
-                  LM 19 Tanpok 2026
-                </div>
-                <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
-                  Tersedia
-                </span>
-              </div>
-              <p class="mt-1 text-[11px] text-slate-500">
-                {{ store.transactions.value.length.toLocaleString('id-ID') }} mutasi SAP dimuat
-              </p>
-              <div class="mt-2.5 flex items-center justify-between border-t border-slate-200/80 pt-2 text-[11px]">
-                <span class="font-medium text-slate-600">
-                  {{ isManualCutoff ? 'Override aktif' : 'Auto-cutoff SAP' }}
-                </span>
-                <NuxtLink
-                  to="/data-source"
-                  class="font-semibold text-emerald-700 hover:text-emerald-800 hover:underline inline-flex items-center gap-0.5"
-                >
-                  Kelola Data Source →
-                </NuxtLink>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
-      <!-- Global Filter Bar (Preserved Across All Layers) -->
+      <!-- Global Filter Bar (Preserved Across All Sections) -->
       <OnFarmFilterBar
         v-model:selected-period="selectedPeriod"
+        v-model:draft-analysis-range-preset="draftAnalysisRangePreset"
+        v-model:draft-analysis-range-start-month="draftAnalysisRangeStartMonth"
+        v-model:draft-analysis-range-end-month="draftAnalysisRangeEndMonth"
         v-model:selected-estate="selectedEstate"
         v-model:selected-afdeling="selectedAfdeling"
         v-model:selected-commodity="selectedCommodity"
         v-model:selected-phase="selectedPhase"
         :is-manual-cutoff="isManualCutoff"
         :detected-period="detectedPeriod"
+        :analysis-range-preset="analysisRangePreset"
+        :analysis-range-start-month="analysisRangeStartMonth"
+        :analysis-range-end-month="analysisRangeEndMonth"
         :available-estates="availableEstates"
         :available-afdelings="availableAfdelings"
         :available-commodities="availableCommodities"
         :available-phases="availablePhases"
         :estate-status-map="estateStatusMap"
         @reset="resetFilters"
-        @apply="() => {}"
+        @apply="applyAnalysisRange"
       />
 
-      <!-- Three-Layer Navigation Switcher -->
+      <!-- Two-Section Navigation Switcher -->
       <OnFarmLayerNavigation
-        v-model="activeLayer"
-        :transaction-count="filteredTransactionsYtd.length"
+        v-model="activeSection"
+        :transaction-count="filteredTransactionsRange.length"
         :project-count="projectWbsSummary.length"
       />
 
       <!-- ========================================================== -->
-      <!-- LAYER 1: RINGKASAN EKSEKUTIF                               -->
+      <!-- SECTION 1: RINGKASAN EKSEKUTIF                             -->
       <!-- ========================================================== -->
-      <div v-show="activeLayer === '1'" class="space-y-6">
+      <div v-show="activeSection === '1'" class="space-y-6">
         <div>
-          <p class="text-xs font-bold uppercase tracking-[0.14em] text-sky-700">Layer 1 · Ringkasan Eksekutif</p>
-          <h2 class="mt-1 text-xl font-bold text-slate-900">Kondisi Belanja, Tren S-Curve & Distribusi Portofolio</h2>
+          <p class="text-xs font-bold uppercase tracking-[0.14em] text-sky-700">Section 1 · Ringkasan Eksekutif</p>
+          <h2 class="mt-1 text-xl font-bold text-slate-900">Kondisi Belanja Investasi</h2>
           <p class="mt-0.5 text-xs text-slate-500">
-            Ringkasan pagu RKAP, serapan riil SAP, dan visualisasi kurva akumulasi belanja tahun anggaran 2026.
+            Bagaimana kondisi belanja investasi saat ini? Ringkasan pagu RKAP, serapan riil SAP, dan akumulasi belanja berjalan tahun 2026.
           </p>
+        </div>
+
+        <div
+          v-if="kpiSummary.transactionCount === 0"
+          class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900"
+        >
+          Tidak ada mutasi SAP yang cocok untuk rentang <strong>{{ analysisRangeLabel }}</strong> dan filter aktif. Ini berbeda dari data belum tersedia: data SAP saat ini tersedia hingga Bulan {{ selectedPeriod }}.
         </div>
 
         <!-- Status Badge Banner Khusus Kebun RKAP Only atau Realisasi Rp 0 -->
@@ -243,7 +261,7 @@ function clearProjectFilter() {
             </div>
             <p class="mt-1 leading-relaxed text-xs opacity-90">
               <template v-if="selectedEstateStatus === 'rkap_only'">
-                Unit <strong>{{ selectedEstate }}</strong> memiliki rencana kerja anggaran RKAP 2026 dengan pagu kumulatif s/d Bulan {{ selectedPeriod }} sebesar <strong>Rp {{ kpiSummary.rkapYtd.toLocaleString('id-ID') }}</strong>, namun belum ada transaksi realisasi fisik yang dibukukan pada buku besar SAP ZESTHLE152. Diagram komoditas dan kurva belanja otomatis menyajikan proyeksi alokasi pagu RKAP.
+                Unit <strong>{{ selectedEstate }}</strong> memiliki rencana kerja anggaran RKAP 2026 sebesar <strong>Rp {{ kpiSummary.rkapYtd.toLocaleString('id-ID') }}</strong> untuk rentang <strong>{{ analysisRangeLabel }}</strong>, namun belum ada transaksi realisasi fisik yang dibukukan pada buku besar SAP ZESTHLE152. Diagram komoditas dan kurva belanja otomatis menyajikan alokasi pagu untuk rentang tersebut.
               </template>
               <template v-else>
                 Unit <strong>{{ selectedEstate }}</strong> memiliki {{ kpiSummary.transactionCount }} catatan mutasi transaksi pada SAP, namun seluruh biaya debet telah dijurnal pembalik (kredit) dalam periode berjalan sehingga saldo biaya neto bernilai Rp 0.
@@ -261,6 +279,7 @@ function clearProjectFilter() {
         <OnFarmMonthlyLeadBarChart
           :monthly-trend="monthlyTrend"
           :cut-off-period="selectedPeriod"
+          :analysis-range-label="analysisRangeLabel"
         />
 
         <!-- SECTION 3: Two-Column Row directly below Lead Chart (Kurva S & Serapan per Bulan) -->
@@ -269,173 +288,106 @@ function clearProjectFilter() {
           <OnFarmScurveChart
             :monthly-trend="monthlyTrend"
             :cut-off-period="selectedPeriod"
+            :analysis-range-label="analysisRangeLabel"
           />
 
           <!-- Kanan: Serapan Anggaran per Bulan -->
           <OnFarmMonthlyAbsorptionChart
             :monthly-trend="monthlyTrend"
             :cut-off-period="selectedPeriod"
+            :analysis-range-label="analysisRangeLabel"
           />
         </div>
 
         <!-- SECTION 4: Komparasi Realisasi SAP vs RKAP per Kebun (Barchart Biasa) -->
         <OnFarmEstateBarChart
           :estate-data="estateBreakdown"
+          :analysis-range-label="analysisRangeLabel"
         />
 
         <!-- SECTION 5: Analisis Anggaran per Komoditas & Fase Tanam (Donut + Interactive Inline Drawer) -->
         <OnFarmCommodityAnalyticsCard
           :commodity-data="commodityBreakdown"
           :phase-data="phaseBreakdown"
+          :analysis-range-label="analysisRangeLabel"
         />
-
-        <!-- Layer 1 Quick Navigation Footer -->
-        <div class="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-2xs">
-          <div>
-            <h4 class="text-sm font-bold text-slate-900">Eksplorasi Analisis Lebih Mendalam</h4>
-            <p class="text-xs text-slate-500 mt-0.5">
-              Lihat penelusuran aktivitas lapangan, beban cost element, dan rincian proyek WBS pada Layer 2.
-            </p>
-          </div>
-          <div class="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              class="rounded-xl bg-sky-700 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-sky-800 transition-colors"
-              @click="activeLayer = '2'"
-            >
-              Buka Layer 2: Eksplorasi Analitikal →
-            </button>
-            <button
-              type="button"
-              class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors shadow-2xs"
-              @click="activeLayer = '3'"
-            >
-              Lihat Jurnal Mutasi (Layer 3) →
-            </button>
-          </div>
-        </div>
       </div>
 
       <!-- ========================================================== -->
-      <!-- LAYER 2: EKSPLORASI ANALITIKAL                             -->
+      <!-- SECTION 2: EKSPLORASI PROYEK & AKTIVITAS                   -->
       <!-- ========================================================== -->
-      <div v-show="activeLayer === '2'" class="space-y-6">
-        <div class="flex flex-wrap items-center justify-between gap-3">
+      <div v-show="activeSection === '2'" class="space-y-6">
+        <div class="flex flex-wrap items-center justify-between gap-4 pb-1 border-b border-slate-100">
           <div>
-            <p class="text-xs font-bold uppercase tracking-[0.14em] text-sky-700">Layer 2 · Eksplorasi Analitikal</p>
-            <h2 class="mt-1 text-xl font-bold text-slate-900">Penelusuran Aktivitas Lapangan & Struktur Proyek WBS</h2>
+            <p class="text-xs font-bold uppercase tracking-[0.14em] text-sky-700">Section 2 · Eksplorasi Proyek & Aktivitas</p>
+            <h2 class="mt-1 text-xl font-bold text-slate-900">Detail Sumber Belanja & Struktur Proyek WBS</h2>
             <p class="mt-0.5 text-xs text-slate-500">
-              Analisis aktivitas teknis lapangan, rincian beban cost element, dan klik nama proyek untuk membuka drawer rincian.
+              Lihat aktivitas dan proyek yang membentuk realisasi belanja, lalu klik proyek untuk membuka ringkasan dan jurnal transaksi.
             </p>
           </div>
 
-          <div class="flex items-center gap-2">
-            <button
-              type="button"
-              class="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors"
-              @click="activeLayer = '1'"
-            >
-              ← Kembali ke Layer 1
-            </button>
-            <button
-              type="button"
-              class="rounded-xl bg-sky-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-sky-800 transition-colors"
-              @click="activeLayer = '3'"
-            >
-              Buka Jurnal Mutasi (Layer 3) →
-            </button>
-          </div>
+          <!-- Compact Reconciliation Status Badge -->
+          <OnFarmReconciliationBanner
+            :reconciliation="store.reconciliation.value"
+          />
         </div>
 
-        <!-- Reconciliation Status Banner (Warning if SAP vs Rekap Discrepancy exists) -->
-        <OnFarmReconciliationBanner
-          :reconciliation="store.reconciliation.value"
-        />
 
-
-        <!-- Penelusuran Aktivitas Lapangan & Proyek SAP (Klik proyek membuka Drawer) -->
+        <!-- Penelusuran Aktivitas Lapangan & Proyek SAP (Inline Downward Drawer) -->
         <OnFarmActivitySection
           :activities="activityBreakdown"
           :cost-elements="costElementBreakdown"
           :selected-activity="selectedActivity"
           :selected-project="selectedProject"
           :project-summaries="projectWbsSummary"
+          :transactions="filteredTransactionsRange"
+          :budget-plans="store.budgetPlans.value"
+          :cut-off-period="selectedPeriod"
+          :analysis-range-start-period="analysisRangeStartMonth"
+          :analysis-range-end-period="analysisRangeEndMonth"
           @select-activity="selectedActivity = $event"
           @select-project="selectedProject = $event"
-          @open-drawer="openDrawer"
+          @view-transactions="handleViewTransactions"
         />
 
-        <!-- Layer 2 Quick Navigation Footer -->
-        <div class="flex items-center justify-between border-t border-slate-200/80 pt-4 text-xs">
-          <button
-            type="button"
-            class="font-semibold text-slate-600 hover:text-slate-900 transition-colors"
-            @click="activeLayer = '1'"
-          >
-            ← Kembali ke Layer 1: Ringkasan Eksekutif
-          </button>
-          <button
-            type="button"
-            class="font-bold text-sky-700 hover:text-sky-900 hover:underline transition-colors"
-            @click="activeLayer = '3'"
-          >
-            Lihat Seluruh Mutasi Transaksi (Layer 3) →
-          </button>
+        <!-- Jurnal Transaksi Penuh (Halaman Terpisah / Section 2 Ledger - Collapsed by default) -->
+        <div id="section2-transaction-ledger" class="pt-2 border-t border-slate-200/80">
+          <div class="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-200">
+            <div>
+              <h4 class="text-xs font-bold text-slate-900">
+                Jurnal Mutasi Transaksi SAP Global
+              </h4>
+              <p class="text-[11px] text-slate-500 mt-0.5">
+                Audit ledger transaksi ZESTHLE152 untuk seluruh proyek dan kebun pada rentang {{ analysisRangeLabel }} ({{ filteredTransactionsRange.length.toLocaleString('id-ID') }} baris).
+              </p>
+            </div>
+            <button
+              type="button"
+              class="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition-all shadow-2xs cursor-pointer"
+              :class="isGlobalLedgerOpen
+                ? 'bg-slate-200 text-slate-800 hover:bg-slate-300'
+                : 'bg-sky-600 text-white hover:bg-sky-700'"
+              @click="isGlobalLedgerOpen = !isGlobalLedgerOpen"
+            >
+              <HugeiconsIcon :icon="DatabaseSearchIcon" :size="14" />
+              <span>{{ isGlobalLedgerOpen ? 'Sembunyikan Jurnal Global' : 'Tampilkan Jurnal Global' }}</span>
+              <span>{{ isGlobalLedgerOpen ? '▲' : '▼' }}</span>
+            </button>
+          </div>
+
+          <div v-if="isGlobalLedgerOpen" class="mt-4">
+            <OnFarmTransactionTable
+              :transactions="filteredTransactionsRange"
+              :search-query="searchQuery"
+              :selected-project="selectedProject"
+              @update:search-query="searchQuery = $event"
+              @clear-project-filter="clearProjectFilter"
+            />
+          </div>
         </div>
       </div>
 
-      <!-- ========================================================== -->
-      <!-- LAYER 3: RINCIAN JURNAL TRANSAKSI SAP                       -->
-      <!-- ========================================================== -->
-      <div v-show="activeLayer === '3'" class="space-y-6">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p class="text-xs font-bold uppercase tracking-[0.14em] text-sky-700">Layer 3 · Rincian Jurnal SAP</p>
-            <h2 class="mt-1 text-xl font-bold text-slate-900">Jurnal Mutasi Transaksi Riil SAP CO/PS (ZESTHLE152)</h2>
-            <p class="mt-0.5 text-xs text-slate-500">
-              Audit transaksi individual tingkat ledger SAP dengan pencarian instan, paginasi, dan status tanda akuntansi asli.
-            </p>
-          </div>
 
-          <div class="flex items-center gap-2">
-            <button
-              type="button"
-              class="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors"
-              @click="activeLayer = '2'"
-            >
-              ← Kembali ke Layer 2
-            </button>
-            <button
-              type="button"
-              class="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors"
-              @click="activeLayer = '1'"
-            >
-              ← Kembali ke Layer 1
-            </button>
-          </div>
-        </div>
-
-        <OnFarmTransactionTable
-          :transactions="filteredTransactionsYtd"
-          :search-query="searchQuery"
-          :selected-project="selectedProject"
-          @update:search-query="searchQuery = $event"
-          @clear-project-filter="clearProjectFilter"
-        />
-      </div>
-
-      <!-- ========================================================== -->
-      <!-- PROJECT SUMMARY DRAWER (Opened from Layer 2)              -->
-      <!-- ========================================================== -->
-      <OnFarmProjectDrawer
-        :is-open="isDrawerOpen"
-        :project-code="drawerProjectCode"
-        :transactions="filteredTransactionsYtd"
-        :budget-plans="store.budgetPlans.value"
-        :cut-off-period="selectedPeriod"
-        @close="closeDrawer"
-        @view-transactions="handleViewTransactions"
-      />
     </template>
   </div>
 </template>

@@ -1,11 +1,19 @@
 ﻿<script setup lang="ts">
 import { computed } from 'vue'
 import FilterDropdown from '../reusable/FilterDropdown.vue'
+import AnalysisRangePicker, { type AnalysisRangeSelection } from '../reusable/AnalysisRangePicker.vue'
+import type { OnFarmRangePreset } from '~/data/onfarm/types'
 
 const props = defineProps<{
   selectedPeriod: number
   isManualCutoff: boolean
   detectedPeriod: number
+  analysisRangePreset: OnFarmRangePreset
+  analysisRangeStartMonth: number
+  analysisRangeEndMonth: number
+  draftAnalysisRangePreset: OnFarmRangePreset
+  draftAnalysisRangeStartMonth: number
+  draftAnalysisRangeEndMonth: number
   selectedEstate: string
   selectedAfdeling: string
   selectedCommodity: string
@@ -19,6 +27,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:selectedPeriod', val: number): void
+  (e: 'update:draftAnalysisRangePreset', val: OnFarmRangePreset): void
+  (e: 'update:draftAnalysisRangeStartMonth', val: number): void
+  (e: 'update:draftAnalysisRangeEndMonth', val: number): void
   (e: 'update:selectedEstate', val: string): void
   (e: 'update:selectedAfdeling', val: string): void
   (e: 'update:selectedCommodity', val: string): void
@@ -38,6 +49,18 @@ const periodOptions = computed(() => {
     label: `Bulan ${idx + 1} (${name})`,
   }))
 })
+
+const analysisRangeLabel = computed(() => {
+  const start = props.analysisRangeStartMonth
+  const end = props.analysisRangeEndMonth
+  return start === end ? MONTH_NAMES[start - 1] : `${MONTH_NAMES[start - 1]}–${MONTH_NAMES[end - 1]}`
+})
+
+function updateAnalysisRange(value: AnalysisRangeSelection) {
+  emit('update:draftAnalysisRangePreset', value.preset)
+  emit('update:draftAnalysisRangeStartMonth', value.startMonth)
+  emit('update:draftAnalysisRangeEndMonth', value.endMonth)
+}
 
 const estateOptions = computed(() => [
   { value: 'ALL', label: 'Semua Kebun' },
@@ -65,7 +88,8 @@ const hasActiveFilters = computed(() => {
     props.selectedAfdeling !== 'ALL' ||
     props.selectedCommodity !== 'ALL' ||
     props.selectedPhase !== 'ALL' ||
-    props.isManualCutoff
+    props.isManualCutoff ||
+    props.analysisRangePreset !== 'ytd'
   )
 })
 
@@ -76,6 +100,7 @@ const activeFilterCount = computed(() => {
   if (props.selectedCommodity !== 'ALL') count++
   if (props.selectedPhase !== 'ALL') count++
   if (props.isManualCutoff) count++
+  if (props.analysisRangePreset !== 'ytd') count++
   return count
 })
 </script>
@@ -134,8 +159,8 @@ const activeFilterCount = computed(() => {
       </div>
     </div>
 
-    <!-- Filter Dropdown Grid (5 Columns on Desktop) -->
-    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 border-t border-slate-100 pt-4">
+    <!-- Filter Dropdown Grid -->
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 border-t border-slate-100 pt-4">
       <div>
         <label class="block mb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
           Periode Cut-off
@@ -145,6 +170,22 @@ const activeFilterCount = computed(() => {
           :options="periodOptions"
           @update:model-value="$emit('update:selectedPeriod', parseInt($event, 10))"
         />
+      </div>
+
+      <div>
+        <label class="block mb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+          Rentang Analisis
+        </label>
+        <AnalysisRangePicker
+          :preset="draftAnalysisRangePreset"
+          :start-month="draftAnalysisRangeStartMonth"
+          :end-month="draftAnalysisRangeEndMonth"
+          :max-month="selectedPeriod"
+          @update:range="updateAnalysisRange"
+        />
+        <p v-if="draftAnalysisRangePreset !== analysisRangePreset || draftAnalysisRangeStartMonth !== analysisRangeStartMonth || draftAnalysisRangeEndMonth !== analysisRangeEndMonth" class="mt-1 text-[10px] text-amber-700">
+          Pilihan belum diterapkan
+        </p>
       </div>
 
       <div>
@@ -214,6 +255,9 @@ const activeFilterCount = computed(() => {
       <span v-if="isManualCutoff" class="inline-flex items-center gap-1.5 rounded-md bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs text-amber-800">
         Manual Cut-Off: <strong>Bulan {{ selectedPeriod }}</strong>
         <button type="button" class="text-amber-600 hover:text-amber-900 font-bold" @click="$emit('update:selectedPeriod', detectedPeriod)">×</button>
+      </span>
+      <span class="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs text-emerald-800">
+        Rentang Analisis: <strong>{{ analysisRangeLabel }}</strong>
       </span>
     </div>
   </section>

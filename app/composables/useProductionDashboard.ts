@@ -16,6 +16,9 @@ import {
 export interface ProductionDashboardFilters {
   tahun: string
   bulan: string
+  rentangPreset?: 'ytd' | 'q1' | 'q2' | 'q3' | 'q4' | 'sem1' | 'sem2' | 'custom'
+  bulanAwal?: string
+  bulanAkhir?: string
   komoditas: string
   kebun: string
   afdeling: string
@@ -57,21 +60,25 @@ export function useProductionDashboard(filters: Ref<ProductionDashboardFilters>)
     return true
   }))
 
-  const selectedMonth = computed(() => {
+  const selectedRange = computed(() => {
     const month = Number(filters.value.bulan)
-    return month >= 1 && month <= 12 ? month : null
+    if (month >= 1 && month <= 12) return { start: month, end: month }
+
+    const start = Math.max(1, Math.min(12, Number(filters.value.bulanAwal || 1)))
+    const end = Math.max(start, Math.min(12, Number(filters.value.bulanAkhir || 12)))
+    return { start, end }
   })
+
+  const selectedMonth = computed(() => selectedRange.value.start === selectedRange.value.end ? selectedRange.value.start : null)
 
   // Preserve source attributes while scoping production values to the selected period.
   const periodRecords = computed<ProductionRecord[]>(() => {
-    if (!selectedMonth.value) return filteredRecords.value
-
     return filteredRecords.value.map((record) => {
-      const period = record.months[selectedMonth.value! - 1]
+      const periods = record.months.slice(selectedRange.value.start - 1, selectedRange.value.end)
       return {
         ...record,
-        actual: period?.actual ?? 0,
-        rkap: period?.rkap ?? 0,
+        actual: periods.reduce((total, period) => total + (period?.actual ?? 0), 0),
+        rkap: periods.reduce((total, period) => total + (period?.rkap ?? 0), 0),
       }
     })
   })
@@ -109,9 +116,7 @@ export function useProductionDashboard(filters: Ref<ProductionDashboardFilters>)
 
   const monthlyData = computed(() => {
     const monthly = aggregateMonthly(filteredRecords.value)
-    return selectedMonth.value
-      ? monthly.filter((item) => item.month === selectedMonth.value)
-      : monthly
+    return monthly.filter((item) => item.month >= selectedRange.value.start && item.month <= selectedRange.value.end)
   })
 
   const metrics = computed(() => computeKpis(periodRecords.value))
@@ -133,6 +138,7 @@ export function useProductionDashboard(filters: Ref<ProductionDashboardFilters>)
     sourceRecords,
     filteredRecords,
     periodRecords,
+    selectedRange,
     selectedMonth,
     monthlyData,
     metrics,

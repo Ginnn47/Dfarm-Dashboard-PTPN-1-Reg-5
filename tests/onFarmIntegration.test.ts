@@ -194,16 +194,12 @@ test('On-Farm Integration 7: Reference workbook KPI calculation matches approved
     'Signed reconciliation difference must be Rp 162.643.874'
   )
 
-  // 7. Monthly Trend: periods 1-9 available, periods 10-12 marked unavailable
+  // 7. Monthly Trend: default YTD contracts the x-axis to the available cut-off.
   const trend = monthlyTrend.value
-  assert.equal(trend.length, 12)
+  assert.equal(trend.length, 9)
   for (let m = 1; m <= 9; m++) {
     assert.equal(trend[m - 1].isAvailable, true, `Month ${m} must be available`)
     assert.ok(trend[m - 1].actual !== null)
-  }
-  for (let m = 10; m <= 12; m++) {
-    assert.equal(trend[m - 1].isAvailable, false, `Month ${m} must be marked unavailable`)
-    assert.equal(trend[m - 1].actual, null, `Month ${m} actual must be null (not confirmed zero)`)
   }
 })
 test('On-Farm Integration 8: Three-layer context preservation and global filter stability', async () => {
@@ -253,6 +249,63 @@ test('On-Farm Integration 8: Three-layer context preservation and global filter 
   selectedEstate.value = 'ALL'
   setCutoffPeriod(9, false)
   assert.equal(kpiSummary.value.actualYtd, initialActual)
+})
+
+test('On-Farm Integration 8b: Analysis range is staged, applied globally, and clamped by cut-off', async () => {
+  if (!hasReferenceWb) return
+
+  const mockStorage = createMockStorage()
+  ;(globalThis as any).window = { localStorage: mockStorage }
+
+  const store = useOnFarmStore()
+  store.resetOnFarmData()
+  const buf = fs.readFileSync(WB_PATH).buffer
+  const parseResult = await parseOnFarmWorkbook(buf, 2026)
+  store.applyParsedData(parseResult, 'LM 19 Biaya Investasi Tanpok 2026.xlsx')
+
+  const {
+    analysisRangePreset,
+    analysisRangeStartMonth,
+    analysisRangeEndMonth,
+    draftAnalysisRangePreset,
+    draftAnalysisRangeStartMonth,
+    draftAnalysisRangeEndMonth,
+    filteredTransactionsRange,
+    kpiSummary,
+    monthlyTrend,
+    applyAnalysisRange,
+    setCutoffPeriod,
+  } = useOnFarmData()
+
+  const defaultActual = kpiSummary.value.actualYtd
+  assert.deepEqual([analysisRangeStartMonth.value, analysisRangeEndMonth.value], [1, 9])
+
+  // Draft changes do not update the committed data scope before Terapkan.
+  draftAnalysisRangePreset.value = 'q1'
+  draftAnalysisRangeStartMonth.value = 1
+  draftAnalysisRangeEndMonth.value = 3
+  assert.equal(kpiSummary.value.actualYtd, defaultActual)
+
+  applyAnalysisRange()
+  assert.equal(analysisRangePreset.value, 'q1')
+  assert.deepEqual([analysisRangeStartMonth.value, analysisRangeEndMonth.value], [1, 3])
+  assert.ok(filteredTransactionsRange.value.every((tx) => tx.period >= 1 && tx.period <= 3))
+  assert.equal(monthlyTrend.value.length, 3)
+  assert.ok(kpiSummary.value.actualYtd <= defaultActual)
+
+  // A custom range applies the same month boundaries to subsequent consumers.
+  draftAnalysisRangePreset.value = 'custom'
+  draftAnalysisRangeStartMonth.value = 4
+  draftAnalysisRangeEndMonth.value = 6
+  applyAnalysisRange()
+  assert.deepEqual([analysisRangeStartMonth.value, analysisRangeEndMonth.value], [4, 6])
+  assert.ok(filteredTransactionsRange.value.every((tx) => tx.period >= 4 && tx.period <= 6))
+  assert.deepEqual(monthlyTrend.value.map((month) => month.period), [4, 5, 6])
+
+  // Lowering the availability cut-off clamps both active and staged analysis ranges.
+  setCutoffPeriod(5, true)
+  assert.ok(analysisRangeEndMonth.value <= 5)
+  assert.ok(draftAnalysisRangeEndMonth.value <= 5)
 })
 
 test('On-Farm Integration 9: Project Summary Drawer honest data states and project transaction focus', async () => {
