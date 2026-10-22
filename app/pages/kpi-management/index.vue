@@ -1,5 +1,6 @@
 ﻿<script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
+import { formatNumberCompact } from '~/utils/formatters'
 import {
   useKpiManagement,
   type KpiConfig,
@@ -167,13 +168,10 @@ const {
 
 function formatNumberValue(val: number | null | undefined, fmt: KpiConfig['numberFormat']): string {
   if (val == null) return '—'
-  if (fmt === 'percent') return `${val.toFixed(1)}%`
+  if (fmt === 'percent') return `${val.toFixed(1).replace('.', ',')}%`
   if (fmt === 'decimal_1') return val.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
   if (fmt === 'integer') return Math.round(val).toLocaleString('id-ID')
-  // compact format
-  if (Math.abs(val) >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}M`
-  if (Math.abs(val) >= 1_000) return `${(val / 1_000).toFixed(1)}K`
-  return val.toLocaleString('id-ID', { maximumFractionDigits: 1 })
+  return formatNumberCompact(val)
 }
 
 const livePreviewData = computed(() => {

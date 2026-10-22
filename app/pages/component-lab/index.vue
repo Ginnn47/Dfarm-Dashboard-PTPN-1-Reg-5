@@ -78,10 +78,7 @@ const stateOptions = [
     <!-- SECTION 2: FILTERS -->
     <section>
       <div class="mb-4"><p class="text-sm font-semibold text-sky-700">02 / FILTERS</p><h2 class="text-xl font-bold text-slate-900">Local fixture filters</h2></div>
-      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <DashboardProdFilterBar v-model="filters" :tahun-options="[{ value: '2025', label: '2025 (konteks nama workbook)' }]" :komoditas-options="commodityOptions" :kebun-options="estateOptions" :afdeling-options="afdelingOptions" :tahun-tanam-options="plantingYearOptions" show-tahun-tanam />
-        <p class="mt-3 text-xs text-slate-500">Filter afdeling terikat pada blok kebun dan tahun tanam. Semua filter berjalan secara lokal.</p>
-      </div>
+      <DashboardProdProductionFilterBar v-model="filters" :tahun-options="[{ value: '2025', label: '2025 (konteks nama workbook)' }]" :komoditas-options="commodityOptions" :kebun-options="estateOptions" :afdeling-options="afdelingOptions" :tahun-tanam-options="plantingYearOptions" show-tahun-tanam />
     </section>
 
     <!-- SECTION 3: CHARTS -->
@@ -111,7 +108,7 @@ const stateOptions = [
         <template #actions>
           <DashboardReusableViewLevelToggle v-model="labComparisonLevel" />
         </template>
-        <DashboardProdActualVsRKAPChart :data="labComparisonChartData" :view-level="labComparisonLevel" :max-items="12" />
+        <DashboardProdProductionActualVsRKAPChart :data="labComparisonChartData" :view-level="labComparisonLevel" :max-items="12" />
       </DashboardReusableChartCard>
 
       <DashboardReusableChartCard

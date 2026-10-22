@@ -1,5 +1,15 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed } from 'vue'
+import { formatNumberCompact } from '~/utils/formatters'
+import { HugeiconsIcon } from '@hugeicons/vue'
+import {
+  Analytics03Icon,
+  Settings05Icon,
+  DashboardSpeed01Icon,
+  BalanceScaleIcon,
+  Plant03Icon,
+  Coins01Icon,
+} from '@hugeicons/core-free-icons'
 
 const props = defineProps<{
   label: string
@@ -19,31 +29,35 @@ const props = defineProps<{
 }>()
 
 const resolvedIcon = computed(() => {
-  if (props.icon) return props.icon
+  if (props.icon && typeof props.icon !== 'string') return props.icon
+  const iconKey = (typeof props.icon === 'string' ? props.icon : '').toLowerCase()
+  if (iconKey === 'trend' || iconKey === 'analytics') return Analytics03Icon
+  if (iconKey === 'target' || iconKey === 'settings') return Settings05Icon
+  if (iconKey === 'achievement' || iconKey === 'speed') return DashboardSpeed01Icon
+  if (iconKey === 'variance') return BalanceScaleIcon
+  if (iconKey === 'sprout' || iconKey === 'plant') return Plant03Icon
+  if (iconKey === 'coins') return Coins01Icon
+
   const l = props.label.toLowerCase()
-  if (l.includes('total') || l.includes('tren') || l.includes('realisasi')) return 'analytics'
-  if (l.includes('rkap') || l.includes('target')) return 'settings'
-  if (l.includes('pencapaian') || l.includes('achievement') || l.includes('serapan')) return 'speed'
-  if (l.includes('selisih') || l.includes('variance') || l.includes('deviasi')) return 'variance'
-  if (l.includes('protas') || l.includes('produktivitas')) return 'plant'
-  if (l.includes('pagu') || l.includes('anggaran') || l.includes('tahunan')) return 'coins'
+  if (l.includes('total') || l.includes('tren') || l.includes('realisasi')) return Analytics03Icon
+  if (l.includes('rkap') || l.includes('target')) return Settings05Icon
+  if (l.includes('pencapaian') || l.includes('achievement') || l.includes('serapan')) return DashboardSpeed01Icon
+  if (l.includes('selisih') || l.includes('variance') || l.includes('deviasi')) return BalanceScaleIcon
+  if (l.includes('protas') || l.includes('produktivitas')) return Plant03Icon
+  if (l.includes('pagu') || l.includes('anggaran') || l.includes('tahunan')) return Coins01Icon
   return undefined
 })
 
 const formattedValue = computed(() => {
   if (props.value == null) return '—'
   if (typeof props.value === 'number') {
-    if (Math.abs(props.value) >= 1_000_000) {
-      return `${(props.value / 1_000_000).toFixed(1)}M`
+    if (props.customFormatter) {
+      return props.customFormatter(props.value)
     }
-    if (Math.abs(props.value) >= 1_000) {
-      return `${(props.value / 1_000).toFixed(1)}K`
-    }
-    return props.value.toLocaleString('id-ID', { maximumFractionDigits: 1 })
+    return formatNumberCompact(props.value)
   }
   return props.value
 })
-
 const trendClasses = computed(() => {
   if (props.trend == null) return ''
   return props.trend >= 0 ? 'text-emerald-600' : 'text-rose-600'
@@ -103,9 +117,8 @@ const resolvedIconColor = computed(() => {
         </p>
 
         <div v-if="resolvedIcon" class="shrink-0 flex items-center justify-center">
-          <DashboardReusableDashboardIcon
-            :icon="typeof resolvedIcon !== 'string' ? resolvedIcon : undefined"
-            :name="typeof resolvedIcon === 'string' ? resolvedIcon : undefined"
+          <HugeiconsIcon
+            :icon="resolvedIcon"
             :size="22"
             :stroke-width="2.2"
             :class="resolvedIconColor"

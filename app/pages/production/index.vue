@@ -2,21 +2,21 @@
 import {
   Plant03Icon,
   Leaf01Icon,
-  Upload02Icon,
   AutoConversationsIcon,
-  DashboardSpeed01Icon,
   City02Icon,
-  Analytics03Icon,
   Activity04Icon,
-  Settings05Icon,
   DatabaseSearchIcon,
-  BalanceScaleIcon,
+  BoxesIcon,
+  MoneyBag02Icon,
+  Target01Icon,
+  GitCompareIcon,
   TrendingUpIcon,
   AlertCircleIcon,
   Chart02Icon,
   Calendar03Icon,
 } from '@hugeicons/core-free-icons'
 import { computed, ref } from 'vue'
+import { formatNumberCompact } from '~/utils/formatters'
 import {
   productionMonthOptions,
   productionYearOptions,
@@ -27,7 +27,7 @@ import {
 useHead({ title: 'Production Monitoring | DFARM' })
 
 const filters = ref<ProductionDashboardFilters>({
-  tahun: '2025',
+  tahun: '',
   bulan: '',
   rentangPreset: 'ytd',
   bulanAwal: '1',
@@ -76,7 +76,7 @@ const productionRangeLabel = computed(() => {
 })
 
 function applyProductionFilters() {
-  filters.value = { ...draftFilters.value }
+  filters.value = { ...filters.value }
 }
 
 function resetProductionFilters() {
@@ -130,9 +130,7 @@ const tableDescription = computed(() =>
 
 function formatCompact(value: number | null | undefined) {
   if (value == null) return 'Tidak tersedia'
-  if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
-  if (Math.abs(value) >= 1_000) return `${(value / 1_000).toFixed(1)}K`
-  return value.toLocaleString('id-ID', { maximumFractionDigits: 1 })
+  return formatNumberCompact(value)
 }
 </script>
 
@@ -224,27 +222,19 @@ function formatCompact(value: number | null | undefined) {
 
     <!-- FULL PHASE 2.6 DASHBOARD (RENDERED WHEN SOURCE IS AVAILABLE) -->
     <template v-else>
-      <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5" aria-label="Dashboard filters">
-        <div class="mb-3 flex items-center justify-between gap-4">
-          <div>
-            <p class="text-sm font-semibold text-slate-800">Filter analisis</p>
-            <p class="text-xs text-slate-500">Perubahan filter diterapkan ke seluruh ringkasan dan visualisasi.</p>
-          </div>
-          <p class="hidden text-xs text-slate-500 sm:block">{{ filteredRecords.length.toLocaleString('id-ID') }} record detail</p>
-        </div>
-        <DashboardProdFilterBar
-          v-model="draftFilters"
-          :tahun-options="yearOptions"
-          :bulan-options="productionMonthOptions"
-          :komoditas-options="commodityOptions"
-          :kebun-options="estateOptions"
-          :afdeling-options="afdelingOptions"
-          :tahun-tanam-options="plantingYearOptions"
-          show-tahun-tanam
-          @apply="applyProductionFilters"
-          @reset="resetProductionFilters"
-        />
-      </section>
+      <DashboardProdProductionFilterBar
+        v-model="filters"
+        :tahun-options="yearOptions"
+        :bulan-options="productionMonthOptions"
+        :komoditas-options="commodityOptions"
+        :kebun-options="estateOptions"
+        :afdeling-options="afdelingOptions"
+        :tahun-tanam-options="plantingYearOptions"
+        :record-count="filteredRecords.length"
+        show-tahun-tanam
+        @apply="applyProductionFilters"
+        @reset="resetProductionFilters"
+      />
 
       <section aria-labelledby="metric-summary">
         <div class="mb-4 flex items-end justify-between gap-4">
@@ -252,11 +242,11 @@ function formatCompact(value: number | null | undefined) {
           <p class="text-xs font-medium text-slate-500">Rentang: {{ productionRangeLabel }} {{ filters.tahun || '(Semua Tahun)' }}</p>
         </div>
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          <DashboardReusableMetricCard label="Total Produksi" :icon="Analytics03Icon" tone="emerald" :value="metrics.totalActual" :trend="rkapDifferencePercent" trend-label="vs RKAP" :status="metrics.variance != null && metrics.variance >= 0 ? 'positive' : 'negative'" context="Realisasi pada konteks filter" />
-          <DashboardReusableMetricCard label="RKAP Produksi" :icon="Settings05Icon" tone="emerald" :value="metrics.totalRkap" status="neutral" context="Rencana pada konteks yang sama" />
-          <DashboardReusableMetricCard label="Pencapaian" :icon="DashboardSpeed01Icon" tone="emerald" :value="metrics.achievement == null ? null : `${metrics.achievement.toFixed(1)}%`" :empty="metrics.achievement == null" :status="(metrics.achievement || 0) >= 100 ? 'positive' : 'warning'" context="Realisasi / RKAP" />
-          <DashboardReusableMetricCard label="Selisih" :icon="BalanceScaleIcon" tone="emerald" :value="metrics.variance" :empty="metrics.variance == null" :status="(metrics.variance || 0) >= 0 ? 'positive' : 'negative'" context="Realisasi - RKAP" />
-          <DashboardReusableMetricCard label="Produktivitas (Protas)" :icon="Plant03Icon" tone="emerald" :value="metrics.productivity" :empty="metrics.productivity == null" status="positive" context="Rasio realisasi / luas; satuan sumber tidak tercantum" />
+          <DashboardReusableMetricCard label="Total Produksi" :icon="BoxesIcon" tone="emerald" :value="metrics.totalActual" unit="Kg" :trend="rkapDifferencePercent" trend-label="vs RKAP" :status="metrics.variance != null && metrics.variance >= 0 ? 'positive' : 'negative'" context="Realisasi pada konteks filter" />
+          <DashboardReusableMetricCard label="RKAP Produksi" :icon="MoneyBag02Icon" tone="emerald" :value="metrics.totalRkap" unit="Kg" status="neutral" context="Rencana pada konteks yang sama" />
+          <DashboardReusableMetricCard label="Pencapaian" :icon="Target01Icon" tone="emerald" :value="metrics.achievement == null ? null : `${metrics.achievement.toFixed(1).replace('.', ',')}%`" :empty="metrics.achievement == null" :status="(metrics.achievement || 0) >= 100 ? 'positive' : 'warning'" context="Realisasi / RKAP" />
+          <DashboardReusableMetricCard label="Selisih" :icon="GitCompareIcon" tone="emerald" :value="metrics.variance" unit="Kg" :empty="metrics.variance == null" :status="(metrics.variance || 0) >= 0 ? 'positive' : 'negative'" context="Realisasi - RKAP" />
+          <DashboardReusableMetricCard label="Produktivitas (Protas)" :icon="Plant03Icon" tone="emerald" :value="metrics.productivity" unit="Kg/Ha" :empty="metrics.productivity == null" status="positive" context="Rasio realisasi / luas; satuan sumber tidak tercantum" />
         </div>
       </section>
            <!-- Production Data Stream as passive attention layer -->
@@ -312,7 +302,7 @@ function formatCompact(value: number | null | undefined) {
           <template #actions>
             <DashboardReusableViewLevelToggle v-model="comparisonChartLevel" />
           </template>
-          <DashboardProdActualVsRKAPChart
+          <DashboardProdProductionActualVsRKAPChart
             v-if="comparisonAvailable"
             :data="currentComparisonChartData"
             :view-level="comparisonChartLevel"

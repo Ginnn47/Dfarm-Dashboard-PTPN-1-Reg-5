@@ -1,10 +1,7 @@
 ﻿<script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import {
-  FilterIcon,
-  Calendar03Icon,
-  Plant03Icon,
-  Layers01Icon,
+  FilterEditIcon,
   Search01Icon,
   ArrowDown01Icon,
   CheckmarkCircle02Icon,
@@ -120,9 +117,9 @@ const daysInActiveMonth = computed(() => {
     <!-- Top row: Filter Title & Data Source Provenance Badge -->
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-2.5 text-slate-800">
-        <HugeiconsIcon :icon="FilterIcon" :size="20" class="text-emerald-600" />
+        <HugeiconsIcon :icon="FilterEditIcon" :size="20" class="text-emerald-600" />
         <h2 class="text-base font-bold tracking-tight text-slate-800">
-          Filter Parameter Lead Measure
+          Filter Parameter
         </h2>
       </div>
 
@@ -149,10 +146,7 @@ const daysInActiveMonth = computed(() => {
     <div class="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-12 items-end">
       <!-- 1. Estate Filter — Popup Menu (lg:col-span-3) -->
       <div class="relative space-y-1.5 lg:col-span-3">
-        <label class="block text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-          <HugeiconsIcon :icon="Plant03Icon" :size="14" class="text-slate-400" />
-          <span>Unit Kebun</span>
-        </label>
+        <label class="block text-xs font-semibold text-slate-600">Unit Kebun</label>
 
         <!-- Trigger Button -->
         <button
@@ -227,10 +221,7 @@ const daysInActiveMonth = computed(() => {
 
       <!-- 2. Period Mode — Segmented Switch (lg:col-span-3) -->
       <div class="space-y-1.5 lg:col-span-3">
-        <label class="block text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-          <HugeiconsIcon :icon="Layers01Icon" :size="14" class="text-slate-400" />
-          <span>Mode Periode</span>
-        </label>
+        <label class="block text-xs font-semibold text-slate-600">Mode Periode</label>
         <div class="flex items-center rounded-2xl border border-slate-200 bg-slate-100 p-1">
           <button
             type="button"
@@ -257,10 +248,7 @@ const daysInActiveMonth = computed(() => {
 
       <!-- 3. Focus Month — Twelve Interactive Chips (lg:col-span-4) -->
       <div class="space-y-1.5 lg:col-span-4">
-        <label class="block text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-          <HugeiconsIcon :icon="Calendar03Icon" :size="14" class="text-slate-400" />
-          <span>Bulan Fokus</span>
-        </label>
+        <label class="block text-xs font-semibold text-slate-600">Bulan Fokus</label>
         <!-- 2 rows x 6 columns chip layout matching reference image -->
         <div class="grid grid-cols-6 gap-1.5">
           <button
@@ -280,10 +268,7 @@ const daysInActiveMonth = computed(() => {
 
       <!-- 4. Reporting Year (lg:col-span-2) -->
       <div class="space-y-1.5 lg:col-span-2">
-        <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-          <HugeiconsIcon :icon="Calendar03Icon" :size="13" class="text-slate-400" />
-          <span>TAHUN PELAPORAN</span>
-        </span>
+        <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-500">TAHUN PELAPORAN</span>
         <div class="flex items-center gap-3 pt-0.5">
           <span class="text-2xl font-black text-slate-900 tracking-tight font-mono">
             {{ selectedYear }}
@@ -300,8 +285,7 @@ const daysInActiveMonth = computed(() => {
       v-if="viewMode === 'daily'"
       class="pt-3 border-t border-slate-100 flex flex-wrap items-center gap-3"
     >
-      <div class="flex items-center gap-2 text-xs font-semibold text-slate-600 shrink-0">
-        <HugeiconsIcon :icon="Calendar03Icon" :size="14" class="text-emerald-600" />
+      <div class="text-xs font-semibold text-slate-600 shrink-0">
         <span>
           Pilih Tanggal Pengamatan ({{ twelveMonths.find((m) => m.index === selectedMonth)?.fullName || '' }} {{ selectedYear }}):
         </span>

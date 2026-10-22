@@ -1,10 +1,10 @@
 ﻿<script setup lang="ts">
 import {
-  Analytics03Icon,
-  Settings05Icon,
-  Coins01Icon,
-  BalanceScaleIcon,
-  DashboardSpeed01Icon,
+  ThreeDViewIcon,
+  Target01Icon,
+  AnalyticsUpIcon,
+  GitCompareIcon,
+  MoneyExchange03Icon,
 } from '@hugeicons/core-free-icons'
 import { formatRupiahCompact, formatRupiahFull, formatPercent } from '~/utils/formatters'
 import type { OnFarmKpiSummary } from '~/data/onfarm/types'
@@ -21,7 +21,7 @@ defineProps<{
       <!-- 1. REALISASI SAP (rentang aktif) - Blue Accent -->
       <DashboardReusableMetricCard
         label="REALISASI SAP"
-        :icon="Analytics03Icon"
+        :icon="ThreeDViewIcon"
         accent="border-t-blue-600"
         icon-color="text-blue-600"
         :value="formatRupiahCompact(kpis.actualYtd)"
@@ -32,7 +32,7 @@ defineProps<{
       <!-- 2. TARGET RKAP (rentang aktif) - Amber/Orange Accent -->
       <DashboardReusableMetricCard
         label="TARGET RKAP"
-        :icon="Settings05Icon"
+        :icon="Target01Icon"
         accent="border-t-amber-500"
         icon-color="text-amber-500"
         :value="formatRupiahCompact(kpis.rkapYtd)"
@@ -43,7 +43,7 @@ defineProps<{
       <!-- 3. PAGU TAHUNAN RKAP - Blue Accent -->
       <DashboardReusableMetricCard
         label="PAGU TAHUNAN RKAP"
-        :icon="Coins01Icon"
+        :icon="AnalyticsUpIcon"
         accent="border-t-blue-500"
         icon-color="text-blue-500"
         :value="formatRupiahCompact(kpis.annualRkap)"
@@ -54,7 +54,7 @@ defineProps<{
       <!-- 4. SELISIH / DEVIASI - Red/Rose Accent -->
       <DashboardReusableMetricCard
         label="SELISIH / DEVIASI"
-        :icon="BalanceScaleIcon"
+        :icon="GitCompareIcon"
         accent="border-t-rose-500"
         icon-color="text-rose-500"
         :value="formatRupiahCompact(kpis.variance)"
@@ -65,7 +65,7 @@ defineProps<{
       <!-- 5. SERAPAN ANGGARAN - Green/Emerald Accent -->
       <DashboardReusableMetricCard
         label="SERAPAN ANGGARAN"
-        :icon="DashboardSpeed01Icon"
+        :icon="MoneyExchange03Icon"
         accent="border-t-emerald-600"
         icon-color="text-emerald-600"
         :value="formatPercent(kpis.absorptionYtd)"

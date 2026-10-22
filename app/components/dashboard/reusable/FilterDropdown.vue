@@ -14,7 +14,7 @@ const props = withDefaults(
     placeholder?: string
     disabled?: boolean
     compact?: boolean
-    tone?: 'default' | 'dark'
+    tone?: 'default' | 'emerald' | 'sky' | 'dark'
   }>(),
   {
     placeholder: 'Pilih...',
@@ -87,12 +87,14 @@ onUnmounted(() => {
     <button
       type="button"
       :disabled="disabled"
-      class="flex w-full items-center justify-between gap-2 rounded-lg text-left transition-colors focus:outline-none disabled:cursor-not-allowed"
+      class="flex w-full items-center justify-between gap-2 text-left transition-all focus:outline-none disabled:cursor-not-allowed shadow-2xs"
       :class="[
-        compact ? 'h-8 px-2.5 text-xs' : 'h-9 px-3 text-sm',
+        compact ? 'h-8 px-2.5 text-xs rounded-lg' : 'h-9 px-3.5 text-xs font-bold rounded-xl',
         tone === 'dark'
           ? 'border border-emerald-800/60 bg-[#012714] text-[#E4C568] hover:border-emerald-700/80 focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40 disabled:bg-emerald-950/40 disabled:text-emerald-700'
-          : 'border border-slate-200 bg-white text-slate-800 hover:border-slate-300 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 disabled:bg-slate-50 disabled:text-slate-400'
+          : tone === 'sky'
+            ? 'border border-slate-200 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-50/50 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 disabled:bg-slate-50 disabled:text-slate-400 cursor-pointer'
+            : 'border border-slate-200 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-50/50 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 disabled:bg-slate-50 disabled:text-slate-400 cursor-pointer'
       ]"
       aria-haspopup="listbox"
       :aria-expanded="isOpen"
@@ -101,8 +103,8 @@ onUnmounted(() => {
       <span
         class="truncate"
         :class="{
-          'text-slate-400': tone !== 'dark' && !selectedOption && modelValue === '',
-          'text-[#E4C568]/50': tone === 'dark' && !selectedOption && modelValue === '',
+          'text-slate-400 font-normal': tone !== 'dark' && !selectedOption && modelValue === '',
+          'text-[#E4C568]/50 font-normal': tone === 'dark' && !selectedOption && modelValue === '',
         }"
       >
         {{ displayLabel }}
@@ -111,16 +113,18 @@ onUnmounted(() => {
       <svg
         class="shrink-0 transition-transform duration-200"
         :class="[
-          compact ? 'size-3.5' : 'size-4',
+          compact ? 'size-3' : 'size-3.5',
           isOpen ? 'rotate-180' : '',
           tone === 'dark'
             ? (isOpen ? 'text-amber-300' : 'text-[#E4C568]/70')
-            : (isOpen ? 'text-sky-600' : 'text-slate-400')
+            : tone === 'sky'
+              ? (isOpen ? 'text-sky-600' : 'text-slate-400')
+              : (isOpen ? 'text-emerald-600' : 'text-slate-400')
         ]"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
-        stroke-width="2"
+        stroke-width="2.5"
       >
         <path
           stroke-linecap="round"
@@ -133,7 +137,7 @@ onUnmounted(() => {
     <!-- Dropdown Menu Panel -->
     <div
       v-if="isOpen"
-      class="dropdown-scroll absolute left-0 top-full z-50 mt-1 flex max-h-64 w-full min-w-[170px] flex-col gap-0.5 overflow-y-auto rounded-xl border border-slate-200/90 bg-white p-1 shadow-xl ring-1 ring-black/5"
+      class="dropdown-scroll absolute left-0 top-full z-50 mt-1.5 flex max-h-64 w-full min-w-[170px] flex-col gap-0.5 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl ring-1 ring-black/5"
       role="listbox"
     >
       <button
@@ -143,28 +147,36 @@ onUnmounted(() => {
         role="option"
         :aria-selected="opt.value === modelValue"
         :disabled="opt.disabled"
-        class="radio-option group relative flex w-full items-center justify-between rounded-lg px-3 py-2 text-left transition-colors"
+        class="radio-option group relative flex w-full items-center justify-between rounded-xl px-3 py-2 text-left transition-colors cursor-pointer"
         :class="[
-          compact ? 'text-xs' : 'text-xs sm:text-sm',
+          compact ? 'text-xs' : 'text-xs font-semibold',
           opt.value === modelValue
-            ? 'active-option bg-[#eaf2fd] font-semibold text-sky-900'
-            : 'text-slate-700 hover:bg-slate-100/70 hover:text-slate-900',
+            ? (tone === 'dark'
+                ? 'active-option active-dark bg-emerald-900/60 font-bold text-amber-300'
+                : tone === 'sky'
+                  ? 'active-option active-sky bg-sky-50 font-bold text-sky-900'
+                  : 'active-option active-emerald bg-emerald-50 font-bold text-emerald-800')
+            : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900',
           opt.disabled
             ? 'cursor-not-allowed opacity-40'
-            : 'cursor-pointer',
+            : '',
         ]"
         @click="select(opt.value)"
       >
-        <span class="truncate pl-1.5">
+        <span class="truncate pl-1">
           {{ opt.label }}
         </span>
 
-        <!-- Radio Circle Indicator -->
+        <!-- Radio Indicator -->
         <span
           class="flex size-3.5 shrink-0 items-center justify-center rounded-full transition-colors"
           :class="
             opt.value === modelValue
-              ? 'border-2 border-sky-600 bg-sky-600'
+              ? (tone === 'dark'
+                  ? 'border-2 border-amber-400 bg-amber-400'
+                  : tone === 'sky'
+                    ? 'border-2 border-sky-600 bg-sky-600'
+                    : 'border-2 border-emerald-600 bg-emerald-600')
               : 'border border-slate-300 bg-white group-hover:border-slate-400'
           "
         >
@@ -189,24 +201,32 @@ onUnmounted(() => {
   position: absolute;
   left: 0;
   top: 50%;
-  width: 3.5px;
-  height: 65%;
+  width: 3px;
+  height: 60%;
   transform: translateY(-50%);
-  background-color: #0284c7;
   border-radius: 0 4px 4px 0;
   opacity: 0;
   transition: opacity 0.15s ease;
 }
 
-.radio-option.active-option::before,
-.radio-option:focus-visible::before {
+.radio-option.active-option::before {
   opacity: 1;
+}
+
+.radio-option.active-sky::before {
+  background-color: #0284c7;
+}
+
+.radio-option.active-emerald::before {
+  background-color: #059669;
+}
+
+.radio-option.active-dark::before {
+  background-color: #f59e0b;
 }
 
 .radio-option:focus-visible {
   outline: none;
-  background-color: #eaf2fd;
-  color: #0c4a6e;
 }
 
 /* =========================================================

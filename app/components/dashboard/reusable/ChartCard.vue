@@ -1,5 +1,9 @@
-﻿<script setup lang="ts">
-defineProps<{
+<script setup lang="ts">
+import { computed } from 'vue'
+import { HugeiconsIcon } from '@hugeicons/vue'
+import { Chart02Icon, Analytics03Icon } from '@hugeicons/core-free-icons'
+
+const props = defineProps<{
   title: string
   description?: string
   icon?: any
@@ -15,6 +19,15 @@ defineProps<{
 defineEmits<{
   retry: []
 }>()
+
+const resolvedIcon = computed(() => {
+  if (!props.icon) return undefined
+  if (typeof props.icon !== 'string') return props.icon
+  const key = props.icon.toLowerCase()
+  if (key === 'chart' || key === 'trend') return Chart02Icon
+  if (key === 'analytics') return Analytics03Icon
+  return undefined
+})
 </script>
 
 <template>
@@ -22,10 +35,9 @@ defineEmits<{
     <div class="flex min-h-[72px] items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
       <div class="flex min-w-0 items-start gap-3.5">
         <!-- Minimalist 32px Bold Icon (No BG container) -->
-        <div v-if="icon" class="shrink-0 flex items-center justify-center pt-0.5">
-          <DashboardReusableDashboardIcon
-            :icon="typeof icon !== 'string' ? icon : undefined"
-            :name="typeof icon === 'string' ? icon : undefined"
+        <div v-if="resolvedIcon" class="shrink-0 flex items-center justify-center pt-0.5">
+          <HugeiconsIcon
+            :icon="resolvedIcon"
             :size="32"
             :stroke-width="2.2"
             :class="{

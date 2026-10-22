@@ -14,8 +14,10 @@ const props = withDefaults(defineProps<{
   endMonth: number
   maxMonth: number
   disabled?: boolean
+  tone?: 'emerald' | 'sky'
 }>(), {
   disabled: false,
+  tone: 'emerald',
 })
 
 const emit = defineEmits<{
@@ -61,7 +63,8 @@ const rangeFill = computed(() => {
   const denominator = Math.max(1, maxPeriod.value - 1)
   const start = ((props.startMonth - 1) / denominator) * 100
   const end = ((props.endMonth - 1) / denominator) * 100
-  return `linear-gradient(to right, #e2e8f0 ${start}%, #0284c7 ${start}%, #0284c7 ${end}%, #e2e8f0 ${end}%)`
+  const accent = props.tone === 'sky' ? '#0284c7' : '#059669'
+  return `linear-gradient(to right, #e2e8f0 ${start}%, ${accent} ${start}%, ${accent} ${end}%, #e2e8f0 ${end}%)`
 })
 
 function selectPreset(preset: typeof presets.value[number]) {
@@ -99,21 +102,36 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside))
   <div ref="pickerRef" class="relative w-full" @keydown="handleKeydown">
     <button
       type="button"
-      class="flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-sky-300 bg-white px-3 text-left text-xs font-medium text-slate-800 shadow-2xs transition-colors hover:border-sky-400 focus:border-sky-600 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+      class="flex h-9 w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-left text-xs font-bold text-slate-800 shadow-2xs transition-all hover:border-slate-300 hover:bg-slate-50/50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 cursor-pointer"
+      :class="tone === 'sky'
+        ? 'focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20'
+        : 'focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20'"
       :disabled="disabled"
       aria-haspopup="dialog"
       :aria-expanded="isOpen"
       @click="isOpen = !isOpen"
     >
       <span class="truncate">{{ selectedLabel }}</span>
-      <svg class="size-4 shrink-0 text-sky-600 transition-transform" :class="isOpen ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <svg
+        class="size-3.5 shrink-0 transition-transform duration-200"
+        :class="[
+          isOpen ? 'rotate-180' : '',
+          tone === 'sky'
+            ? (isOpen ? 'text-sky-600' : 'text-slate-400')
+            : (isOpen ? 'text-emerald-600' : 'text-slate-400')
+        ]"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        stroke-width="2.5"
+      >
         <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
       </svg>
     </button>
 
     <div
       v-if="isOpen"
-      class="absolute left-0 top-full z-50 mt-1 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-slate-200 bg-white p-3 shadow-xl ring-1 ring-black/5"
+      class="absolute left-0 top-full z-50 mt-1.5 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xl ring-1 ring-black/5"
       role="dialog"
       aria-label="Pilih rentang analisis"
     >
@@ -123,8 +141,12 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside))
           :key="option.value"
           type="button"
           :disabled="option.disabled"
-          class="h-8 rounded-md border px-2 text-[11px] font-semibold transition-colors disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300"
-          :class="preset === option.value ? 'border-sky-500 bg-sky-50 text-sky-800 ring-1 ring-sky-200' : 'border-slate-200 bg-white text-slate-600 hover:border-sky-300 hover:bg-sky-50'"
+          class="h-8 rounded-xl border px-2 text-[11px] font-semibold transition-all cursor-pointer disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300"
+          :class="preset === option.value
+            ? (tone === 'sky'
+                ? 'border-sky-600 bg-sky-600 text-white shadow-2xs font-bold'
+                : 'border-emerald-600 bg-emerald-600 text-white shadow-2xs font-bold')
+            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'"
           @click="selectPreset(option)"
         >
           {{ option.label }}
@@ -134,11 +156,16 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside))
       <div v-if="preset === 'custom'" class="mt-3 border-t border-slate-100 pt-3">
         <div class="flex items-center justify-between gap-3">
           <span class="text-[11px] font-bold text-slate-700">Pilih Periode Kustom</span>
-          <span class="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
+          <span
+            class="rounded-full px-2 py-0.5 text-[10px] font-semibold border"
+            :class="tone === 'sky'
+              ? 'bg-sky-50 border-sky-200 text-sky-800'
+              : 'bg-emerald-50 border-emerald-200 text-emerald-800'"
+          >
             {{ MONTH_NAMES[startMonth - 1] }}–{{ MONTH_NAMES[endMonth - 1] }}
           </span>
         </div>
-        <div class="mt-4 px-1">
+        <div class="mt-4 px-1" :style="{ '--range-thumb-color': tone === 'sky' ? '#0284c7' : '#059669' }">
           <div class="relative h-7">
             <div class="absolute inset-x-0 top-3 h-1 rounded-full" :style="{ background: rangeFill }" />
             <input
@@ -176,10 +203,32 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside))
 
 <style scoped>
 .range-thumb { pointer-events: none; }
-.range-thumb::-webkit-slider-thumb { appearance: none; pointer-events: auto; height: 16px; width: 16px; border: 2px solid #ffffff; border-radius: 9999px; background: #0284c7; box-shadow: 0 1px 4px rgb(15 23 42 / 0.28); cursor: grab; }
-.range-thumb::-moz-range-thumb { pointer-events: auto; height: 13px; width: 13px; border: 2px solid #ffffff; border-radius: 9999px; background: #0284c7; box-shadow: 0 1px 4px rgb(15 23 42 / 0.28); cursor: grab; }
+.range-thumb::-webkit-slider-thumb {
+  appearance: none;
+  pointer-events: auto;
+  height: 16px;
+  width: 16px;
+  border: 2px solid #ffffff;
+  border-radius: 9999px;
+  background: var(--range-thumb-color, #059669);
+  box-shadow: 0 1px 4px rgb(15 23 42 / 0.28);
+  cursor: grab;
+}
+.range-thumb::-moz-range-thumb {
+  pointer-events: auto;
+  height: 13px;
+  width: 13px;
+  border: 2px solid #ffffff;
+  border-radius: 9999px;
+  background: var(--range-thumb-color, #059669);
+  box-shadow: 0 1px 4px rgb(15 23 42 / 0.28);
+  cursor: grab;
+}
 .range-start { z-index: 2; }
 .range-end { z-index: 3; }
 .range-thumb:focus-visible { outline: none; }
-.range-thumb:focus-visible::-webkit-slider-thumb { outline: 2px solid #0ea5e9; outline-offset: 2px; }
+.range-thumb:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
 </style>

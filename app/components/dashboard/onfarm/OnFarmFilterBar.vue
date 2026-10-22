@@ -1,5 +1,7 @@
 ﻿<script setup lang="ts">
 import { computed } from 'vue'
+import { FilterEditIcon } from '@hugeicons/core-free-icons'
+import { HugeiconsIcon } from '@hugeicons/vue'
 import FilterDropdown from '../reusable/FilterDropdown.vue'
 import AnalysisRangePicker, { type AnalysisRangeSelection } from '../reusable/AnalysisRangePicker.vue'
 import type { OnFarmRangePreset } from '~/data/onfarm/types'
@@ -64,7 +66,10 @@ function updateAnalysisRange(value: AnalysisRangeSelection) {
 
 const estateOptions = computed(() => [
   { value: 'ALL', label: 'Semua Kebun' },
-  ...props.availableEstates.map((e) => ({ value: e, label: e })),
+  ...props.availableEstates.map((e) => ({
+    value: e,
+    label: e.replace(/^KEBUN\s+/i, '').trim().toUpperCase() || e,
+  })),
 ])
 
 const afdelingOptions = computed(() => [
@@ -106,77 +111,73 @@ const activeFilterCount = computed(() => {
 </script>
 
 <template>
-  <section aria-label="Filter Parameter Analisis" class="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs space-y-4">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <div class="flex items-center gap-3">
-        <span class="flex size-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
-          <svg class="size-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-          </svg>
-        </span>
-        <div>
-          <h2 class="text-sm font-bold text-slate-900">Filter Cakupan Data</h2>
-          <p class="text-xs text-slate-500">
-            {{ activeFilterCount > 0 ? `${activeFilterCount} filter aktif diterapkan` : 'Semua data investasi on-farm ditampilkan' }}
-          </p>
-        </div>
+  <section aria-label="Filter Parameter Analisis" class="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-2xs space-y-4">
+    <!-- Top row: Header with FilterEditIcon & Cut-off badge / Action buttons -->
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5 text-slate-800">
+        <HugeiconsIcon :icon="FilterEditIcon" :size="20" class="text-sky-600" />
+        <h2 class="text-base font-bold tracking-tight text-slate-800">
+          Filter Parameter
+        </h2>
       </div>
 
       <!-- Action buttons & Cut-off indicator -->
       <div class="flex flex-wrap items-center gap-2.5">
         <span
-          class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold border transition-colors"
-          :class="isManualCutoff ? 'bg-amber-50 text-amber-900 border-amber-300' : 'bg-sky-50 text-sky-800 border-sky-200'"
+          class="inline-flex items-center gap-2 rounded-full border px-3.5 py-1 text-xs font-semibold shadow-2xs"
+          :class="isManualCutoff ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-sky-200 bg-sky-50/70 text-sky-800'"
         >
-          <span class="size-1.5 rounded-full" :class="isManualCutoff ? 'bg-amber-600' : 'bg-sky-600'" />
-          Cut-off: s/d Bln {{ selectedPeriod }} · {{ isManualCutoff ? 'Manual Override' : 'Auto SAP' }}
+          <span class="size-2 rounded-full" :class="isManualCutoff ? 'bg-amber-500' : 'bg-sky-500'" />
+          <span>Cut-off: s/d Bln {{ selectedPeriod }} · {{ isManualCutoff ? 'Manual Override' : 'Auto SAP' }}</span>
         </span>
 
         <button
           v-if="isManualCutoff"
           type="button"
-          class="rounded-xl border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-100 transition-colors shadow-2xs"
+          class="flex h-8 items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 text-xs font-semibold text-amber-900 hover:bg-amber-100 transition-colors shadow-2xs cursor-pointer"
           @click="$emit('update:selectedPeriod', detectedPeriod)"
         >
-          ↺ Kembalikan ke Auto (Bln {{ detectedPeriod }})
+          ↺ Auto (Bln {{ detectedPeriod }})
+        </button>
+
+        <button
+          v-if="hasActiveFilters"
+          type="button"
+          class="flex h-8 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-800 cursor-pointer shadow-2xs"
+          @click="$emit('reset')"
+        >
+          <span class="text-slate-400">×</span>
+          Reset
         </button>
 
         <button
           type="button"
-          :disabled="!hasActiveFilters"
-          class="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed"
-          @click="$emit('reset')"
-        >
-          Reset Filter
-        </button>
-        <button
-          type="button"
-          class="rounded-xl bg-emerald-700 px-4 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800 transition-colors shadow-xs"
+          class="flex h-8 items-center gap-1.5 rounded-xl bg-sky-700 px-3.5 text-xs font-bold text-white shadow-2xs transition-colors hover:bg-sky-800 cursor-pointer"
           @click="$emit('apply')"
         >
-          Terapkan
+          ✓ Terapkan
         </button>
       </div>
     </div>
 
     <!-- Filter Dropdown Grid -->
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 border-t border-slate-100 pt-4">
-      <div>
-        <label class="block mb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+      <div class="space-y-1.5">
+        <label class="block text-xs font-semibold text-slate-600">
           Periode Cut-off
         </label>
-        <FilterDropdown
+        <FilterDropdown tone="sky"
           :model-value="String(selectedPeriod)"
           :options="periodOptions"
           @update:model-value="$emit('update:selectedPeriod', parseInt($event, 10))"
         />
       </div>
 
-      <div>
-        <label class="block mb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+      <div class="space-y-1.5">
+        <label class="block text-xs font-semibold text-slate-600">
           Rentang Analisis
         </label>
-        <AnalysisRangePicker
+        <AnalysisRangePicker tone="sky"
           :preset="draftAnalysisRangePreset"
           :start-month="draftAnalysisRangeStartMonth"
           :end-month="draftAnalysisRangeEndMonth"
@@ -188,44 +189,44 @@ const activeFilterCount = computed(() => {
         </p>
       </div>
 
-      <div>
-        <label class="block mb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+      <div class="space-y-1.5">
+        <label class="block text-xs font-semibold text-slate-600">
           Kebun
         </label>
-        <FilterDropdown
+        <FilterDropdown tone="sky"
           :model-value="selectedEstate"
           :options="estateOptions"
           @update:model-value="$emit('update:selectedEstate', $event)"
         />
       </div>
 
-      <div>
-        <label class="block mb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+      <div class="space-y-1.5">
+        <label class="block text-xs font-semibold text-slate-600">
           Afdeling
         </label>
-        <FilterDropdown
+        <FilterDropdown tone="sky"
           :model-value="selectedAfdeling"
           :options="afdelingOptions"
           @update:model-value="$emit('update:selectedAfdeling', $event)"
         />
       </div>
 
-      <div>
-        <label class="block mb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+      <div class="space-y-1.5">
+        <label class="block text-xs font-semibold text-slate-600">
           Komoditas
         </label>
-        <FilterDropdown
+        <FilterDropdown tone="sky"
           :model-value="selectedCommodity"
           :options="commodityOptions"
           @update:model-value="$emit('update:selectedCommodity', $event)"
         />
       </div>
 
-      <div>
-        <label class="block mb-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+      <div class="space-y-1.5">
+        <label class="block text-xs font-semibold text-slate-600">
           Fase Tanam
         </label>
-        <FilterDropdown
+        <FilterDropdown tone="sky"
           :model-value="selectedPhase"
           :options="phaseOptions"
           @update:model-value="$emit('update:selectedPhase', $event)"
@@ -236,27 +237,27 @@ const activeFilterCount = computed(() => {
     <!-- Active Filter Badges (Subtle Pill Bar) -->
     <div v-if="hasActiveFilters" class="flex flex-wrap items-center gap-2 pt-1 text-xs">
       <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Filter Aktif:</span>
-      <span v-if="selectedEstate !== 'ALL'" class="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
-        Kebun: <strong>{{ selectedEstate }}</strong>
+      <span v-if="selectedEstate !== 'ALL'" class="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
+        Kebun: <strong>{{ selectedEstate.replace(/^KEBUN\s+/i, '').trim().toUpperCase() }}</strong>
         <button type="button" class="text-slate-400 hover:text-slate-700 font-bold" @click="$emit('update:selectedEstate', 'ALL')">×</button>
       </span>
-      <span v-if="selectedAfdeling !== 'ALL'" class="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+      <span v-if="selectedAfdeling !== 'ALL'" class="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
         Afdeling: <strong>{{ selectedAfdeling }}</strong>
         <button type="button" class="text-slate-400 hover:text-slate-700 font-bold" @click="$emit('update:selectedAfdeling', 'ALL')">×</button>
       </span>
-      <span v-if="selectedCommodity !== 'ALL'" class="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+      <span v-if="selectedCommodity !== 'ALL'" class="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
         Komoditas: <strong>{{ selectedCommodity }}</strong>
         <button type="button" class="text-slate-400 hover:text-slate-700 font-bold" @click="$emit('update:selectedCommodity', 'ALL')">×</button>
       </span>
-      <span v-if="selectedPhase !== 'ALL'" class="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+      <span v-if="selectedPhase !== 'ALL'" class="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
         Fase: <strong>{{ selectedPhase }}</strong>
         <button type="button" class="text-slate-400 hover:text-slate-700 font-bold" @click="$emit('update:selectedPhase', 'ALL')">×</button>
       </span>
-      <span v-if="isManualCutoff" class="inline-flex items-center gap-1.5 rounded-md bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs text-amber-800">
+      <span v-if="isManualCutoff" class="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
         Manual Cut-Off: <strong>Bulan {{ selectedPeriod }}</strong>
         <button type="button" class="text-amber-600 hover:text-amber-900 font-bold" @click="$emit('update:selectedPeriod', detectedPeriod)">×</button>
       </span>
-      <span class="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs text-emerald-800">
+      <span class="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-xs font-semibold text-sky-800">
         Rentang Analisis: <strong>{{ analysisRangeLabel }}</strong>
       </span>
     </div>

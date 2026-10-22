@@ -92,6 +92,8 @@ const PREFIX_TITLES: Record<string, string> = {
 }
 
 const activeTab = ref<'summary' | 'accounting' | 'transactions'>('summary')
+const selectionType = ref<'group' | 'wbs'>('group')
+const selectedGroupKey = ref<string | null>(null)
 const selectedWbsElement = ref<string | null>(null)
 const wbsSearchQuery = ref('')
 const txSearchQuery = ref('')
@@ -366,16 +368,127 @@ const groupedWbsList = computed(() => {
   return Array.from(groupMap.values()).sort((a, b) => a.key.localeCompare(b.key))
 })
 
-// Auto-select first WBS if none selected
+// Active Selected Group
+const activeGroup = computed(() => {
+  if (!groupedWbsList.value.length) return null
+  if (selectedGroupKey.value) {
+    const found = groupedWbsList.value.find((g) => g.key === selectedGroupKey.value)
+    if (found) return found
+  }
+  return groupedWbsList.value[0] || null
+})
+
+// Selected WBS Information (for child mode)
+const selectedWbsInfo = computed(() => {
+  if (!selectedWbsElement.value) {
+    if (activeGroup.value && activeGroup.value.items.length) {
+      return activeGroup.value.items[0]
+    }
+    return wbsBreakdown.value[0] || null
+  }
+  return wbsBreakdown.value.find((w) => w.code === selectedWbsElement.value) || wbsBreakdown.value[0] || null
+})
+
+// Unified Inspector Data (Macro Group vs Micro Child WBS)
+const activeInspectorData = computed(() => {
+  const isGroup = selectionType.value === 'group'
+  const projectTotal = projectSummary.value.totalCost || 1
+
+  if (isGroup && activeGroup.value) {
+    const grp = activeGroup.value
+    const txs = projectTxList.value.filter((tx) => getWbsPrefix(tx) === grp.key)
+    const totalCost = grp.totalCost
+    const sharePercent = (totalCost / projectTotal) * 100
+
+    return {
+      type: 'group' as const,
+      isGroup: true,
+      badgeScope: 'KELOMPOK AKTIVITAS (LEVEL 1)',
+      badgeCount: `${grp.items.length} Sub-WBS Terkonsolidasi`,
+      code: grp.key,
+      suffix: grp.key,
+      fullCode: `Kelompok ${grp.key} · ${grp.items.length} Elemen WBS`,
+      titleClean: grp.titleClean,
+      subtitle: `Konsolidasi seluruh ${grp.items.length} Sub-WBS di kelompok ${grp.key} | ${projectSummary.value.estate}`,
+      totalCost,
+      transactionCount: txs.length,
+      sharePercent,
+      transactions: txs,
+      childItems: grp.items,
+    }
+  }
+
+  const wbs = selectedWbsInfo.value
+  const txs = wbs ? projectTxList.value.filter((tx) => tx.wbsElement === wbs.code) : []
+  const totalCost = wbs?.totalCost || 0
+  const sharePercent = (totalCost / projectTotal) * 100
+
+  return {
+    type: 'wbs' as const,
+    isGroup: false,
+    badgeScope: 'SUB-AKTIVITAS WBS (LEVEL 2)',
+    badgeCount: `${txs.length} Mutasi Riil`,
+    code: wbs?.suffix || '—',
+    suffix: wbs?.suffix || '—',
+    fullCode: wbs?.code || projectSummary.value.projectDefinition,
+    titleClean: wbs?.cleanDesc || '—',
+    subtitle: `Kode WBS: ${wbs?.code || projectSummary.value.projectDefinition} | ${projectSummary.value.estate}`,
+    totalCost,
+    transactionCount: txs.length,
+    sharePercent,
+    transactions: txs,
+    childItems: [],
+  }
+})
+
+// Transactions for the active selection (Group or Child WBS)
+const selectedWbsTxList = computed(() => {
+  return activeInspectorData.value.transactions
+})
+
+// Share of active selection relative to project
+const selectedWbsShare = computed(() => {
+  return activeInspectorData.value.sharePercent
+})
+
+// Navigation & Selection Functions
+function toggleGroup(key: string) {
+  collapsedGroups.value[key] = !collapsedGroups.value[key]
+}
+
+function selectGroup(key: string) {
+  selectionType.value = 'group'
+  selectedGroupKey.value = key
+  collapsedGroups.value[key] = false
+}
+
+function selectWbs(code: string, groupKey?: string) {
+  selectionType.value = 'wbs'
+  selectedWbsElement.value = code
+  if (groupKey) {
+    selectedGroupKey.value = groupKey
+    collapsedGroups.value[groupKey] = false
+  } else {
+    const item = wbsBreakdown.value.find((w) => w.code === code)
+    if (item) {
+      selectedGroupKey.value = item.prefix
+      collapsedGroups.value[item.prefix] = false
+    }
+  }
+}
+
+// Auto-select first Group & first WBS if none selected
 watch(
-  wbsBreakdown,
+  groupedWbsList,
   (list) => {
     if (!list.length) {
+      selectedGroupKey.value = null
       selectedWbsElement.value = null
       return
     }
-    if (!selectedWbsElement.value || !list.some((w) => w.code === selectedWbsElement.value)) {
-      selectedWbsElement.value = list[0].code
+    if (!selectedGroupKey.value || !list.some((g) => g.key === selectedGroupKey.value)) {
+      selectedGroupKey.value = list[0].key
+      selectedWbsElement.value = list[0].items[0]?.code || null
     }
   },
   { immediate: true }
@@ -386,6 +499,7 @@ watch(
   () => props.projectCode,
   () => {
     activeTab.value = props.initialTab || 'summary'
+    selectionType.value = 'group'
     txSearchQuery.value = ''
     wbsSearchQuery.value = ''
     currentPage.value = 1
@@ -393,30 +507,6 @@ watch(
     showAllMaterials.value = false
   }
 )
-
-// Toggle collapsible group
-function toggleGroup(key: string) {
-  collapsedGroups.value[key] = !collapsedGroups.value[key]
-}
-
-// Selected WBS Information
-const selectedWbsInfo = computed(() => {
-  if (!selectedWbsElement.value) return wbsBreakdown.value[0] || null
-  return wbsBreakdown.value.find((w) => w.code === selectedWbsElement.value) || wbsBreakdown.value[0] || null
-})
-
-// Transactions for the selected WBS
-const selectedWbsTxList = computed(() => {
-  if (!selectedWbsInfo.value) return []
-  return projectTxList.value.filter((tx) => tx.wbsElement === selectedWbsInfo.value?.code)
-})
-
-// Share of selected WBS relative to project
-const selectedWbsShare = computed(() => {
-  const total = projectSummary.value.totalCost || 1
-  const wbsCost = selectedWbsInfo.value?.totalCost || 0
-  return (wbsCost / total) * 100
-})
 
 // Material & Volume Fisik for selected WBS
 const selectedWbsMaterials = computed(() => {
@@ -757,7 +847,7 @@ function nextTxPage() {
 
     <!-- 4. MASTER–DETAIL TWO COLUMNS (Tree WBS on Left, WBS Inspector on Right) -->
     <div class="grid grid-cols-1 gap-5 lg:grid-cols-12 items-start pt-1">
-      <!-- LEFT COLUMN: Struktur WBS Tree Navigation (Exact Match to User Reference Image 1) -->
+      <!-- LEFT COLUMN: Struktur WBS Tree Navigation -->
       <div class="lg:col-span-4 rounded-2xl border border-slate-200/80 bg-white p-3.5 space-y-3 shadow-2xs">
         <!-- Tree Header -->
         <div class="flex items-center justify-between">
@@ -765,14 +855,19 @@ function nextTxPage() {
             <HugeiconsIcon :icon="Layers01Icon" :size="16" class="text-sky-600" />
             <span>Struktur WBS ({{ wbsBreakdown.length }})</span>
           </h5>
-          <button
-            type="button"
-            class="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition-colors"
-            title="Pengaturan Tampilan WBS"
-            aria-label="Struktur WBS & Aktivitas"
-          >
-            <HugeiconsIcon :icon="PreferenceHorizontalIcon" :size="15" />
-          </button>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] font-semibold text-slate-400">
+              {{ groupedWbsList.length }} Grup
+            </span>
+            <button
+              type="button"
+              class="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition-colors"
+              title="Pengaturan Tampilan WBS"
+              aria-label="Struktur WBS & Aktivitas"
+            >
+              <HugeiconsIcon :icon="PreferenceHorizontalIcon" :size="15" />
+            </button>
+          </div>
         </div>
 
         <!-- Search Bar with Filter Icon -->
@@ -788,51 +883,107 @@ function nextTxPage() {
             placeholder="Cari kode atau nama WBS..."
             class="w-full rounded-xl border border-slate-200 bg-slate-50/80 pl-8.5 pr-8 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:border-sky-500 focus:outline-none transition-colors"
           />
+          <button
+            v-if="wbsSearchQuery"
+            type="button"
+            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+            @click="wbsSearchQuery = ''"
+          >
+            ✕
+          </button>
         </div>
 
-        <!-- Grouped WBS Tree List (Exact Match to Image 1) -->
+        <!-- Micro-hint: explains chevron vs row click -->
+        <div class="flex items-center justify-between px-1 text-[10px] text-slate-400 border-b border-slate-100 pb-2">
+          <span>▸ Chevron: lipat/buka</span>
+          <span>Klik baris: lihat rincian</span>
+        </div>
+
+        <!-- Grouped WBS Tree List -->
         <div class="max-h-[540px] overflow-y-auto divide-y divide-slate-100 no-scrollbar space-y-2 pt-1">
           <div
             v-for="group in groupedWbsList"
             :key="group.key"
             class="pt-1.5 first:pt-0"
           >
-            <!-- Level 1: Group Row -->
-            <button
-              type="button"
-              class="w-full flex items-center justify-between py-1 px-1 rounded-xl text-left text-xs font-bold text-slate-800 hover:bg-slate-50 transition-colors cursor-pointer"
-              @click="toggleGroup(group.key)"
+            <!-- Level 1: Group Row (Master Detail Selection + Fold Toggle) -->
+            <div
+              class="w-full flex items-center justify-between py-1 px-1 rounded-xl transition-all cursor-pointer text-left"
+              :class="selectionType === 'group' && selectedGroupKey === group.key
+                ? 'bg-sky-100/80 border border-sky-300 shadow-2xs'
+                : 'border border-transparent hover:bg-slate-50'"
+              @click="selectGroup(group.key)"
             >
-              <div class="flex items-center gap-2 min-w-0">
-                <!-- Chevron -->
-                <span
-                  class="text-sky-600 transition-transform duration-200 inline-block text-xs"
-                  :class="{ '-rotate-90': collapsedGroups[group.key] }"
+              <div class="flex items-center gap-1.5 min-w-0">
+                <!-- Chevron Toggle Button -->
+                <button
+                  type="button"
+                  class="p-0.5 rounded-md text-sky-600 hover:bg-sky-200/50 transition-colors shrink-0 cursor-pointer"
+                  :title="collapsedGroups[group.key] ? 'Buka Sub-WBS' : 'Tutup Sub-WBS'"
+                  aria-label="Buka/tutup lipatan sub-WBS"
+                  @click.stop="toggleGroup(group.key)"
                 >
-                  <HugeiconsIcon :icon="ChevronDownIcon" :size="15" />
-                </span>
+                  <HugeiconsIcon
+                    :icon="ChevronDownIcon"
+                    :size="15"
+                    class="transition-transform duration-200 inline-block"
+                    :class="{ '-rotate-90': collapsedGroups[group.key] }"
+                  />
+                </button>
 
                 <!-- Blue Folder Box -->
-                <div class="size-6 rounded-lg bg-sky-500 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                <div
+                  class="size-6 rounded-lg flex items-center justify-center shrink-0 shadow-2xs transition-colors"
+                  :class="selectionType === 'group' && selectedGroupKey === group.key
+                    ? 'bg-sky-600 text-white ring-2 ring-sky-300'
+                    : 'bg-sky-500 text-white'"
+                >
                   <HugeiconsIcon :icon="WorkflowSquare08Icon" :size="13" />
                 </div>
 
                 <!-- Prefix Badge -->
-                <div class="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200/80 text-slate-700 font-mono text-[11px] font-bold shrink-0">
+                <div
+                  class="px-2 py-0.5 rounded-md font-mono text-[11px] font-bold shrink-0 transition-colors"
+                  :class="selectionType === 'group' && selectedGroupKey === group.key
+                    ? 'bg-white border border-sky-400 text-sky-900 shadow-2xs'
+                    : 'bg-slate-100 border border-slate-200/80 text-slate-700'"
+                >
                   {{ group.key }}
                 </div>
 
                 <!-- Group Title -->
-                <span class="truncate text-xs font-bold text-slate-800">
+                <span
+                  class="truncate text-xs min-w-0"
+                  :class="selectionType === 'group' && selectedGroupKey === group.key
+                    ? 'font-black text-sky-950'
+                    : 'font-bold text-slate-800'"
+                  :title="group.titleClean"
+                >
                   {{ group.titleClean }}
+                </span>
+
+                <!-- Sub-items count badge -->
+                <span
+                  class="rounded-full px-1.5 py-0.2 text-[9px] font-mono font-bold shrink-0"
+                  :class="selectionType === 'group' && selectedGroupKey === group.key
+                    ? 'bg-sky-200 text-sky-900'
+                    : 'bg-slate-200/70 text-slate-600'"
+                  :title="`${group.items.length} sub-WBS dalam kelompok ini`"
+                >
+                  {{ group.items.length }}
                 </span>
               </div>
 
               <!-- Group Nominal -->
-              <span class="text-xs font-mono font-bold text-slate-900 shrink-0 tabular-nums ml-2">
+              <span
+                class="text-xs font-mono font-bold shrink-0 tabular-nums ml-2"
+                :class="selectionType === 'group' && selectedGroupKey === group.key
+                  ? 'text-sky-950 font-black'
+                  : 'text-slate-900'"
+              >
                 {{ formatRupiahCompact(group.totalCost) }}
               </span>
-            </button>
+            </div>
 
             <!-- Level 2: Children WBS Items -->
             <div v-show="!collapsedGroups[group.key]" class="relative pl-3 space-y-1 pt-1">
@@ -847,10 +998,10 @@ function nextTxPage() {
                 <button
                   type="button"
                   class="w-full flex items-center justify-between py-1.5 px-2.5 rounded-xl transition-all cursor-pointer text-left"
-                  :class="selectedWbsElement === wbs.code
+                  :class="selectionType === 'wbs' && selectedWbsElement === wbs.code
                     ? 'bg-sky-50/90 border border-sky-300 shadow-2xs'
                     : 'border border-transparent hover:bg-slate-50'"
-                  @click="selectedWbsElement = wbs.code"
+                  @click="selectWbs(wbs.code, group.key)"
                 >
                   <div class="flex items-center gap-2 min-w-0">
                     <!-- Chevron -->
@@ -860,7 +1011,7 @@ function nextTxPage() {
 
                     <!-- Suffix Badge -->
                     <div
-                      v-if="selectedWbsElement === wbs.code"
+                      v-if="selectionType === 'wbs' && selectedWbsElement === wbs.code"
                       class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-sky-100 border border-sky-300 text-sky-800 font-mono text-[11px] font-bold shrink-0 shadow-2xs"
                     >
                       <span class="size-2 rounded-full border-2 border-sky-600 bg-white"></span>
@@ -876,7 +1027,7 @@ function nextTxPage() {
                     <!-- Clean WBS Name -->
                     <span
                       class="text-xs truncate min-w-0"
-                      :class="selectedWbsElement === wbs.code ? 'font-bold text-sky-950' : 'font-medium text-slate-700'"
+                      :class="selectionType === 'wbs' && selectedWbsElement === wbs.code ? 'font-bold text-sky-950' : 'font-medium text-slate-700'"
                       :title="wbs.cleanDesc"
                     >
                       {{ wbs.cleanDesc }}
@@ -886,7 +1037,7 @@ function nextTxPage() {
                   <!-- Nominal on right -->
                   <span
                     class="font-mono text-xs font-bold tabular-nums shrink-0 ml-2"
-                    :class="selectedWbsElement === wbs.code ? 'text-sky-950' : 'text-slate-900'"
+                    :class="selectionType === 'wbs' && selectedWbsElement === wbs.code ? 'text-sky-950' : 'text-slate-900'"
                   >
                     {{ formatRupiahCompact(wbs.totalCost) }}
                   </span>
@@ -901,40 +1052,67 @@ function nextTxPage() {
         </div>
       </div>
 
-      <!-- RIGHT COLUMN: WBS Inspector (Exact UI Reference from user images) -->
+      <!-- RIGHT COLUMN: Inspector Panel (Macro Group vs Micro Child WBS) -->
       <div class="lg:col-span-8 space-y-4">
-        <!-- WBS Inspector Header -->
+        <!-- WBS / Group Inspector Header -->
         <div class="flex flex-wrap items-start justify-between gap-3 pb-3 border-b border-slate-200/80">
           <div class="min-w-0">
-            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-              WBS TERPILIH
-            </span>
-            <div class="flex items-baseline gap-2 flex-wrap mt-0.5">
-              <span class="text-xl sm:text-2xl font-black font-mono text-slate-900">
-                {{ selectedWbsInfo?.suffix || '—' }}
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                {{ activeInspectorData.badgeScope }}
               </span>
-              <span class="text-base sm:text-lg font-bold text-slate-900 truncate" :title="selectedWbsInfo?.cleanDesc">
-                {{ selectedWbsInfo?.cleanDesc || '—' }}
+              <span
+                class="rounded-full px-2 py-0.5 text-[10px] font-bold border"
+                :class="activeInspectorData.isGroup
+                  ? 'border-sky-300 bg-sky-50 text-sky-800'
+                  : 'border-slate-200 bg-slate-100 text-slate-700'"
+              >
+                {{ activeInspectorData.badgeCount }}
+              </span>
+
+              <!-- Quick button back to Parent Group if currently viewing child WBS -->
+              <button
+                v-if="!activeInspectorData.isGroup && activeGroup"
+                type="button"
+                class="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50/70 px-2 py-0.5 text-[10px] font-bold text-sky-700 hover:bg-sky-100 hover:border-sky-300 transition-colors cursor-pointer"
+                title="Lihat konsolidasi seluruh kelompok aktivitas ini"
+                @click="selectGroup(activeGroup.key)"
+              >
+                <span>↑ Ringkasan Grup {{ activeGroup.key }}</span>
+              </button>
+            </div>
+
+            <div class="flex items-baseline gap-2 flex-wrap mt-1">
+              <span class="text-xl sm:text-2xl font-black font-mono text-slate-900">
+                {{ activeInspectorData.code }}
+              </span>
+              <span class="text-base sm:text-lg font-bold text-slate-900 truncate" :title="activeInspectorData.titleClean">
+                {{ activeInspectorData.titleClean }}
               </span>
             </div>
-            <!-- Subtitle: Full WBS Code (from WBS column: Project + Activity code) + Estate Name -->
+            <!-- Subtitle: Full WBS / Group Code + Estate Name -->
             <p class="text-xs text-slate-500 mt-1">
-              Kode WBS: <span class="font-mono font-bold text-slate-800">{{ selectedWbsInfo?.code || projectSummary.projectDefinition }}</span> &nbsp;|&nbsp; {{ projectSummary.estate }}
+              <span v-if="activeInspectorData.isGroup">
+                Kelompok Aktivitas: <span class="font-mono font-bold text-slate-800">{{ activeInspectorData.fullCode }}</span> &nbsp;|&nbsp; {{ projectSummary.estate }}
+              </span>
+              <span v-else>
+                Kode WBS: <span class="font-mono font-bold text-slate-800">{{ activeInspectorData.fullCode }}</span> &nbsp;|&nbsp; {{ projectSummary.estate }}
+              </span>
             </p>
           </div>
 
           <div class="text-right shrink-0">
             <span class="text-[11px] text-slate-400 font-medium block">Realisasi SAP</span>
             <span class="text-xl sm:text-2xl font-black font-mono text-slate-900 block mt-0.5 tabular-nums">
-              {{ formatRupiahCompact(selectedWbsInfo?.totalCost || 0) }}
+              {{ formatRupiahCompact(activeInspectorData.totalCost) }}
             </span>
             <span class="text-xs text-slate-400 font-mono block mt-0.5">
-              {{ selectedWbsInfo?.count || 0 }} mutasi
+              {{ activeInspectorData.transactionCount }} mutasi riil
             </span>
           </div>
         </div>
 
-        <!-- PORSI TERHADAP REALISASI PROYEK (Exact match to Image 2: Donut with inner percent, divider, and text) -->
+        <!-- PORSI TERHADAP REALISASI PROYEK (Donut with inner percent, divider, and text) -->
         <div class="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 flex items-center gap-5 sm:gap-6 shadow-2xs">
           <!-- Donut Progress Ring with percentage in center -->
           <div class="relative size-18 sm:size-20 shrink-0 flex items-center justify-center">
@@ -951,7 +1129,7 @@ function nextTxPage() {
               <path
                 class="text-sky-500 transition-all duration-500"
                 stroke-dasharray="100, 100"
-                :stroke-dashoffset="100 - Math.min(100, Math.max(0, selectedWbsShare))"
+                :stroke-dashoffset="100 - Math.min(100, Math.max(0, activeInspectorData.sharePercent))"
                 stroke-width="3.5"
                 stroke-linecap="round"
                 stroke="currentColor"
@@ -961,7 +1139,7 @@ function nextTxPage() {
             </svg>
             <div class="absolute inset-0 flex items-center justify-center">
               <span class="font-mono text-xs sm:text-sm font-black text-slate-900">
-                {{ formatPercent(selectedWbsShare) }}
+                {{ formatPercent(activeInspectorData.sharePercent) }}
               </span>
             </div>
           </div>
@@ -976,7 +1154,7 @@ function nextTxPage() {
             </span>
             <div class="flex items-baseline gap-1.5 flex-wrap mt-1">
               <span class="font-mono text-sm sm:text-base font-bold text-slate-900">
-                {{ formatRupiahCompact(selectedWbsInfo?.totalCost || 0) }}
+                {{ formatRupiahCompact(activeInspectorData.totalCost) }}
               </span>
               <span class="text-xs sm:text-sm text-slate-500 font-sans">
                 dari total realisasi {{ formatRupiahCompact(projectSummary.totalCost) }}
@@ -999,7 +1177,7 @@ function nextTxPage() {
               @click="activeTab = 'summary'"
             >
               <HugeiconsIcon :icon="File01Icon" :size="15" />
-              <span>Ringkasan WBS</span>
+              <span>{{ activeInspectorData.isGroup ? 'Ringkasan Kelompok' : 'Ringkasan WBS' }}</span>
             </button>
 
             <!-- Tab 2: Beban Akuntansi -->
@@ -1034,16 +1212,69 @@ function nextTxPage() {
         <!-- TAB 1: RINGKASAN WBS (Spacious Material & Volume Fisik) -->
         <!-- ======================================================== -->
         <div v-if="activeTab === 'summary'" class="space-y-4 pt-1">
+          <!-- Child Sub-WBS Breakdown (Shown only when in Group mode) -->
+          <div v-if="activeInspectorData.isGroup" class="space-y-2.5">
+            <div class="flex items-center justify-between">
+              <div>
+                <h6 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <HugeiconsIcon :icon="WorkflowSquare08Icon" :size="18" class="text-sky-600" />
+                  <span>Daftar Sub-WBS Terkonsolidasi ({{ activeInspectorData.childItems.length }} Sub-WBS)</span>
+                </h6>
+                <p class="text-xs text-slate-500 mt-0.5">
+                  Klik salah satu sub-WBS di bawah ini untuk melihat rincian individual mikro (Level 2).
+                </p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                v-for="child in activeInspectorData.childItems"
+                :key="child.code"
+                type="button"
+                class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-sky-50/80 hover:border-sky-300 transition-all text-left cursor-pointer group"
+                @click="selectWbs(child.code, activeGroup?.key)"
+              >
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="px-2 py-0.5 rounded-md bg-white border border-slate-200 font-mono text-[11px] font-bold text-slate-700 group-hover:border-sky-300 group-hover:text-sky-800 shrink-0">
+                    {{ child.suffix }}
+                  </span>
+                  <div class="min-w-0">
+                    <p class="text-xs font-bold text-slate-800 truncate group-hover:text-sky-950" :title="child.cleanDesc">
+                      {{ child.cleanDesc }}
+                    </p>
+                    <p class="text-[10px] text-slate-400 font-mono">
+                      {{ child.count }} mutasi
+                    </p>
+                  </div>
+                </div>
+                <div class="text-right shrink-0 ml-2">
+                  <span class="font-mono text-xs font-bold text-slate-900 block group-hover:text-sky-950">
+                    {{ formatRupiahCompact(child.totalCost) }}
+                  </span>
+                  <span class="text-[10px] text-sky-600 font-medium group-hover:underline">
+                    Rincian →
+                  </span>
+                </div>
+              </button>
+            </div>
+          </div>
+
           <!-- Material & Volume Fisik Section (Clean, Spacious & Rapi) -->
           <div class="space-y-3">
             <div class="flex items-center justify-between">
               <div>
                 <h6 class="text-sm font-bold text-slate-900 flex items-center gap-2">
                   <HugeiconsIcon :icon="MaterialAndTextureIcon" :size="18" class="text-sky-600" />
-                  <span>Material & Volume Fisik</span>
+                  <span v-if="activeInspectorData.isGroup">Konsolidasi Material & Volume Fisik</span>
+                  <span v-else>Material & Volume Fisik</span>
                 </h6>
                 <p class="text-xs text-slate-500 mt-0.5">
-                  Daftar material, bahan baku, dan kuantitas fisik yang tercatat pada transaksi WBS ini.
+                  <template v-if="activeInspectorData.isGroup">
+                    Total material fisik yang ditabur/dipakai untuk seluruh kelompok {{ activeInspectorData.titleClean }} ({{ activeInspectorData.code }}).
+                  </template>
+                  <template v-else>
+                    Daftar material, bahan baku, dan kuantitas fisik yang tercatat pada sub-WBS ini.
+                  </template>
                 </p>
               </div>
 
@@ -1094,7 +1325,9 @@ function nextTxPage() {
 
                   <tr v-if="selectedWbsMaterials.length === 0">
                     <td colspan="5" class="p-8 text-center text-slate-400 text-xs">
-                      Tidak ada data material atau volume fisik tercatat pada WBS ini (transaksi beban operasional / jasa murni).
+                      {{ activeInspectorData.isGroup
+                        ? 'Tidak ada data material fisik tercatat untuk kelompok pekerjaan ini (seluruhnya berupa beban operasional/jasa).'
+                        : 'Tidak ada data material atau volume fisik tercatat pada WBS ini (transaksi beban operasional / jasa murni).' }}
                     </td>
                   </tr>
                 </tbody>
@@ -1113,10 +1346,13 @@ function nextTxPage() {
               <div>
                 <h6 class="text-sm font-bold text-slate-900 flex items-center gap-2">
                   <HugeiconsIcon :icon="CardExchange01Icon" :size="18" class="text-sky-600" />
-                  <span>Akun Beban Akuntansi (Cost Element)</span>
+                  <span v-if="activeInspectorData.isGroup">Konsolidasi Akun Beban Akuntansi (Cost Element)</span>
+                  <span v-else>Akun Beban Akuntansi (Cost Element)</span>
                 </h6>
                 <p class="text-xs text-slate-500 mt-0.5">
-                  Klasifikasi beban pengeluaran riil berdasarkan Cost Element CO/PS SAP untuk WBS ini.
+                  {{ activeInspectorData.isGroup
+                    ? `Klasifikasi beban pengeluaran riil berdasarkan Cost Element CO/PS SAP untuk seluruh kelompok ${activeInspectorData.titleClean} (${activeInspectorData.code}).`
+                    : 'Klasifikasi beban pengeluaran riil berdasarkan Cost Element CO/PS SAP untuk WBS ini.' }}
                 </p>
               </div>
               <button
@@ -1161,7 +1397,7 @@ function nextTxPage() {
 
                   <tr v-if="selectedWbsCostElements.length === 0">
                     <td colspan="4" class="p-8 text-center text-slate-400 text-xs">
-                      Tidak ada catatan akun beban untuk WBS ini.
+                      Tidak ada catatan akun beban untuk cakupan ini.
                     </td>
                   </tr>
                 </tbody>
@@ -1175,10 +1411,16 @@ function nextTxPage() {
               <div>
                 <h6 class="text-sm font-bold text-slate-900 flex items-center gap-2">
                   <HugeiconsIcon :icon="Analytics03Icon" :size="18" class="text-sky-600" />
-                  <span>Realisasi per Periode</span>
+                  <span v-if="activeInspectorData.isGroup">Dinamika Serapan Bulanan Kelompok</span>
+                  <span v-else>Realisasi per Periode</span>
                 </h6>
                 <p class="text-xs text-slate-500 mt-0.5">
-                  Arahkan kursor pada batang periode untuk melihat rincian akun beban dan material pendukung.
+                  <template v-if="activeInspectorData.isGroup">
+                    Dinamika serapan anggaran bulanan seluruh kelompok {{ activeInspectorData.code }}. Arahkan kursor pada batang periode untuk melihat rincian akun beban dan material.
+                  </template>
+                  <template v-else>
+                    Arahkan kursor pada batang periode untuk melihat rincian akun beban dan material pendukung.
+                  </template>
                 </p>
               </div>
 
@@ -1292,7 +1534,12 @@ function nextTxPage() {
                   : 'text-slate-600 hover:text-slate-900'"
                 @click="txScopeMode = 'wbs'"
               >
-                WBS {{ selectedWbsInfo?.suffix || selectedWbsInfo?.code || '' }} ({{ selectedWbsTxList.length }})
+                <template v-if="activeInspectorData.isGroup">
+                  Kelompok {{ activeInspectorData.code }} ({{ selectedWbsTxList.length }})
+                </template>
+                <template v-else>
+                  WBS {{ activeInspectorData.code }} ({{ selectedWbsTxList.length }})
+                </template>
               </button>
               <button
                 type="button"
@@ -1347,7 +1594,7 @@ function nextTxPage() {
           <div class="flex items-center justify-between text-xs text-slate-500 px-1 font-mono">
             <span>
               Menampilkan {{ journalFilteredTransactions.length }} mutasi
-              <span v-if="txScopeMode === 'wbs'">(WBS {{ selectedWbsInfo?.suffix }})</span>
+              <span v-if="txScopeMode === 'wbs'">({{ activeInspectorData.isGroup ? 'Kelompok ' + activeInspectorData.code : 'WBS ' + activeInspectorData.code }})</span>
               <span v-else>(Seluruh Proyek {{ projectSummary.projectDefinition }})</span>
             </span>
             <span class="font-bold text-slate-800">

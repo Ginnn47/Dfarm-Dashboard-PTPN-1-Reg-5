@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, ref, onMounted, watch } from 'vue'
 import { useDevelopmentStore } from '~/data/development/productionStore'
 import {
@@ -18,6 +18,9 @@ import type { LeadMeasureDataset } from '~/data/leadmeasure/types'
 import {
   Target02Icon,
   Leaf01Icon,
+  Wallet01Icon,
+  SoilMoistureFieldIcon,
+  WarehouseIcon,
   Upload02Icon,
   ArrowRight01Icon,
   Analytics03Icon,
@@ -28,12 +31,22 @@ import {
   FlashIcon,
   DatabaseSearchIcon,
   CoinsDollarIcon,
-  Plant03Icon
+  Plant03Icon,
+  AlertCircleIcon,
+  AiChemistry02Icon,
+  ChartBarStackedIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/vue'
 
 
 useHead({ title: 'Pusat Pengaturan Sumber Data | DFARM' })
+
+const domainIcons: Record<DashboardDomainId, any> = {
+  production: Leaf01Icon,
+  finance: Wallet01Icon,
+  'investment-on-farm': SoilMoistureFieldIcon,
+  'investment-off-farm': WarehouseIcon,
+}
 
 const {
   domains,
@@ -469,10 +482,17 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
         >
           <div class="flex w-full items-center justify-between">
             <span
-              class="flex size-8 items-center justify-center rounded-lg text-xs font-bold"
+              class="flex size-8 items-center justify-center rounded-lg transition-colors"
               :class="activeDomainId === domain.id ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'"
+              :title="domain.name"
             >
-              {{ domain.code }}
+              <HugeiconsIcon
+                v-if="domainIcons[domain.id]"
+                :icon="domainIcons[domain.id]"
+                :size="18"
+                :stroke-width="2.2"
+              />
+              <span v-else class="text-xs font-bold">{{ domain.code }}</span>
             </span>
 
             <span
@@ -505,7 +525,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
       class="rounded-2xl border border-slate-200 bg-[#F7F9F8] p-8 text-center"
     >
       <div class="mx-auto flex size-12 items-center justify-center rounded-2xl bg-slate-200 text-slate-600">
-        <DashboardReusableDashboardIcon name="comparison" :size="24" />
+        <HugeiconsIcon :icon="AlertCircleIcon" :size="24" :stroke-width="2.2" />
       </div>
       <h3 class="mt-3 text-lg font-bold text-[#26312D]">
         Modul {{ activeDomain.name }} Belum Tersedia
@@ -538,19 +558,19 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
               <div class="flex items-center gap-2">
                 <span class="text-[11px] font-bold uppercase tracking-wider text-[#5E6A65]">
                   Sumber Data Aktif Saat Ini
-                </span>
+              </span>
                 <span
                   class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold"
                   :class="activeSourceId === 'development'
                     ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                     : 'bg-amber-100 text-amber-800 border border-amber-300'"
-                >
+              >
                   <span
                     class="size-2 rounded-full"
                     :class="activeSourceId === 'development' ? 'bg-[#1DC82B]' : 'bg-[#FAB33D] animate-pulse'"
-                  />
+              />
                   {{ activeSourceId === 'development' ? 'Aktif Digunakan' : 'Belum Terhubung' }}
-                </span>
+              </span>
               </div>
 
               <h2 id="active-source-heading" class="mt-2 text-2xl font-bold tracking-tight text-[#26312D]">
@@ -588,12 +608,12 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
               <NuxtLink
                 to="/production"
                 class="inline-flex items-center gap-2 rounded-xl bg-[#47A5DE] px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-sky-600 transition-colors"
-              >
+            >
                 Buka Dashboard Produksi →
               </NuxtLink>
               <span class="text-[11px] text-[#808D87]">
                 Perubahan langsung diterapkan
-              </span>
+            </span>
             </div>
           </div>
         </div>
@@ -622,8 +642,8 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
               <div class="flex items-start justify-between gap-3">
                 <div class="flex items-center gap-3">
                   <span class="flex size-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800">
-                    <DashboardReusableDashboardIcon name="lab" :size="20" />
-                  </span>
+                    <HugeiconsIcon :icon="AiChemistry02Icon" :size="20" :stroke-width="2.2" />
+                </span>
                   <div>
                     <div class="flex items-center gap-1.5">
                       <h4 class="text-base font-bold text-[#26312D]">Development Data</h4>
@@ -638,10 +658,10 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                   :class="activeSourceId === 'development'
                     ? 'bg-emerald-100 text-emerald-800'
                     : 'bg-slate-100 text-slate-600'"
-                >
+              >
                   <span class="size-1.5 rounded-full" :class="activeSourceId === 'development' ? 'bg-[#1DC82B]' : 'bg-slate-400'" />
                   {{ activeSourceId === 'development' ? 'Aktif Digunakan' : 'Tersedia' }}
-                </span>
+              </span>
               </div>
 
               <p class="mt-4 text-xs leading-5 text-[#5E6A65]">
@@ -668,8 +688,8 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 cursor-default font-bold'
                   : 'bg-emerald-700 text-white hover:bg-emerald-800 shadow-xs'"
                 @click="handleSelectSource('development')"
-              >
-                {{ activeSourceId === 'development' ? '✓ Sedang Digunakan' : 'Gunakan Sumber Ini' }}
+            >
+                {{ activeSourceId === 'development' ? '? Sedang Digunakan' : 'Gunakan Sumber Ini' }}
               </button>
             </div>
           </div>
@@ -685,8 +705,8 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
               <div class="flex items-start justify-between gap-3">
                 <div class="flex items-center gap-3">
                   <span class="flex size-10 items-center justify-center rounded-xl bg-amber-100 text-amber-800">
-                    <DashboardReusableDashboardIcon name="comparison" :size="20" />
-                  </span>
+                    <HugeiconsIcon :icon="ChartBarStackedIcon" :size="20" :stroke-width="2.2" />
+                </span>
                   <div>
                     <div class="flex items-center gap-1.5">
                       <h4 class="text-base font-bold text-[#26312D]">Google Sheets</h4>
@@ -701,10 +721,10 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                   :class="activeSourceId === 'google-sheets'
                     ? 'bg-amber-100 text-amber-800 border border-amber-300'
                     : 'bg-slate-100 text-slate-600'"
-                >
+              >
                   <span class="size-1.5 rounded-full" :class="activeSourceId === 'google-sheets' ? 'bg-[#FAB33D] animate-pulse' : 'bg-slate-400'" />
                   {{ activeSourceId === 'google-sheets' ? 'Dipilih (Belum Terhubung)' : 'Belum Terhubung' }}
-                </span>
+              </span>
               </div>
 
               <p class="mt-4 text-xs leading-5 text-[#5E6A65]">
@@ -731,8 +751,8 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                   ? 'bg-amber-100 text-amber-800 cursor-default font-bold'
                   : 'bg-slate-900 text-white hover:bg-slate-800 shadow-xs'"
                 @click="handleSelectSource('google-sheets')"
-              >
-                {{ activeSourceId === 'google-sheets' ? '○ Dipilih (Belum Terhubung)' : 'Hubungkan Sumber (Pilih Google Sheets)' }}
+            >
+                {{ activeSourceId === 'google-sheets' ? '? Dipilih (Belum Terhubung)' : 'Hubungkan Sumber (Pilih Google Sheets)' }}
               </button>
             </div>
           </div>
@@ -772,11 +792,11 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
           <div class="max-w-2xl">
             <div class="flex items-center gap-2">
               <span class="inline-flex size-6 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800">
-                <DashboardReusableDashboardIcon name="lab" :size="16" />
-              </span>
+                <HugeiconsIcon :icon="AiChemistry02Icon" :size="16" :stroke-width="2.2" />
+            </span>
               <span class="text-xs font-bold uppercase tracking-wider text-emerald-700">
                 Penambahan Data Tahun 2026
-              </span>
+            </span>
             </div>
             <h3 class="mt-1.5 text-lg font-bold text-[#26312D]">
               Kelola & Tambah Data Excel Pengembangan
@@ -795,9 +815,9 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                   v-for="year in activeReportingYears"
                   :key="year"
                   class="rounded-md bg-white px-2 py-0.5 font-bold text-emerald-900 shadow-xs border border-emerald-200 text-xs"
-                >
+              >
                   {{ year }}
-                </span>
+              </span>
               </div>
             </div>
 
@@ -817,8 +837,8 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
             <div>
               <div class="flex items-center gap-2">
                 <span class="flex size-7 items-center justify-center rounded-lg bg-sky-100 text-sky-700 font-bold text-xs">
-                  <HugeiconsIcon :icon="FlashIcon" :size="16" />
-                </span>
+              <HugeiconsIcon :icon="FlashIcon" :size="16" />
+              </span>
                 <h4 class="text-sm font-bold text-slate-900">
                   Opsi Cepat: Muat Contoh Data 2026
                 </h4>
@@ -848,8 +868,8 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                 type="button"
                 class="flex w-full items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-sky-700 cursor-pointer"
                 @click="triggerPreset2026"
-              >
-                <HugeiconsIcon :icon="FlashIcon" :size="15" />
+            >
+            <HugeiconsIcon :icon="FlashIcon" :size="15" />
                 <span>Aktifkan Data 2026 (Preset Lengkap)</span>
               </button>
 
@@ -858,7 +878,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                 type="button"
                 class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-800 cursor-pointer"
                 @click="triggerResetBaseline"
-              >
+            >
                 Reset ke Baseline 2025 (Hapus Data Tambahan)
               </button>
             </div>
@@ -869,15 +889,15 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <span class="flex size-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs">
-                  <HugeiconsIcon :icon="Upload02Icon" :size="16" />
-                </span>
+              <HugeiconsIcon :icon="Upload02Icon" :size="16" />
+              </span>
                 <h4 class="text-sm font-bold text-slate-900">
                   Unggah Berkas Excel (.xlsx) / JSON
                 </h4>
               </div>
               <span class="rounded bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
                 Parsed di Browser (Aman & Offline)
-              </span>
+            </span>
             </div>
 
             <!-- Upload Settings: Year and Mode -->
@@ -890,7 +910,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                   min="2000"
                   max="2099"
                   class="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 shadow-xs focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
+            />
               </div>
 
               <div>
@@ -898,7 +918,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                 <select
                   v-model="importMode"
                   class="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 shadow-xs focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                >
+              >
                   <option value="merge">Gabungkan (Multi-Tahun: 2025 + 2026)</option>
                   <option value="replace">Gantikan Dataset Aktif</option>
                 </select>
@@ -922,8 +942,8 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
 
               <div v-if="!isParsingFile" class="space-y-1.5 pointer-events-none">
                 <span class="inline-flex size-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-                  <DashboardReusableDashboardIcon name="lab" :size="20" />
-                </span>
+                  <HugeiconsIcon :icon="AiChemistry02Icon" :size="20" :stroke-width="2.2" />
+              </span>
                 <p class="text-xs font-bold text-slate-800">
                   Klik untuk memilih file atau seret berkas .xlsx ke sini
                 </p>
@@ -947,10 +967,10 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
               <div class="flex items-center justify-between">
                 <span class="font-bold" :class="parseResult.summary.isValid ? 'text-emerald-900' : 'text-amber-900'">
                   Analisis Berkas Excel · {{ parseResult.summary.reportingYear }}
-                </span>
+              </span>
                 <span class="rounded bg-white px-2 py-0.5 font-bold shadow-xs text-[11px]" :class="parseResult.summary.isValid ? 'text-emerald-700' : 'text-amber-700'">
                   {{ uploadedFileName }}
-                </span>
+              </span>
               </div>
 
               <!-- 6 Metric Cards according to Section 13 -->
@@ -996,7 +1016,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
               <div
                 v-if="!parseResult.summary.isValid"
                 class="rounded-lg bg-red-50 p-3 border border-red-200 text-red-800 space-y-1"
-              >
+            >
                 <div class="flex items-center gap-1.5 font-bold text-xs text-red-900">
                   <svg class="size-4 shrink-0 text-red-600" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
@@ -1016,7 +1036,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                   type="button"
                   class="text-[11px] font-bold text-slate-700 hover:text-emerald-700 flex items-center gap-1 cursor-pointer"
                   @click="showDiagnosticsDetail = !showDiagnosticsDetail"
-                >
+              >
                   <span>{{ showDiagnosticsDetail ? '▲ Sembunyikan' : '▼ Lihat' }} Rincian Diagnostik Worksheet ({{ parseResult.summary.worksheetDiagnostics.length }} sheet)</span>
                 </button>
                 <div v-if="showDiagnosticsDetail" class="mt-2 overflow-x-auto rounded-lg border border-slate-200 bg-white">
@@ -1038,9 +1058,9 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                           <span
                             class="rounded px-1.5 py-0.5 text-[10px] font-bold"
                             :class="d.classification === 'detail' ? 'bg-emerald-100 text-emerald-800' : d.classification === 'summary' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600'"
-                          >
+                        >
                             {{ d.classification }}
-                          </span>
+                        </span>
                         </td>
                         <td class="px-2.5 py-1.5 text-slate-700">{{ d.candidateRows }}</td>
                         <td class="px-2.5 py-1.5 font-semibold text-emerald-700">{{ d.parsedRows }}</td>
@@ -1060,14 +1080,14 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                   :class="parseResult.summary.isValid ? 'bg-emerald-700 text-white hover:bg-emerald-800' : 'bg-slate-300 text-slate-500'"
                   :disabled="!parseResult.summary.isValid"
                   @click="applyImportedData"
-                >
+              >
                   Terapkan Data Ini ke Dashboard
                 </button>
                 <button
                   type="button"
                   class="rounded-lg border border-slate-300 bg-white px-3.5 py-2 font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
                   @click="cancelParsedData"
-                >
+              >
                   Batal
                 </button>
               </div>
@@ -1126,7 +1146,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                 type="button"
                 class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 cursor-pointer"
                 @click="downloadSampleJson"
-              >
+            >
                 Unduh Format Contoh (.json)
               </button>
             </div>
@@ -1140,11 +1160,11 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
             <div class="max-w-2xl">
               <div class="flex items-center gap-2">
                 <span class="inline-flex size-6 items-center justify-center rounded-lg bg-sky-100 text-emerald-800">
-                  <HugeiconsIcon :icon="Target02Icon" :size="16" />
-                </span>
+              <HugeiconsIcon :icon="Target02Icon" :size="16" />
+              </span>
                 <span class="text-xs font-bold uppercase tracking-wider text-emerald-700">
                   Sumber Data Lead Measure Karet 2026
-                </span>
+              </span>
               </div>
               <h3 class="mt-1.5 text-lg font-bold text-[#26312D]">
                 Kelola Berkas Excel Lead Measure Karet 2026
@@ -1190,26 +1210,26 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                   </h4>
                 </div>
                 <p class="mt-1 text-xs text-slate-600">
-                  Sumber: <strong class="text-slate-800">{{ leadMeasureStore.dataset.value?.metadata?.fileName || 'Data Contoh (Mock Evaluasi Karet)' }}</strong> • {{ leadMeasureStore.estates.value.length }} Kebun • {{ leadMeasureStore.observations.value.length.toLocaleString('id-ID') }} Observasi Evaluasi
+                  Sumber: <strong class="text-slate-800">{{ leadMeasureStore.dataset.value?.metadata?.fileName || 'Data Contoh (Mock Evaluasi Karet)' }}</strong> · {{ leadMeasureStore.estates.value.length }} Kebun · {{ leadMeasureStore.observations.value.length.toLocaleString('id-ID') }} Observasi Evaluasi
                 </p>
               </div>
 
               <div class="flex items-center gap-3">
                 <button
-                  v-if="leadMeasureStore.isCustom.value"
+              v-if="leadMeasureStore.isCustom.value"
                   type="button"
                   class="rounded-xl border border-rose-300 bg-white px-3.5 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 transition-colors shadow-2xs cursor-pointer"
                   @click="resetLeadMeasureData"
-                >
+              >
                   Reset ke Data Contoh
                 </button>
 
                 <NuxtLink
                   to="/production/lead-measure-karet"
                   class="inline-flex items-center gap-1.5 rounded-xl bg-emerald-700 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-800 transition-colors shadow-xs"
-                >
+              >
                   <span>Buka Dashboard Lead Measure</span>
-                  <HugeiconsIcon :icon="ArrowRight01Icon" :size="14" />
+              <HugeiconsIcon :icon="ArrowRight01Icon" :size="14" />
                 </NuxtLink>
               </div>
             </div>
@@ -1231,7 +1251,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                 @change="handleLeadMeasureFileChange"
               />
               <div class="flex size-12 items-center justify-center rounded-2xl bg-white text-emerald-700 shadow-xs border border-slate-200">
-                <HugeiconsIcon :icon="Upload02Icon" :size="24" />
+            <HugeiconsIcon :icon="Upload02Icon" :size="24" />
               </div>
               <p class="mt-3 text-sm font-bold text-slate-800">
                 {{ isLeadMeasureParsing ? 'Sedang mengurai workbook...' : 'Klik atau seret file 2026 - LEAD MEASURE KARET (.xlsx) ke sini' }}
@@ -1248,7 +1268,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                   <div class="flex items-center gap-2">
                     <span class="rounded bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
                       Hasil Pratinjau
-                    </span>
+                  </span>
                     <h4 class="text-sm font-bold text-slate-900">
                       {{ leadMeasureFileName }}
                     </h4>
@@ -1263,7 +1283,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                     type="button"
                     class="rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
                     @click="leadMeasureParseResult = null; leadMeasureFileName = null"
-                  >
+                >
                     Batal
                   </button>
 
@@ -1271,7 +1291,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                     type="button"
                     class="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-800 cursor-pointer"
                     @click="applyLeadMeasureImport"
-                  >
+                >
                     Terapkan Data ke Dashboard Lead Measure
                   </button>
                 </div>
@@ -1324,19 +1344,19 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                 <div class="flex items-center gap-2">
                   <span class="text-[11px] font-bold uppercase tracking-wider text-[#5E6A65]">
                     Sumber Data Aktif Saat Ini
-                  </span>
+                </span>
                   <span
                     class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold"
                     :class="onFarmStore.isLoaded.value
                       ? 'bg-sky-100 text-sky-800 border border-sky-300'
                       : 'bg-amber-100 text-amber-800 border border-amber-300'"
-                  >
+                >
                     <span
                       class="size-2 rounded-full"
                       :class="onFarmStore.isLoaded.value ? 'bg-sky-600' : 'bg-amber-500 animate-pulse'"
-                    />
+                />
                     {{ onFarmStore.isLoaded.value ? 'Terpasang & Aktif' : 'Belum Ada Data' }}
-                  </span>
+                </span>
                 </div>
 
                 <h2 id="active-source-onfarm-heading" class="mt-2 text-2xl font-bold tracking-tight text-[#26312D]">
@@ -1361,7 +1381,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                   <div>
                     <span class="text-[#808D87]">Total Biaya SAP:</span>
                     <strong class="ml-1 text-sky-900 font-mono font-bold">
-                      Rp {{ formatRupiahCompact(onFarmStore.totalActualCost.value) }}
+                      {{ formatRupiahCompact(onFarmStore.totalActualCost.value) }}
                     </strong>
                   </div>
                   <div>
@@ -1377,12 +1397,12 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                 <NuxtLink
                   to="/investment/on-farm"
                   class="inline-flex items-center gap-2 rounded-xl bg-sky-700 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-sky-800 transition-colors"
-                >
+              >
                   Buka Dashboard On-Farm →
                 </NuxtLink>
                 <span class="text-[11px] text-[#808D87]">
                   Cut-off aktif: Bulan {{ onFarmStore.metadata.value?.detectedActivePeriod || 9 }}
-                </span>
+              </span>
               </div>
             </div>
           </div>
@@ -1406,15 +1426,15 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
                     <span class="flex size-7 items-center justify-center rounded-lg bg-sky-100 text-sky-800 font-bold text-xs">
-                      <HugeiconsIcon :icon="File02Icon" :size="16" />
-                    </span>
+                  <HugeiconsIcon :icon="File02Icon" :size="16" />
+                  </span>
                     <h4 class="text-base font-bold text-[#26312D]">
                       Development Data (Excel LM 19)
                     </h4>
                   </div>
                   <span class="rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-bold text-sky-800 border border-sky-300">
-                    ● Terhubung & Aktif
-                  </span>
+                    ? Terhubung & Aktif
+                </span>
                 </div>
                 <p class="text-xs leading-5 text-[#5E6A65]">
                   Data workbook multi-sheet tervalidasi: sheet ZESTHLE152 untuk mutasi ledger SAP, sheet RKAP 2026 untuk pagu anggaran, dan sheet Rekap sebagai jembatan relasi proyek.
@@ -1428,15 +1448,15 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
                     <span class="flex size-7 items-center justify-center rounded-lg bg-slate-200 text-slate-600 font-bold text-xs">
-                      <HugeiconsIcon :icon="DatabaseSearchIcon" :size="16" />
-                    </span>
+                  <HugeiconsIcon :icon="DatabaseSearchIcon" :size="16" />
+                  </span>
                     <h4 class="text-base font-bold text-[#26312D]">
                       SAP CO/PS Live Connector
                     </h4>
                   </div>
                   <span class="rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
                     Phase 3.1 Preview
-                  </span>
+                </span>
                 </div>
                 <p class="text-xs leading-5 text-[#5E6A65]">
                   Integrasi langsung ke SAP S/4HANA atau SAP ECC via RFC/OData connector. Belum aktif pada tahap pengembangan ini.
@@ -1454,11 +1474,11 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
           <div class="max-w-2xl">
             <div class="flex items-center gap-2">
               <span class="inline-flex size-6 items-center justify-center rounded-lg bg-sky-100 text-sky-800">
-                <HugeiconsIcon :icon="Plant03Icon" :size="14" />
-              </span>
+            <HugeiconsIcon :icon="Plant03Icon" :size="14" />
+            </span>
               <span class="text-xs font-bold uppercase tracking-wider text-sky-700">
                 Sumber Data On-Farm (LM 19)
-              </span>
+            </span>
             </div>
             <h3 class="mt-1.5 text-lg font-bold text-[#26312D]">
               Kelola Berkas Excel Investasi On-Farm 2026
@@ -1513,14 +1533,14 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                 type="button"
                 class="rounded-xl border border-rose-300 bg-white px-3.5 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 transition-colors shadow-2xs"
                 @click="resetOnFarmData"
-              >
+            >
                 Hapus Data On-Farm
               </button>
 
               <NuxtLink
                 to="/investment/on-farm"
                 class="rounded-xl bg-sky-700 px-4 py-2 text-xs font-semibold text-white hover:bg-sky-800 transition-colors shadow-xs"
-              >
+            >
                 Buka Dashboard On-Farm →
               </NuxtLink>
             </div>
@@ -1561,7 +1581,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                 <div class="flex items-center gap-2">
                   <span class="rounded bg-sky-100 px-2 py-0.5 text-xs font-bold text-sky-800">
                     Hasil Pratinjau
-                  </span>
+                </span>
                   <h4 class="text-sm font-bold text-slate-900">
                     {{ onFarmFileName }}
                   </h4>
@@ -1576,14 +1596,14 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                   type="button"
                   class="rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                   @click="onFarmParseResult = null; onFarmFileName = null"
-                >
+              >
                   Batal
                 </button>
                 <button
                   type="button"
                   class="rounded-xl bg-sky-700 px-4 py-2 text-xs font-semibold text-white hover:bg-sky-800 shadow-xs"
                   @click="applyOnFarmImport"
-                >
+              >
                   Terapkan Data On-Farm
                 </button>
               </div>
@@ -1630,7 +1650,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
             <div class="rounded-xl border border-slate-200 bg-white p-4 text-xs space-y-2">
               <span class="font-bold text-slate-900 uppercase text-[10px] tracking-wider">
                 Catatan Diagnostik & Audit Workbook:
-              </span>
+            </span>
               <ul class="list-disc pl-5 space-y-1 text-slate-600">
                 <li>Header subtotal baris 1 ZESTHLE152 berhasil diabaikan dari detail transaksi.</li>
                 <li>{{ onFarmParseResult.diagnostics.emptyPaddingSkipped }} baris kosong padding SAP diabaikan secara aman.</li>
@@ -1672,11 +1692,11 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
               </h4>
               <span class="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 border border-amber-200">
                 Phase 2.8 Preview
-              </span>
+            </span>
             </div>
 
             <p class="text-xs text-[#5E6A65]">
-              Konfigurasi Google Sheets belum aktif — parameter integrasi akan dikonfigurasi pada tahap berikutnya (Phase 2.8).
+              Konfigurasi Google Sheets belum aktif · parameter integrasi akan dikonfigurasi pada tahap berikutnya (Phase 2.8).
             </p>
 
             <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-xs">
@@ -1717,7 +1737,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
               </div>
               <span class="rounded bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
                 {{ activeDomain.expectedFields.length }} Entitas
-              </span>
+            </span>
             </div>
 
             <div class="overflow-x-auto rounded-xl border border-[#E5EBE8] bg-white">
@@ -1739,9 +1759,9 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                       <span
                         class="rounded px-1.5 py-0.5 text-[10px] font-semibold"
                         :class="field.required ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-slate-100 text-slate-600'"
-                      >
+                    >
                         {{ field.required ? 'Wajib' : 'Opsional' }}
-                      </span>
+                    </span>
                     </td>
                   </tr>
                 </tbody>
@@ -1776,10 +1796,10 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                       <span
                         class="inline-flex items-center gap-1.5 text-xs"
                         :class="d.isAvailable ? 'text-emerald-700' : 'text-slate-400'"
-                      >
+                    >
                         <span class="size-2 rounded-full" :class="d.isAvailable ? 'bg-[#1DC82B]' : 'bg-slate-300'" />
                         {{ d.isAvailable ? 'Aktif' : 'Belum tersedia' }}
-                      </span>
+                    </span>
                     </td>
                   </tr>
                 </tbody>

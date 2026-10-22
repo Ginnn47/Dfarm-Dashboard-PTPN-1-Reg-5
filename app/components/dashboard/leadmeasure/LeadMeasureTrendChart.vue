@@ -1,7 +1,7 @@
 ﻿<script setup lang="ts">
 import ChartCard from '../reusable/ChartCard.vue'
 import { Blockchain04Icon } from '@hugeicons/core-free-icons'
-import type { LeadMeasureMetricCardData } from './LeadMeasureKpiCards.vue'
+import type { LeadMeasureMetricCardData } from '~/data/leadmeasure/types'
 
 defineProps<{
   trendOption: any

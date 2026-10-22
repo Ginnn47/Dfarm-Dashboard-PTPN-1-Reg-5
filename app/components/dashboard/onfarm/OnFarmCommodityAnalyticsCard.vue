@@ -388,10 +388,7 @@ const donutOption = computed(() => {
       </div>
 
       <template #footer>
-        <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 w-full">
-          <span>
-            Total Realisasi: {{ formatRupiahFull(totalCost) }} ? Total Pagu RKAP Rentang: {{ formatRupiahFull(totalRkap) }}
-          </span>
+        <div class="flex flex-wrap items-center justify-end gap-2 text-xs text-slate-500 w-full">
           <span>
             Klik {{ dimensionMode === 'komoditas' ? 'komoditas' : 'fase tanam' }} untuk membuka rincian inline drawer
           </span>

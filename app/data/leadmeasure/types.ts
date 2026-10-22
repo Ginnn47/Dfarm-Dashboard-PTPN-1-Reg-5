@@ -162,3 +162,17 @@ export interface LeadMeasureDataset {
   reconciliation?: LeadMeasureReconciliation
   octoberDetails?: Record<string, LeadMeasureOctoberDetail>
 }
+
+export interface LeadMeasureMetricCardData {
+  code: string
+  label: string
+  unit: string
+  target: string
+  description: string
+  value: number | null
+  prevValue: number | null
+  diff: number | null
+  trend: 'up' | 'down' | 'same'
+  formattedValue: string
+  meetsTarget: boolean
+}

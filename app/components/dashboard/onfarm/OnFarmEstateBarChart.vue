@@ -179,20 +179,6 @@ const barOption = computed(() => {
           <v-chart :option="barOption" autoresize class="h-full w-full" />
         </ClientOnly>
       </div>
-
-      <template #footer>
-        <div class="flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-500 w-full">
-          <span>* Rentang {{ analysisRangeLabel || 'aktif' }} · {{ sortedEstates.length }} unit kebun. Biru = Realisasi SAP, abu-abu = Target RKAP.</span>
-          <div class="flex items-center gap-3">
-            <span class="inline-flex items-center gap-1.5 font-medium">
-              <span class="h-3 w-4 rounded-sm bg-sky-600 inline-block" /> Realisasi SAP
-            </span>
-            <span class="inline-flex items-center gap-1.5 font-medium">
-              <span class="h-3 w-4 rounded-sm bg-slate-300 inline-block" /> Target RKAP
-            </span>
-          </div>
-        </div>
-      </template>
     </ChartCard>
   </section>
 </template>

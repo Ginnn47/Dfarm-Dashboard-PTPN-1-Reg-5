@@ -107,7 +107,6 @@ test('Lead Measure Test 7: Dedicated dashboard page and required components exis
 
   const components = [
     'app/components/dashboard/leadmeasure/LeadMeasureFilterBar.vue',
-    'app/components/dashboard/leadmeasure/LeadMeasureKpiCards.vue',
     'app/components/dashboard/leadmeasure/LeadMeasureTrendChart.vue',
     'app/components/dashboard/leadmeasure/LeadMeasureEstateBarChart.vue',
     'app/components/dashboard/leadmeasure/LeadMeasureDetailTable.vue',
