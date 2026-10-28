@@ -4,6 +4,17 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   css: ['~/assets/css/main.css'],
 
+  // Private server configuration. Values are supplied by deployment environment variables.
+  runtimeConfig: {
+    googleSheets: {
+      accessToken: '',
+      production2025SpreadsheetId: '',
+      production2025SheetsJson: '',
+      production2026SpreadsheetId: '',
+      production2026SheetsJson: '',
+    },
+  },
+
   app: {
     head: {
       title: 'DFARM Dashboard',

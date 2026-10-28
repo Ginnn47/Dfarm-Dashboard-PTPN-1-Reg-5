@@ -1,6 +1,7 @@
 ﻿<script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { gsap } from 'gsap'
+import '@fontsource/bodoni-moda/400.css'
 import { useSidebar } from '~/composables/useSidebar'
 import { useOnFarmData } from '~/composables/useOnFarmData'
 import {
@@ -306,23 +307,28 @@ const heroFeatures = [
           <div ref="heroTitleGroupRef" class="w-full flex flex-col items-center">
           <!-- Monitoring Terintegrasi Tracked Label -->
           <span class="text-[11px] sm:text-xs font-semibold tracking-[0.24em] text-[#2d6a4f] uppercase select-none">
-            MONITORING TERINTEGRASI
+            MONITORING TAHUNAN TERINTEGRASI
           </span>
 
-          <!-- Main Headline: Editorial Serif with Calligraphic Script Accent -->
-          <h1 class="font-serif-headline mt-3.5 sm:mt-4 text-3xl sm:text-4xl md:text-[2.85rem] lg:text-[3.25rem] font-normal sm:font-medium tracking-normal text-[#192328] leading-[1.18] max-w-2xl mx-auto">
-            Dari data operasional<br />
-            menuju keputusan<br />
-            yang <span class="font-script-accent font-semibold italic text-[#25523b] text-[1.15em] sm:text-[1.18em] tracking-tight inline-block pl-0.5">lebih jelas.</span>
+          <!-- Main Headline: Strong editorial serif -->
+          <h1 class="hero-bodoni-headline mt-3.5 sm:mt-4 text-[2.7rem] sm:text-[3.1rem] md:text-[3.75rem] lg:text-[4.5rem] font-normal tracking-normal text-[#192328] leading-[0.84] max-w-4xl mx-auto">
+            <span class="block">ADMINISTRASI</span>
+            <span class="block">OPERASIONAL</span>
           </h1>
 
+          <!-- Company name: Genuine handwritten script, kept separate from the heading -->
+          <p class="font-script-accent italic font-semibold mt-3 px-4 text-[3.85rem] sm:text-[2.05rem] md:text-[2.35rem] lg:text-[2.75rem] leading-[0.82] text-[#25523b]">
+            <span class="block whitespace-nowrap">PT Perkebunan Nusantara 1</span>
+            <span class="mt-1 block">Regional 5</span>
+          </p>
+
           <!-- Subtitle: Clean natural leading -->
-          <p class="mt-4 text-xs sm:text-[13px] md:text-sm text-slate-600 max-w-xl mx-auto leading-relaxed">
-            Akses ringkasan produksi, anggaran investasi, dan aktivitas operasional dari satu titik untuk mendukung perencanaan dan pengawasan kinerja.
+          <p class="mt-3.5 text-xs sm:text-[13px] md:text-sm text-slate-600 max-w-xl mx-auto leading-relaxed">
+            "Pengadministrasan Operasional yang baik adalah kunci kesuksesan organisasi"
           </p>
 
           <!-- Primary Action Button: Dark Botanical Green Pill Button -->
-          <div class="mt-6 sm:mt-7">
+          <div class="mt-5 sm:mt-6">
             <button
               type="button"
               class="inline-flex items-center gap-2.5 rounded-full bg-[#24513b] hover:bg-[#1b402e] text-white text-xs sm:text-[13px] font-medium px-6 sm:px-7 py-2.5 shadow-xs hover:shadow-md transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#24513b] focus:ring-offset-2"
@@ -737,7 +743,12 @@ const heroFeatures = [
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&display=swap');
+.hero-bodoni-headline {
+  font-family: 'Bodoni Moda', Georgia, 'Times New Roman', Cambria, serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  line-height: 0.84;
+}
 
 .font-serif-headline {
   font-family: 'Playfair Display', Georgia, 'Times New Roman', Cambria, serif;
@@ -758,6 +769,10 @@ const heroFeatures = [
 }
 
 @media (max-width: 640px) {
+  .font-script-accent span:first-child {
+    white-space: normal;
+  }
+
   .hero-content-group {
     transform: translate(0px, 20px);
   }

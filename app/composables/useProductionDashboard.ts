@@ -1,4 +1,4 @@
-import { computed, type Ref } from 'vue'
+import { computed, onMounted, type Ref } from 'vue'
 import { useDataSource } from '~/composables/useDataSource'
 import {
   aggregateByAfdeling,
@@ -37,6 +37,23 @@ export const productionYearOptions = [
 
 export function useProductionDashboard(filters: Ref<ProductionDashboardFilters>) {
   const { activeSourceId, activeSource, activeMeta, isAvailable, isNotConnected, setActiveSource } = useDataSource()
+
+  const sourceError = computed(() => activeSource.value.getError?.() || null)
+  const isLoading = computed(() => activeSource.value.getStatus() === 'loading')
+  const isError = computed(() => activeSource.value.getStatus() === 'error')
+
+  async function refreshSource() {
+    if (activeSourceId.value !== 'google-sheets' || !activeSource.value.loadRecords) return
+    try {
+      await activeSource.value.loadRecords()
+    } catch {
+      // The source stores a safe user-facing error; dashboard rendering remains on the error state.
+    }
+  }
+
+  onMounted(() => {
+    void refreshSource()
+  })
 
   // Retrieve raw records from the active source abstraction
   const sourceRecords = computed<ProductionRecord[]>(() => {
@@ -134,6 +151,10 @@ export function useProductionDashboard(filters: Ref<ProductionDashboardFilters>)
     activeSourceMeta: activeMeta,
     isAvailable,
     isNotConnected,
+    isLoading,
+    isError,
+    sourceError,
+    refreshSource,
     setActiveSource,
     sourceRecords,
     filteredRecords,

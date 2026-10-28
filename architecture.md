@@ -1,7 +1,7 @@
 ﻿# DFARM Dashboard — System Architecture
 
 > Version: 0.1
-> Status: Draft — Architecture Foundation
+> Status: Approved architectural direction; API and operational details pending
 > Frontend: Nuxt + Vue + TypeScript
 > UI: Nuxt UI + Tailwind CSS
 > Visualization: Apache ECharts
@@ -9,7 +9,7 @@
 > Data Fetching: TanStack Query
 > State: Pinia
 > Utilities: VueUse
-> Prototype Backend: Django
+> Backend Architecture: Nuxt Nitro server
 > Data Source: Google Sheets API
 
 ---
@@ -32,6 +32,15 @@ The architecture is designed to support:
 This document defines system boundaries and technical responsibilities.
 
 It does not define pixel-level visual design. Visual rules belong to `design.md`.
+
+## Initial Integration Scope
+
+The first backend integration targets the Production domain only. It will use
+Google Sheets as a read-only source and must preserve the existing Excel import
+and local-data workflows. Finance, On-Farm, and Off-Farm remain outside this
+initial integration and must not be forced into the Production data model.
+
+No database is required merely to complete the initial local integration.
 
 ---
 
@@ -139,36 +148,32 @@ The frontend is NOT responsible for:
 
 # 4. Backend Strategy
 
-The prototype backend uses Django.
-
-Django is an implementation choice, not the architectural contract.
-
-Current prototype:
+Nuxt Nitro is the approved backend architecture for DFARM. The frontend and
+backend live in the same Nuxt repository, while Nitro server routes expose the
+explicit API contract consumed by the Vue frontend.
 
 ```text
-Nuxt
-  |
-  | REST API
-  v
-Django
-  |
-  v
+Nuxt / Vue frontend
+        |
+        | REST API contract
+        v
+Nuxt Nitro server routes
+        |
+        v
+Server-side services
+        |
+        v
 Google Sheets API
 ```
 
-The architecture must remain portable to another backend framework if the company later requires it.
+Server-only operations, including Google credentials, source access,
+validation, semantic mapping, and business calculations, must remain in the
+Nitro server/service layer. Route handlers should remain thin and delegate to
+appropriate server-side services.
 
-For example:
-
-```text
-Current:
-Nuxt -> Django -> Google Sheets API
-
-Possible production:
-Nuxt -> Laravel -> Google Sheets API
-```
-
-The frontend must depend on the API contract rather than Django-specific implementation details.
+The frontend depends on the API contract rather than Nitro implementation
+details. Hosting, deployment identity, authentication, caching, and any
+future persistence decision remain subject to later operational approval.
 
 ---
 
@@ -193,11 +198,17 @@ Each source should have configuration such as:
 
 - source identifier
 - spreadsheet ID
-- sheet name/range when required
+- one or more sheet name/range entries when required
 - expected schema
 - semantic mapping
 - validation configuration
 - refresh configuration
+
+For Production, a workbook may contain multiple detail tabs for different
+commodities plus summary tabs. The backend configures the detail tabs as a
+list of qualified source ranges, maps each tab independently, excludes known
+summary tabs from canonical records, and deduplicates overlapping records
+after combining all detail tabs for the same reporting year.
 
 The application stores source configuration, not a permanent copy of the Google Sheets file.
 
@@ -216,7 +227,7 @@ Google Sheets
 Google Sheets API
       |
       v
-Django ingestion service
+Nuxt Nitro ingestion service
       |
       v
 raw source data
@@ -834,6 +845,10 @@ NUXT_PUBLIC_API_BASE
 
 Backend-only secrets must never use public Nuxt runtime configuration.
 
+Credentials must use an approved server-side mechanism and comply with
+organization policy. This document does not authorize creation of service
+account private keys or bypass of credential restrictions.
+
 Never expose:
 
 - Google service credentials
@@ -842,6 +857,10 @@ Never expose:
 - backend secrets
 
 to browser code.
+
+Selecting a remote source must never silently return Development fixtures when
+the source is unavailable or invalid. Connection state, validation state, and
+data freshness must remain distinct in the API and user-facing status model.
 
 ---
 
@@ -855,7 +874,7 @@ Frontend:
 - send authenticated requests
 - never store server secrets
 
-Backend:
+Nuxt Nitro server:
 - authentication
 - authorization
 - Google credentials
@@ -893,7 +912,9 @@ The final dashboard will eventually integrate with the existing company portal.
 
 The existing portal technology has been observed as a Vue/Nuxt-based frontend environment with Nginx and related frontend libraries.
 
-The exact production backend, authentication mechanism, deployment topology, and reverse-proxy configuration are not assumed by this document and must be confirmed before final integration.
+The Nuxt Nitro backend direction is approved. The authentication mechanism,
+deployment topology, and reverse-proxy configuration must still be confirmed
+before final integration.
 
 Possible architecture:
 
@@ -918,7 +939,7 @@ The dashboard should therefore remain modular and API-driven.
 
 ---
 
-# 28. Backend Replacement Principle
+# 28. API Contract Stability Principle
 
 The following artifacts must remain framework-independent:
 
@@ -933,8 +954,8 @@ Role Model
 Dashboard Requirements
 ```
 
-Only backend implementation details should need substantial rewriting
-if Django is later replaced by Laravel or another company-mandated framework.
+The API contract, canonical model, validation rules, and KPI definitions must
+remain stable as Nitro server implementation details evolve.
 
 ---
 
@@ -983,41 +1004,60 @@ Reusable component architecture
 - loading/error handling
 - refresh strategy
 
-## Phase 5 — Django API
+The existing Phases 1-4 above describe the established environment and
+frontend foundation work. The following integration phases replace the former
+Django-specific backend roadmap and are Production-first.
 
-- project structure
-- API endpoints
-- canonical models
-- service layer
+## Integration Phase 1 — Architecture & Documentation Alignment
 
-## Phase 6 — Google Sheets Integration
+- align architecture, agent instructions, and design references
+- record the approved Nitro direction in an ADR
 
-- credentials
-- source configuration
-- ingestion
-- raw data retrieval
+## Integration Phase 2 — Production API Contract & ADR Review
 
-## Phase 7 — Validation & Semantic Mapping
+- approve the Production response contract
+- record API errors, freshness, and validation states
+- approve the architecture decision record
 
-- schema detection
-- required columns
-- data type validation
-- mapping
-- validation states
+## Integration Phase 3 — Minimal Nuxt Nitro Backend Foundation
 
-## Phase 8 — Authentication & Roles
+- establish server-only service boundaries
+- add the minimal Production API route surface
+- keep route handlers separate from ingestion and business logic
 
-- Admin
-- Evaluator
-- authorization
+## Integration Phase 4 — Google Sheets Read-Only Ingestion
 
-## Phase 9 — Portal Integration
+- configure the approved server-side credential mechanism
+- retrieve the Production source without write access
+- preserve explicit connection and source failure states
 
-- authentication/SSO alignment
-- reverse proxy
-- deployment
-- domain/path integration
-- production testing
+## Integration Phase 5 — Production Validation & Semantic Mapping
+
+- validate source schema and required fields
+- map source fields to the Production canonical model
+- expose validation and freshness state through the API contract
+
+## Integration Phase 6 — Production Frontend API Integration
+
+- replace the Production fixture path only through the approved API contract
+- preserve Excel import and local-data workflows
+- keep Finance, On-Farm, and Off-Farm outside the initial integration scope
+
+## Integration Phase 7 — Quality Assurance & Regression Testing
+
+- test successful API reads and authentication failures
+- test invalid data and source failures
+- preserve Excel regression coverage
+
+## Integration Phase 8 — Future Domains
+
+- evaluate Finance, On-Farm, and Off-Farm separately after Production is stable
+
+## Integration Phase 9 — Deployment & Operational Readiness
+
+- confirm hosting and reverse-proxy topology
+- confirm deployment identity and authentication
+- confirm cache, refresh, monitoring, and production security requirements
 
 ---
 
@@ -1043,7 +1083,7 @@ When a new feature is proposed:
 The architecture foundation is complete when:
 
 - [ ] Frontend framework is defined.
-- [ ] Backend prototype is defined.
+- [ ] Nuxt Nitro backend architecture is defined.
 - [ ] Data source architecture is defined.
 - [ ] Data flow is defined.
 - [ ] Validation responsibility is defined.
@@ -1069,8 +1109,7 @@ The architecture foundation is complete when:
                 Google Sheets API
                         |
                         v
-                 BACKEND SERVICE
-                     Django*
+                 NUXT NITRO SERVER
                         |
           +-------------+-------------+
           |             |             |
@@ -1106,9 +1145,9 @@ The architecture foundation is complete when:
   confirmed before production deployment.
 ```
 
-The architecture is intentionally designed so that
-Django is replaceable while the data contract,
-API contract, frontend structure, and business requirements remain stable.
+The architecture is intentionally designed so that server implementation
+details remain behind the data and API contracts while the Nuxt repository
+serves both frontend and backend responsibilities.
 
 ---
 

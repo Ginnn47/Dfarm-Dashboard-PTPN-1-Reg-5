@@ -1416,7 +1416,7 @@ ECharts component
 Example:
 
 ```text
-Django API
+Nuxt Nitro API
     ↓
 useProductionData()
     ↓
@@ -1436,8 +1436,7 @@ The frontend must communicate through API contracts.
 
 Frontend components should NOT depend on:
 
-- Django models
-- Django serializers
+- Nitro server implementation details
 - Google Sheets API
 - Google Sheets credentials
 - backend implementation details
@@ -1457,20 +1456,8 @@ Example:
 }
 ```
 
-This allows the backend to change from:
-
-```text
-Django
-```
-
-to:
-
-```text
-Laravel
-```
-
-without requiring a frontend rewrite,
-as long as the API contract remains compatible.
+The frontend remains independent of Nitro route and service internals as long
+as the approved API contract remains compatible.
 
 ---
 
@@ -1723,7 +1710,7 @@ VueUse
 Backend:
 
 ```text
-Django prototype
+Nuxt Nitro server
 ```
 
 Data source:
@@ -1732,8 +1719,8 @@ Data source:
 Google Sheets API
 ```
 
-The backend implementation may later change
-if the company requires another backend technology.
+The exact deployment topology, authentication, and operational identity
+remain pending and must be confirmed before production rollout.
 
 ---
 
@@ -1791,7 +1778,7 @@ Do NOT implement yet:
 
 ```text
 Google Sheets API
-Django API
+Nuxt Nitro API
 Authentication
 Database
 Production credentials

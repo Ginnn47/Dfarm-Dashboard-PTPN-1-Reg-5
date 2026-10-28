@@ -47,6 +47,10 @@ const {
   activeSourceMeta,
   isAvailable,
   isNotConnected,
+  isLoading,
+  isError,
+  sourceError,
+  refreshSource,
   setActiveSource,
   filteredRecords,
   periodRecords,
@@ -178,9 +182,22 @@ function formatCompact(value: number | null | undefined) {
       </div>
     </header>
 
-    <!-- NOT-CONNECTED STATE (STEP 9) FOR UNCONFIGURED SOURCES (E.G. GOOGLE SHEETS) -->
+    <!-- Remote source loading state -->
     <section
-      v-if="isNotConnected"
+      v-if="isLoading"
+      class="overflow-hidden rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm sm:p-12"
+      aria-label="Memuat sumber data"
+    >
+      <div class="mx-auto flex size-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-200/80">
+        <HugeiconsIcon :icon="DatabaseSearchIcon" :size="32" :stroke-width="2.2" class="animate-pulse text-amber-600" />
+      </div>
+      <h2 class="mt-4 text-2xl font-bold tracking-tight text-slate-900">Memuat Data Production</h2>
+      <p class="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600">Dashboard sedang mengambil data tervalidasi dari Google Sheets melalui backend Nitro.</p>
+    </section>
+
+    <!-- NOT-CONNECTED/ERROR STATE FOR REMOTE SOURCES -->
+    <section
+      v-else-if="isNotConnected || isError"
       class="overflow-hidden rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm sm:p-12"
       aria-label="Sumber data belum terhubung"
     >
@@ -189,15 +206,23 @@ function formatCompact(value: number | null | undefined) {
       </div>
       <div class="mt-4 inline-flex items-center gap-1.5 rounded-full bg-amber-100/70 px-3 py-1 text-xs font-semibold text-amber-800">
         <span class="size-2 rounded-full bg-amber-500 animate-pulse" />
-        {{ activeSourceMeta.name }} · Belum Terhubung
+        {{ activeSourceMeta.name }} · {{ isError ? 'Gagal Terhubung' : 'Belum Terhubung' }}
       </div>
       <h2 class="mt-4 text-2xl font-bold tracking-tight text-slate-900">
-        Data Produksi Belum Tersedia
+        {{ isError ? 'Data Production Gagal Dimuat' : 'Data Produksi Belum Tersedia' }}
       </h2>
       <p class="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600">
-        Dashboard data belum tersedia karena sumber {{ activeSourceMeta.name }} belum dikonfigurasi. Sesuai kebijakan DFARM, sistem tidak menampilkan data simulasi atau data tiruan saat sumber eksternal dipilih.
+        {{ sourceError || `Dashboard data belum tersedia karena sumber ${activeSourceMeta.name} belum dikonfigurasi. Sesuai kebijakan DFARM, sistem tidak menampilkan data simulasi atau data tiruan saat sumber eksternal dipilih.` }}
       </p>
       <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
+        <button
+          v-if="isError"
+          type="button"
+          class="inline-flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-5 py-2.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
+          @click="refreshSource"
+        >
+          Coba Lagi
+        </button>
         <button
           type="button"
           class="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-800 transition-colors"
@@ -213,9 +238,9 @@ function formatCompact(value: number | null | undefined) {
         </NuxtLink>
       </div>
       <div class="mt-8 border-t border-slate-100 pt-6 text-left max-w-md mx-auto text-xs text-slate-500">
-        <p class="font-semibold text-slate-700">Rencana Integrasi (Phase 2.8):</p>
+        <p class="font-semibold text-slate-700">Konfigurasi backend Phase 3.3:</p>
         <p class="mt-1">
-          Koneksi Google Sheets API, sinkronisasi otomatis, dan pemetaan skema kolom akan dihubungkan pada milestone integrasi data berikutnya.
+          Spreadsheet ID, sheet, range, dan token akses harus tersedia di runtime server. Dashboard tidak memakai fallback Development secara otomatis.
         </p>
       </div>
     </section>

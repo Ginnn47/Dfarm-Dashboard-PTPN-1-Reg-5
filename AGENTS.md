@@ -104,24 +104,26 @@ Google Sheets API
 
 Never expose Google credentials in frontend code.
 
-The frontend depends on API contracts, not Django internals.
+The frontend depends on API contracts, not Nitro server internals.
 
 ---
 
 # 5. Backend Independence
 
-Django is the current prototype backend.
+Nuxt Nitro is the approved backend architecture for DFARM. Frontend and
+backend code live in the same Nuxt repository, but the frontend must depend on
+explicit API contracts rather than Nitro server implementation details.
 
 Do not create frontend code that assumes:
 
-- Django models
-- Django serializers
-- Django-specific URL conventions
-- Django internal modules
+- Nitro server route internals
+- server-only service modules
+- credential or runtime secret locations
+- source-specific ingestion details
 
-unless the task explicitly concerns the backend.
-
-The frontend must remain portable if the backend later changes to Laravel.
+Server-only operations, including Google credentials, Google Sheets access,
+validation, semantic mapping, and business calculations, belong in the Nitro
+server/service layer.
 
 ---
 
@@ -500,7 +502,7 @@ Do not chase pixel perfection before the component architecture is stable.
 
 The project uses milestone-driven implementation.
 
-Current roadmap:
+Existing foundation milestones:
 
 ```text
 M2.1 Environment
@@ -510,26 +512,17 @@ M2.3 Application Shell
 M2.4 Routing
 M2.5 Component Architecture
 
-Phase 3:
-Dashboard UI
+Production-first integration roadmap:
 
-Phase 4:
-Data Layer
-
-Phase 5:
-Django API
-
-Phase 6:
-Google Sheets Integration
-
-Phase 7:
-Validation + Semantic Mapping
-
-Phase 8:
-Authentication + Roles
-
-Phase 9:
-Portal Integration
+1. Architecture and documentation alignment
+2. Production API contract and ADR approval
+3. Minimal Nuxt Nitro backend foundation
+4. Google Sheets read-only ingestion
+5. Production schema validation and semantic mapping
+6. Production frontend API integration
+7. Quality assurance and regression testing
+8. Future domain integrations, considered separately after Production is stable
+9. Deployment and operational readiness
 ```
 
 Do not silently implement future phases while completing an earlier milestone.
@@ -553,7 +546,7 @@ For the architecture foundation milestone, verify that:
 - semantic mapping responsibility is documented
 - API contract principle is documented
 - role boundaries are documented
-- future backend replacement is documented
+- Nuxt Nitro server boundaries are documented
 - portal integration is documented
 
 Do not build application features as part of this documentation milestone.
@@ -577,7 +570,7 @@ Do not implement:
 
 ```text
 Google Sheets
-Django API
+Nuxt Nitro API
 authentication
 database
 real synchronization
@@ -696,6 +689,10 @@ screenshots
 ```
 
 Use appropriate server-side environment configuration.
+
+Use only an approved server-side credential mechanism and follow organization
+policy. Do not create service-account private keys or bypass credential
+restrictions without explicit approval.
 
 ---
 

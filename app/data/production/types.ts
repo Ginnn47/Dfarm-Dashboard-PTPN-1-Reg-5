@@ -124,6 +124,8 @@ export interface ProductionDataSource {
   readonly meta: ProductionDataSourceMeta
   getRecords(): ProductionRecord[]
   getStatus(): DataSourceStatus
+  getError?(): string | null
+  loadRecords?(): Promise<ProductionRecord[]>
 }
 
 // ===================================================================
