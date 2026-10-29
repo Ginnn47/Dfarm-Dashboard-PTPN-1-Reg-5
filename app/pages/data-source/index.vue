@@ -52,8 +52,10 @@ const {
   domains,
   activeDomainId,
   activeDomain,
-  activeSourceId,
-  activeSourceMeta,
+  currentDomainActiveSourceId: activeSourceId,
+  currentDomainSource: activeSource,
+  currentDomainSourceMeta: activeSourceMeta,
+  availableSources,
   domainSources,
   setActiveDomain,
   setActiveSource,
@@ -104,6 +106,83 @@ const activeReportingYears = computed(() => devStore.activeReportingYears.value 
 const activeRecordCount = computed(() => devStore.activeRecordCount.value || 0)
 const activeYearsLabel = computed(() => activeReportingYears.value.join(', '))
 const isCustomDataActive = computed(() => devStore.isCustomDataActive.value)
+const developmentMeta = computed(() => availableSources.find((source) => source.id === 'development')!)
+const googleSheetsMeta = computed(() => availableSources.find((source) => source.id === 'google-sheets')!)
+
+const activeConnectionStatus = computed(() => activeSourceMeta.value.connectionStatus)
+const activeDataStatus = computed(() => activeSourceMeta.value.dataStatus)
+const activeStatusLabel = computed(() => {
+  if (activeConnectionStatus.value === 'checking') return 'Memeriksa koneksi'
+  if (activeConnectionStatus.value === 'not-checked') return 'Belum diverifikasi'
+  if (activeDataStatus.value === 'invalid') return 'Terhubung · Data tidak valid'
+  if (activeDataStatus.value === 'empty') return 'Terhubung · Data kosong'
+  if (activeConnectionStatus.value === 'failed') return 'Koneksi gagal'
+  return activeSourceMeta.value.statusLabel
+})
+
+const activeStatusTone = computed(() => {
+  if (activeConnectionStatus.value === 'connected' && activeDataStatus.value !== 'invalid') return 'success'
+  if (activeConnectionStatus.value === 'failed' || activeDataStatus.value === 'invalid') return 'error'
+  if (activeConnectionStatus.value === 'checking') return 'loading'
+  return 'neutral'
+})
+
+const activeStatusMessage = computed(() => {
+  if (activeSourceId.value === 'development') return 'Data lokal siap digunakan tanpa koneksi jaringan.'
+  if (activeDataStatus.value === 'invalid') return activeSourceMeta.value.note || 'Koneksi berhasil, tetapi data perlu diperbaiki.'
+  if (activeConnectionStatus.value === 'failed') return activeSourceMeta.value.errorMessage || activeSourceMeta.value.note || 'Koneksi belum berhasil diverifikasi.'
+  if (activeConnectionStatus.value === 'not-checked') return 'Sumber dipilih, tetapi belum ada pemeriksaan live pada sesi ini.'
+  if (activeDataStatus.value === 'empty') return 'Koneksi berhasil, tetapi belum ada record Production yang dikembalikan.'
+  return activeSourceMeta.value.note || 'Data Production berhasil diverifikasi.'
+})
+
+const activeLastCheckedLabel = computed(() => {
+  const timestamp = activeSourceMeta.value.lastChecked || activeSourceMeta.value.lastSuccessful
+  if (!timestamp) return 'Belum diverifikasi'
+  try {
+    return new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(timestamp))
+  } catch {
+    return timestamp
+  }
+})
+
+const googleLastCheckedLabel = computed(() => {
+  const timestamp = googleSheetsMeta.value.lastChecked || googleSheetsMeta.value.lastSuccessful
+  if (!timestamp) return 'Belum ada pemeriksaan live'
+  try {
+    return `Terakhir dicek ${new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(timestamp))}`
+  } catch {
+    return `Terakhir dicek ${timestamp}`
+  }
+})
+
+const isCheckingActiveSource = computed(() => activeSource.value.getStatus() === 'loading')
+
+function sourceStatusLabel(source: { connectionStatus: string; dataStatus: string; statusLabel: string }): string {
+  if (source.connectionStatus === 'checking') return 'Memeriksa'
+  if (source.connectionStatus === 'not-checked') return 'Belum dicek'
+  if (source.dataStatus === 'invalid') return 'Data tidak valid'
+  if (source.connectionStatus === 'failed') return 'Gagal'
+  if (source.dataStatus === 'empty') return 'Terhubung · Kosong'
+  return source.statusLabel
+}
+
+function sourceStatusClasses(source: { connectionStatus: string; dataStatus: string }): string {
+  if (source.connectionStatus === 'connected' && source.dataStatus !== 'invalid') return 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  if (source.connectionStatus === 'failed' || source.dataStatus === 'invalid') return 'bg-rose-50 text-rose-700 border-rose-200'
+  if (source.connectionStatus === 'checking') return 'bg-amber-50 text-amber-700 border-amber-200'
+  return 'bg-slate-100 text-slate-600 border-slate-200'
+}
+
+async function verifyActiveSource() {
+  if (activeDomainId.value !== 'production' || !activeSource.value.loadRecords) return
+  try {
+    await activeSource.value.loadRecords()
+    showToast('Status Google Sheets berhasil diperbarui dari endpoint Production.', 'success')
+  } catch {
+    showToast(activeSourceMeta.value.errorMessage || 'Pemeriksaan sumber gagal.', 'warning')
+  }
+}
 
 const showFormatGuide = ref(false)
 
@@ -373,7 +452,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
     if (sourceId === 'development') {
       showToast('Sumber data Produksi dialihkan ke Development Data (Lokal). Dashboard kembali beroperasi penuh.', 'success')
     } else {
-      showToast('Sumber data Produksi dialihkan ke Google Sheets. Dashboard akan menampilkan status belum terhubung.', 'warning')
+      showToast('Google Sheets dipilih. Jalankan pemeriksaan untuk mendapatkan status koneksi terbaru.', 'info')
     }
   } else {
     setDomainActiveSource(activeDomainId.value, sourceId)
@@ -385,31 +464,34 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
 <template>
   <div class="mx-auto max-w-6xl space-y-8 pb-16">
     <!-- 1. PAGE HEADER -->
-    <header class="overflow-hidden rounded-2xl border border-[#E5EBE8] bg-white p-6 shadow-xs sm:p-8">
+    <header class="overflow-hidden rounded-2xl border border-[#E5EBE8] bg-white p-5 shadow-xs sm:p-6">
       <div class="flex flex-wrap items-start justify-between gap-6">
         <div class="max-w-2xl">
           <div class="flex items-center gap-2">
             <span class="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200/80">
-              Manajemen Sumber Data
+              Data Source
             </span>
             <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
               Phase 2.7 · Terkonsentrasi
             </span>
           </div>
-          <h1 class="mt-2.5 text-2xl font-bold tracking-tight text-[#26312D] sm:text-3xl">
-            Pusat Pengaturan Sumber Data
+          <h1 class="mt-2 text-2xl font-bold tracking-tight text-[#26312D] sm:text-3xl">
+            Kelola sumber data
           </h1>
-          <p class="mt-2 text-sm leading-6 text-[#5E6A65]">
-            Kelola dan tentukan sumber data yang digunakan dashboard DFARM secara terpusat. Pilih sumber data operasional atau data pengembangan untuk setiap modul.
+          <p class="mt-1.5 text-sm leading-6 text-[#5E6A65]">
+            Pilih sumber yang digunakan modul dan verifikasi koneksi hanya saat diperlukan.
           </p>
         </div>
 
         <!-- Quick Status Badge in Header -->
         <div class="flex items-center gap-3 rounded-xl border border-[#E5EBE8] bg-[#F7F9F8] px-4 py-3 text-xs">
-          <div class="size-2.5 rounded-full" :class="activeSourceId === 'development' ? 'bg-[#1DC82B]' : 'bg-[#FAB33D] animate-pulse'" />
+          <div
+            class="size-2.5 rounded-full"
+            :class="activeStatusTone === 'success' ? 'bg-emerald-500' : activeStatusTone === 'error' ? 'bg-rose-500' : activeStatusTone === 'loading' ? 'bg-amber-500 animate-pulse' : 'bg-slate-400'"
+          />
           <div>
             <p class="font-bold text-[#26312D]">
-              {{ activeSourceId === 'development' ? 'Development Data Aktif' : 'Google Sheets (Belum Terhubung)' }}
+              {{ activeSourceMeta.name }} · {{ activeStatusLabel }}
             </p>
             <p class="text-[11px] text-[#5E6A65]">
               Modul: {{ activeDomain.name }} · Tahun: {{ activeYearsLabel }}
@@ -561,20 +643,18 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
               </span>
                 <span
                   class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold"
-                  :class="activeSourceId === 'development'
-                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                    : 'bg-amber-100 text-amber-800 border border-amber-300'"
+                  :class="activeStatusTone === 'success' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : activeStatusTone === 'error' ? 'bg-rose-100 text-rose-800 border border-rose-300' : 'bg-amber-100 text-amber-800 border border-amber-300'"
               >
                   <span
                     class="size-2 rounded-full"
-                    :class="activeSourceId === 'development' ? 'bg-[#1DC82B]' : 'bg-[#FAB33D] animate-pulse'"
+                    :class="activeStatusTone === 'success' ? 'bg-[#1DC82B]' : activeStatusTone === 'error' ? 'bg-rose-500' : 'bg-[#FAB33D] animate-pulse'"
               />
-                  {{ activeSourceId === 'development' ? 'Aktif Digunakan' : 'Belum Terhubung' }}
+                  {{ activeStatusLabel }}
               </span>
               </div>
 
               <h2 id="active-source-heading" class="mt-2 text-2xl font-bold tracking-tight text-[#26312D]">
-                {{ activeSourceId === 'development' ? 'Development Data' : 'Google Sheets' }}
+                {{ activeSourceMeta.name }}
               </h2>
 
               <p class="mt-2 text-sm leading-6 text-[#5E6A65]">
@@ -582,23 +662,23 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                   Data pengembangan yang digunakan untuk menjalankan dashboard Produksi Perkebunan saat ini. Berisi 577 baris data terverifikasi (16,58M Realisasi dan 18,95M RKAP).
                 </template>
                 <template v-else>
-                  Sumber Google Sheets saat ini dipilih, namun belum terhubung ke API backend. Dashboard Produksi menampilkan notifikasi status belum terhubung dan tidak menampilkan data palsu.
+                  {{ activeStatusMessage }}
                 </template>
               </p>
 
               <div class="mt-4 flex flex-wrap items-center gap-6 text-xs text-[#5E6A65]">
                 <div>
                   <span class="text-[#808D87]">Tipe Sumber:</span>
-                  <strong class="ml-1 text-[#26312D]">{{ activeSourceId === 'development' ? 'Data Lokal (Offline)' : 'Cloud Spreadsheet' }}</strong>
+                  <strong class="ml-1 text-[#26312D]">{{ activeSourceMeta.type === 'local' ? 'Data lokal' : 'Cloud spreadsheet' }}</strong>
                 </div>
                 <div>
                   <span class="text-[#808D87]">Cakupan:</span>
-                  <strong class="ml-1 text-[#26312D]">{{ activeSourceId === 'development' ? '577 Rekod Kebun & Afdeling' : 'Menunggu Koneksi API' }}</strong>
+                  <strong class="ml-1 text-[#26312D]">{{ activeSourceMeta.recordCount || 0 }} record</strong>
                 </div>
                 <div>
                   <span class="text-[#808D87]">Status Sistem:</span>
-                  <strong class="ml-1" :class="activeSourceId === 'development' ? 'text-emerald-700' : 'text-amber-700'">
-                    {{ activeSourceId === 'development' ? 'Operasional Penuh' : 'Not Connected State' }}
+                  <strong class="ml-1" :class="activeStatusTone === 'success' ? 'text-emerald-700' : activeStatusTone === 'error' ? 'text-rose-700' : 'text-amber-700'">
+                    {{ activeStatusLabel }}
                   </strong>
                 </div>
               </div>
@@ -611,6 +691,16 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
             >
                 Buka Dashboard Produksi →
               </NuxtLink>
+              <button
+                v-if="activeSourceId === 'google-sheets'"
+                type="button"
+                class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-wait disabled:opacity-60"
+                :disabled="isCheckingActiveSource"
+                @click="verifyActiveSource"
+              >
+                <HugeiconsIcon :icon="RefreshIcon" :size="14" :class="isCheckingActiveSource ? 'animate-spin' : ''" />
+                {{ isCheckingActiveSource ? 'Memeriksa...' : 'Periksa koneksi' }}
+              </button>
               <span class="text-[11px] text-[#808D87]">
                 Perubahan langsung diterapkan
             </span>
@@ -655,12 +745,10 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
 
                 <span
                   class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold"
-                  :class="activeSourceId === 'development'
-                    ? 'bg-emerald-100 text-emerald-800'
-                    : 'bg-slate-100 text-slate-600'"
+                  :class="sourceStatusClasses(developmentMeta)"
               >
                   <span class="size-1.5 rounded-full" :class="activeSourceId === 'development' ? 'bg-[#1DC82B]' : 'bg-slate-400'" />
-                  {{ activeSourceId === 'development' ? 'Aktif Digunakan' : 'Tersedia' }}
+                  {{ sourceStatusLabel(developmentMeta) }}
               </span>
               </div>
 
@@ -689,7 +777,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                   : 'bg-emerald-700 text-white hover:bg-emerald-800 shadow-xs'"
                 @click="handleSelectSource('development')"
             >
-                {{ activeSourceId === 'development' ? '? Sedang Digunakan' : 'Gunakan Sumber Ini' }}
+                {{ activeSourceId === 'development' ? 'Sumber aktif' : 'Pilih Development Data' }}
               </button>
             </div>
           </div>
@@ -718,27 +806,27 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
 
                 <span
                   class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold"
-                  :class="activeSourceId === 'google-sheets'
-                    ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                    : 'bg-slate-100 text-slate-600'"
+                  :class="sourceStatusClasses(googleSheetsMeta)"
               >
-                  <span class="size-1.5 rounded-full" :class="activeSourceId === 'google-sheets' ? 'bg-[#FAB33D] animate-pulse' : 'bg-slate-400'" />
-                  {{ activeSourceId === 'google-sheets' ? 'Dipilih (Belum Terhubung)' : 'Belum Terhubung' }}
+                  <span class="size-1.5 rounded-full" :class="googleSheetsMeta.connectionStatus === 'connected' && googleSheetsMeta.dataStatus !== 'invalid' ? 'bg-emerald-500' : googleSheetsMeta.connectionStatus === 'failed' || googleSheetsMeta.dataStatus === 'invalid' ? 'bg-rose-500' : googleSheetsMeta.connectionStatus === 'checking' ? 'bg-amber-500 animate-pulse' : 'bg-slate-400'" />
+                  {{ sourceStatusLabel(googleSheetsMeta) }}
               </span>
               </div>
 
               <p class="mt-4 text-xs leading-5 text-[#5E6A65]">
-                Sumber data operasional yang akan digunakan untuk mengambil data Produksi Perkebunan dari Google Sheets API secara terpusat pada tahap pengembangan selanjutnya.
+                {{ googleSheetsMeta.note || 'Sumber Production terpusat melalui Google Sheets API.' }}
               </p>
 
               <dl class="mt-4 space-y-2 rounded-xl bg-[#F7F9F8] p-3 text-xs text-[#5E6A65]">
                 <div class="flex justify-between">
                   <dt class="text-[#808D87]">Status Integrasi:</dt>
-                  <dd class="font-semibold text-amber-700">Belum Terhubung (Not Connected)</dd>
+                  <dd class="font-semibold" :class="googleSheetsMeta.connectionStatus === 'connected' ? 'text-emerald-700' : googleSheetsMeta.connectionStatus === 'failed' || googleSheetsMeta.dataStatus === 'invalid' ? 'text-rose-700' : 'text-amber-700'">
+                    {{ sourceStatusLabel(googleSheetsMeta) }}
+                  </dd>
                 </div>
                 <div class="flex justify-between">
                   <dt class="text-[#808D87]">Target Tahapan:</dt>
-                  <dd class="font-medium text-[#26312D]">Phase 2.8 (Google Sheets API)</dd>
+                  <dd class="font-medium text-[#26312D]">{{ googleLastCheckedLabel }}</dd>
                 </div>
               </dl>
             </div>
@@ -752,7 +840,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                   : 'bg-slate-900 text-white hover:bg-slate-800 shadow-xs'"
                 @click="handleSelectSource('google-sheets')"
             >
-                {{ activeSourceId === 'google-sheets' ? '? Dipilih (Belum Terhubung)' : 'Hubungkan Sumber (Pilih Google Sheets)' }}
+                {{ activeSourceId === 'google-sheets' ? 'Sumber aktif' : 'Pilih Google Sheets' }}
               </button>
             </div>
           </div>
@@ -1790,7 +1878,7 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                     <td class="px-4 py-2.5 font-semibold">{{ d.name }}</td>
                     <td class="px-4 py-2.5 font-mono text-[11px] text-[#47A5DE]">{{ d.targetRoute }}</td>
                     <td class="px-4 py-2.5 text-[#5E6A65]">
-                      {{ d.isAvailable ? (activeSourceId === 'development' ? `Development Data (${activeYearsLabel})` : 'Google Sheets') : 'Belum dihubungkan' }}
+                      {{ d.isAvailable ? (domainSources[d.id] === 'development' ? `Development Data (${activeYearsLabel})` : 'Google Sheets') : 'Belum dihubungkan' }}
                     </td>
                     <td class="px-4 py-2.5 text-right font-semibold">
                       <span

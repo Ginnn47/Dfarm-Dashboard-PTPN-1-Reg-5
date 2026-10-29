@@ -162,8 +162,26 @@ test('Production source config: server values become qualified A1 ranges and mis
   const config = getProductionGoogleSourceConfig(runtimeConfig)
   assert.equal(config.sources.length, 4)
   assert.equal(config.sources[0]?.range, "'Prod Per TT Karet'!A1:AD600")
+  const adcConfig = getProductionGoogleSourceConfig({ ...runtimeConfig, accessToken: '' })
+  assert.equal(adcConfig.accessToken, undefined)
+
+  const parsedRuntimeConfig = getProductionGoogleSourceConfig({
+    ...runtimeConfig,
+    production2025SheetsJson: JSON.parse(runtimeConfig.production2025SheetsJson),
+    production2026SheetsJson: JSON.parse(runtimeConfig.production2026SheetsJson),
+  })
+  assert.equal(parsedRuntimeConfig.sources.length, 4)
+
   assert.throws(
-    () => getProductionGoogleSourceConfig({ ...runtimeConfig, accessToken: '' }),
-    (error: unknown) => error instanceof ProductionApiError && error.code === 'SOURCE_AUTH_FAILED',
+    () => getProductionGoogleSourceConfig({ ...runtimeConfig, production2025SpreadsheetId: 'https://docs.google.com/spreadsheets/d/id' }),
+    (error: unknown) => error instanceof ProductionApiError && error.code === 'SOURCE_NOT_CONFIGURED',
+  )
+  assert.throws(
+    () => getProductionGoogleSourceConfig({ ...runtimeConfig, production2025SheetsJson: JSON.stringify([{ sheetName: 'Prod Per TT Karet', range: 'A1:AD' }]) }),
+    (error: unknown) => error instanceof ProductionApiError && error.code === 'SOURCE_NOT_CONFIGURED',
+  )
+  assert.throws(
+    () => getProductionGoogleSourceConfig({ ...runtimeConfig, production2025SheetsJson: JSON.stringify([{ sheetName: 'Prod Per TT Karet', range: 'A1' }]) }),
+    (error: unknown) => error instanceof ProductionApiError && error.code === 'SOURCE_NOT_CONFIGURED',
   )
 })

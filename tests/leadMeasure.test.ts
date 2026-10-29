@@ -1,4 +1,4 @@
-﻿import test from 'node:test'
+import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -15,7 +15,7 @@ import { createMockLeadMeasureDataset } from '../app/data/leadmeasure/mockLeadMe
 import { LEAD_MEASURE_METRICS } from '../app/data/leadmeasure/types.ts'
 import { useLeadMeasureData } from '../app/composables/useLeadMeasureData.ts'
 
-const WB_PATH = 'c:/Users/HP VICTUS/Downloads/2026 - LEAD MEASURE KARET.xlsx'
+const WB_PATH = ['D:/Mghub PTPN/DB/DashDataDev/2026 - LEAD MEASURE KARET.xlsx', 'c:/Users/HP VICTUS/Downloads/2026 - LEAD MEASURE KARET.xlsx'].find((p) => fs.existsSync(p)) || 'c:/Users/HP VICTUS/Downloads/2026 - LEAD MEASURE KARET.xlsx'
 const hasReferenceWb = fs.existsSync(WB_PATH)
 
 function createMockStorage(initialData: Record<string, string> = {}): Storage {
@@ -140,6 +140,7 @@ test('Lead Measure Test 8: Reference workbook parsing and reconciliation validat
   const dailyObs = dataset.observations.filter((o) => o.periodType === 'daily')
   assert.ok(monthlyObs.length > 0, 'Must have monthly observations')
   assert.ok(dailyObs.length > 0, 'Must have daily observations')
+  assert.ok(dailyObs.every((observation) => observation.sourceSheet.startsWith('Master Prod')), 'Daily observations must come from Master Prod')
 
   // 3. Four Metrics Contextual Mapping
   const metricsFound = new Set(dataset.observations.map((o) => o.metricCode))
@@ -181,6 +182,27 @@ test('Lead Measure Test 9: Combined monthly trend chart has 4 series, dual Y-axe
   for (const s of opt.series) {
     assert.equal(s.connectNulls, false, `Series ${s.name} must have connectNulls: false`)
   }
+})
+
+test('Lead Measure Test 9b: Monthly chart preserves the full trend while daily chart follows the focus month', () => {
+  const { viewMode, selectedMonth, combinedTrendChartOption } = useLeadMeasureData()
+
+  viewMode.value = 'monthly'
+  selectedMonth.value = 8
+  const august = combinedTrendChartOption.value
+  selectedMonth.value = 9
+  const september = combinedTrendChartOption.value
+
+  assert.ok(august.xAxis.data.length > 1, 'Monthly chart must show a trend, not one focused point')
+  assert.deepEqual(august.xAxis.data, september.xAxis.data)
+  assert.deepEqual(
+    august.series.map((series: any) => series.data),
+    september.series.map((series: any) => series.data),
+  )
+
+  viewMode.value = 'daily'
+  assert.ok(combinedTrendChartOption.value.xAxis.data.length > 0)
+  viewMode.value = 'monthly'
 })
 
 test('Lead Measure Test 10: Hover-only area emphasis on % Produksi', () => {
@@ -285,8 +307,13 @@ test('Lead Measure Test 14: Redesigned filter controls - Daily mode and date ava
   selectedDay.value = days[0]
   assert.equal(activePeriodIndex.value, days[0])
 
+  // A month without published daily observations must not show fabricated days.
+  selectedMonth.value = 8
+  assert.deepEqual(availableDaysInSelectedMonth.value, [])
+
   // Reset to monthly mode
   viewMode.value = 'monthly'
+  selectedMonth.value = 9
   assert.equal(activePeriodIndex.value, selectedMonth.value)
 })
 
@@ -432,24 +459,22 @@ test('Lead Measure Test 20: Authoritative regional consolidation matches PTPN I 
   const store = useLeadMeasureStore()
   store.applyParsedData(dataset)
 
-  const { selectedEstate, viewMode, combinedTrendChartOption } = useLeadMeasureData()
+  const { selectedEstate, viewMode, selectedMonth, combinedTrendChartOption } = useLeadMeasureData()
   selectedEstate.value = 'ALL'
   viewMode.value = 'monthly'
 
-  const opt = combinedTrendChartOption.value
-  const prodSeries = opt.series[0].data
-
   // Benchmark matches PTPN I Reg 5 row 536 of EvaProKebun:
   // Jan=103, Feb=84, Mar=87, Apr=90, Mei=87, Jun=93, Jul=76, Ags=80, Sep=74
-  assert.equal(Math.round(prodSeries[0]), 103, 'Jan % Produksi Regional must be 103%')
-  assert.equal(Math.round(prodSeries[1]), 84, 'Feb % Produksi Regional must be 84%')
-  assert.equal(Math.round(prodSeries[2]), 87, 'Mar % Produksi Regional must be 87%')
-  assert.equal(Math.round(prodSeries[3]), 90, 'Apr % Produksi Regional must be 90%')
-  assert.equal(Math.round(prodSeries[4]), 87, 'Mei % Produksi Regional must be 87%')
-  assert.equal(Math.round(prodSeries[5]), 93, 'Jun % Produksi Regional must be 93%')
-  assert.equal(Math.round(prodSeries[6]), 76, 'Jul % Produksi Regional must be 76%')
-  assert.equal(Math.round(prodSeries[7]), 80, 'Ags % Produksi Regional must be 80%')
-  assert.equal(Math.round(prodSeries[8]), 74, 'Sep % Produksi Regional must be 74%')
+  const expected = [103, 84, 87, 90, 87, 93, 76, 80, 74]
+  expected.forEach((value, index) => {
+    const monthIndex = index + 1
+    selectedMonth.value = monthIndex
+    const chart = combinedTrendChartOption.value
+    const dataIndex = chart.xAxis.data.findIndex((label: string) => label === ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep'][index])
+    assert.ok(dataIndex >= 0, `Month ${monthIndex} must exist in the monthly trend`)
+    assert.equal(Math.round(chart.series[0].data[dataIndex]), value, `Month ${monthIndex} % Produksi Regional must be ${value}%`)
+  })
+  selectedMonth.value = 9
 })
 
 test('Lead Measure Test 21: Grouped October header and independent expand/collapse table structure', () => {
@@ -489,4 +514,61 @@ test('Lead Measure Test 22: October weekly breakdown from EvaProKebun mapping', 
   assert.ok(kuantumHke.target != null, 'Must have target')
   assert.ok(kuantumHke.mg1 != null, 'Must have mg1')
   assert.ok(kuantumHke.mg2 != null, 'Must have mg2')
+})
+
+test('Lead Measure Test 23: Dynamic daily categories in combinedTrendChartOption adapt to available days', () => {
+  const { viewMode, selectedMonth, combinedTrendChartOption, availableDaysInSelectedMonth } = useLeadMeasureData()
+
+  // Switch to Daily Mode
+  viewMode.value = 'daily'
+  selectedMonth.value = 9 // September in Development fixture has 30 days
+
+  const chartOption = combinedTrendChartOption.value
+  assert.ok(chartOption, 'Chart option must be generated')
+  assert.equal(chartOption.xAxis.type, 'category')
+  assert.ok(chartOption.xAxis.data.length > 0, 'Categories must have entries')
+  assert.equal(chartOption.xAxis.data.length, availableDaysInSelectedMonth.value.length, 'X-axis categories must match availableDaysInSelectedMonth length')
+
+  // Verify series have non-empty data arrays matching categories length
+  assert.equal(chartOption.series.length, 4, 'Must have 4 series in combined trend chart')
+  for (const s of chartOption.series) {
+    assert.equal(s.data.length, chartOption.xAxis.data.length, 'Each series data length must match categories length')
+  }
+
+  // Reset to monthly
+  viewMode.value = 'monthly'
+})
+
+test('Lead Measure Test 24: Mode switching and focused month change reset selectedDay and update activePeriodIndex', () => {
+  const { viewMode, selectedMonth, selectedDay, activePeriodIndex, metricCards, estateTableRows } = useLeadMeasureData()
+
+  // 1. Monthly mode
+  viewMode.value = 'monthly'
+  selectedMonth.value = 9
+  assert.equal(activePeriodIndex.value, 9, 'Monthly activePeriodIndex must be selectedMonth')
+
+  // Change month in monthly mode
+  selectedMonth.value = 8
+  assert.equal(activePeriodIndex.value, 8)
+  assert.ok(metricCards.value.length === 4, 'Must compute metricCards for month 8')
+  assert.ok(estateTableRows.value.length === 15, 'Must compute estateTableRows for month 8')
+  const augustProduction = metricCards.value.find((card) => card.code === 'production_achievement_pct')?.value
+
+  // 2. Switch to daily mode
+  viewMode.value = 'daily'
+  selectedMonth.value = 9
+  viewMode.value = 'monthly'
+  const septemberProduction = metricCards.value.find((card) => card.code === 'production_achievement_pct')?.value
+  assert.notEqual(septemberProduction, augustProduction, 'Changing month must change the selected monthly observation')
+  viewMode.value = 'daily'
+  selectedDay.value = 15
+  assert.equal(activePeriodIndex.value, 15)
+
+  // Changing selectedMonth must reset selectedDay to null
+  selectedMonth.value = 8
+  assert.equal(selectedDay.value, null, 'selectedDay must reset to null on month change')
+
+  // Reset
+  viewMode.value = 'monthly'
+  selectedMonth.value = 9
 })

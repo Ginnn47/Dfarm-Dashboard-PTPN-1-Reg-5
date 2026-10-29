@@ -70,7 +70,7 @@ function isBlankRow(row: GoogleSheetCell[]): boolean {
 }
 
 function isFormulaError(value: GoogleSheetCell): boolean {
-  return /^#(?:ref|value|div\/0|name|n\/a|null|num|spill|calc)!?$/i.test(cellText(value))
+  return /^#(?:ref|value|div\/0|name|n\/a|null|num|spill|calc)!?(?:\s|\(|$)/i.test(cellText(value))
 }
 
 function parseRequiredNumber(value: GoogleSheetCell): ParsedNumber {
@@ -86,6 +86,46 @@ function parseRequiredNumber(value: GoogleSheetCell): ParsedNumber {
   if (!/^-?(?:\d+)(?:\.\d+)?$/.test(text)) return { value: null, issueCode: 'INVALID_NUMBER' }
   const parsed = Number(text)
   return Number.isFinite(parsed) ? { value: parsed } : { value: null, issueCode: 'INVALID_NUMBER' }
+}
+
+function parseSourceNumber(value: GoogleSheetCell): ParsedNumber {
+  if (isFormulaError(value)) return { value: null, issueCode: 'FORMULA_ERROR' }
+
+  const text = cellText(value)
+  // The live workbook uses blank cells and '-' for unrecorded numeric measures.
+  if (text === '' || text === '-') return { value: 0 }
+
+  return parseRequiredNumber(value)
+}
+
+function parseMonthlyNumber(value: GoogleSheetCell): ParsedNumber {
+  return parseSourceNumber(value)
+}
+
+function isZeroLike(value: GoogleSheetCell): boolean {
+  const text = cellText(value)
+  return text === '' || text === '-' || /^-?(?:0)(?:\.0+)?$/.test(text)
+}
+
+function isEmbeddedSummaryRow(
+  row: GoogleSheetCell[],
+  columns: ColumnIndexes,
+  sheetName: string,
+  commodityText: string,
+  estateCodeText: string,
+  nameText: string,
+  yearText: string,
+): boolean {
+  // Karet workbooks contain a planting-year aggregate block inside the detail tab.
+  // It has no source identity and its August/September ratio cells evaluate to errors.
+  if (!/karet/i.test(sheetName)) return false
+  if (!yearText || commodityText || estateCodeText || nameText) return false
+
+  const monthlyCells = [
+    ...row.slice(columns.rkapMonthStart, columns.rkapMonthStart + BULAN_LABELS.length),
+    ...row.slice(columns.actualMonthStart, columns.actualMonthStart + BULAN_LABELS.length),
+  ]
+  return monthlyCells.some((cell) => isFormulaError(cell))
 }
 
 function parseYear(value: GoogleSheetCell): ParsedNumber {
@@ -329,6 +369,8 @@ export function mapProductionSheetValues(
   const warnings: string[] = []
   let currentEstate = ''
   let currentEstateCode = ''
+  let currentAfdeling = ''
+  let embeddedSummaryRows = 0
   let totalRows = 0
 
   for (let rowIndex = headerRowIndex + 2; rowIndex < values.length; rowIndex++) {
@@ -337,6 +379,7 @@ export function mapProductionSheetValues(
     totalRows++
 
     const sourceRow = (input.sourceRowOffset || 0) + rowIndex + 1
+    const commodityText = cellText(row[columns.commodity])
     const codeText = cellText(row[columns.estateCode])
     const nameText = cellText(row[columns.name])
     const yearText = cellText(row[columns.plantingYear])
@@ -346,22 +389,32 @@ export function mapProductionSheetValues(
     }
     if (nameText && !/jumlah|total/i.test(nameText) && (/^kebun\s+/i.test(nameText) || (!/afd/i.test(nameText) && !yearText))) {
       currentEstate = nameText.replace(/^kebun\s+/i, '').trim()
+      currentAfdeling = ''
     }
 
     if (/jumlah|total/i.test(codeText) || /jumlah|total/i.test(nameText) || /jumlah|total/i.test(yearText)) continue
 
+    // Merged/grouped source rows often repeat the afdeling only on the first detail row.
+    if (yearText && nameText) currentAfdeling = nameText
+
     // Estate context rows establish the carry-forward identity for detail rows.
     if (!yearText) continue
 
-    // Skip empty template placeholder rows where area, population, and all monthly values are empty
-    const hasAnyNumericData = [
+    if (isEmbeddedSummaryRow(row, columns, input.sheetName, commodityText, codeText, nameText, yearText)) {
+      embeddedSummaryRows++
+      continue
+    }
+
+    // Skip template rows that carry only an empty/zero measure shell.
+    const measureCells = [
       row[columns.area],
       row[columns.population],
       ...row.slice(columns.rkapMonthStart, columns.rkapMonthStart + 12),
       ...row.slice(columns.actualMonthStart, columns.actualMonthStart + 12),
-    ].some((cell) => cell !== null && cell !== undefined && cellText(cell) !== '')
+    ]
+    const hasMeaningfulNumericData = measureCells.some((cell) => !isZeroLike(cell))
 
-    if (!hasAnyNumericData) continue
+    if (!hasMeaningfulNumericData) continue
 
     const year = parseYear(row[columns.plantingYear])
     if (year.issueCode || year.value === null) {
@@ -376,21 +429,22 @@ export function mapProductionSheetValues(
       continue
     }
 
-    if (!nameText) {
+    const afdelingText = nameText || currentAfdeling
+    if (!afdelingText) {
       issues.push({ sourceRow, field: 'afdeling', code: 'MISSING_REQUIRED_VALUE', message: 'Nama afdeling kosong.' })
       continue
     }
 
     const estateCode = currentEstateCode || codeText.toUpperCase()
     const estate = currentEstate || (!/afd/i.test(nameText) ? nameText.replace(/^kebun\s+/i, '').trim() : '')
-    const afdeling = /afd|kebun/i.test(nameText) ? nameText : `Afd. ${nameText}`
+    const afdeling = /afd|kebun/i.test(afdelingText) ? afdelingText : `Afd. ${afdelingText}`
     const commodity = deriveCommodity(input.sheetName, row[columns.commodity])
 
     const numericFields = [
       ['area', row[columns.area]],
       ['population', row[columns.population]],
     ] as const
-    const parsedNumeric = numericFields.map(([field, value]) => [field, parseRequiredNumber(value)] as const)
+    const parsedNumeric = numericFields.map(([field, value]) => [field, parseSourceNumber(value)] as const)
     const invalidNumeric = parsedNumeric.filter(([, parsed]) => parsed.issueCode || parsed.value === null)
     if (!estateCode || !estate || !commodity) {
       issues.push({
@@ -409,8 +463,8 @@ export function mapProductionSheetValues(
     const months: MonthlyValue[] = []
     let rowHasMonthlyError = false
     for (let monthIndex = 0; monthIndex < BULAN_LABELS.length; monthIndex++) {
-      const rkap = parseRequiredNumber(row[columns.rkapMonthStart + monthIndex])
-      const actual = parseRequiredNumber(row[columns.actualMonthStart + monthIndex])
+      const rkap = parseMonthlyNumber(row[columns.rkapMonthStart + monthIndex])
+      const actual = parseMonthlyNumber(row[columns.actualMonthStart + monthIndex])
       if (rkap.issueCode || rkap.value === null) {
         issues.push(issueForNumber(sourceRow, `${BULAN_LABELS[monthIndex]} RKAP`, rkap))
         rowHasMonthlyError = true
@@ -451,6 +505,10 @@ export function mapProductionSheetValues(
       reff: match.reff,
       identityStatus: match.status,
     })
+  }
+
+  if (embeddedSummaryRows > 0) {
+    warnings.push(`${embeddedSummaryRows} baris agregasi tertanam diabaikan dari sheet ${input.sheetName}.`)
   }
 
   const seen = new Set<string>()

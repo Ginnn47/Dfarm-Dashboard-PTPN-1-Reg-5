@@ -1263,3 +1263,130 @@ The implementation resides at `app/pages/investment/on-farm/index.vue` and emplo
    - Direct 1-to-1 association is shown only when a project matches an explicit budget line.
    - Multi-project SINUSA codes display consolidated program-level notes without artificial splits.
    - Unmapped projects state that they are not mapped to SINUSA while remaining 100% accounted for in total actuals.
+
+---
+
+# 36. Reusable Google Sheets Integration Architecture
+
+Following the production implementation in Phase 3.3, this section establishes the formal architectural framework for integrating Google Sheets across current and future DFARM business domains (Production, Finance, Investment On-Farm, Investment Off-Farm, and prospective analytics modules).
+
+The architecture distinguishes shared ingestion infrastructure from domain-isolated business logic.
+
+## 36.1 Shared Infrastructure Layer
+
+To prevent redundant API code, duplicated authentication workflows, and divergent failure behavior across domains, all Google Sheets integrations reuse shared, server-side ingestion infrastructure:
+
+1. **Authentication & Token Provider (`server/utils/googleSheetsAccessToken.ts`)**:
+   - Centralizes Google OAuth access token acquisition using Application Default Credentials (ADC) and local Google Cloud CLI credentials via `google-auth-library`.
+   - Supports static bearer token compatibility override (`NUXT_GOOGLE_SHEETS_ACCESS_TOKEN`) for deployment flexibility.
+   - Enforces the minimum necessary authorization scope: read-only access (`https://www.googleapis.com/auth/spreadsheets.readonly`) for all dashboards where analytical reporting is read-only.
+   - Strictly confines credentials, client secrets, and bearer tokens to the Nitro server execution context.
+2. **Shared Google Sheets Reader (`server/utils/googleSheetsReader.ts`)**:
+   - Retrieves cell range values from the official Google Sheets API v4 endpoint (`https://sheets.googleapis.com/v4/spreadsheets/{spreadsheetId}/values/{range}`).
+   - Implements automated, bounded exponential backoff retries (default 1 retry with 250ms backoff) for transient upstream network or HTTP 503/429 failures.
+   - Applies strict request timeouts (default 10,000ms deadline) to prevent hung upstream calls from blocking server threads.
+   - Requests raw values using `valueRenderOption=UNFORMATTED_VALUE` to ensure dates, numerical coordinates, and formula results are retrieved accurately without locale-based string formatting corruption.
+3. **Common Observability & Diagnostic Error Normalization (`server/utils/productionApiError.ts`)**:
+   - Maps raw upstream Google API responses into sanitized, structured error envelopes (`UNAUTHENTICATED`, `FORBIDDEN`, `NOT_FOUND`, `UPSTREAM_TIMEOUT`, `BAD_GATEWAY`).
+   - Strips internal response bodies, authorization headers, and raw URLs before diagnostic messages reach the client.
+   - Strictly separates network/transport failures from semantic schema and mapping validation failures.
+
+*Architectural Invariant: Do not duplicate authentication, raw fetch logic, retry loops, or token resolution in domain-specific dashboard files.*
+
+## 36.2 Dashboard-Specific Business Logic Layer
+
+While the transport and credential infrastructure is shared, business logic remains strictly isolated within each domain:
+
+- **Independent Workbook & Sheet Configurations**: Each dashboard defines its own required workbooks, sheet names, and A1 cell ranges. Production's multi-year rubber/tea/coffee configuration model must not be imposed onto single-year project ledgers or financial balance sheets.
+- **Dedicated Domain Mappers**: Each domain implements a separate semantic mapper (e.g. `server/utils/productionMapper.ts` for Production). The Production mapper must never serve as a universal mapper for unrelated domains.
+- **Dedicated Canonical Data Contracts**: Each domain specifies and validates its own canonical types and schema rules (e.g. `ProductionRecord`, `InvestmentOnFarmRecord`).
+- **Domain KPI & Aggregation Semantics**: Metric aggregations, ratio formulas (e.g. Weighted Productivity, S-Curve absorption, HKD Sadap), and temporal groupings belong to their respective domain calculation layer.
+- **Domain-Specific Test Suites**: Every domain maintains its own mapper unit tests, API contract integration tests, and schema edge-case tests against authentic domain fixtures.
+
+*Architectural Invariant: Low-level utility helpers (such as safe cell extraction or numeric parsing) may only be extracted into shared modules when their behavior is demonstrably domain-agnostic and independently tested.*
+
+## 36.3 Server Configuration Model
+
+Google Sheets configuration is managed exclusively on the Nitro server:
+
+```text
+Server Runtime Configuration (`nuxt.config.ts` -> private `runtimeConfig`)
+  ├── Shared Google Sheets Config:
+  │     ├── `accessToken`: Server-injected bearer token fallback (optional)
+  │
+  ├── Production Domain Config (`googleSheets.*`) [Implemented Reference]:
+  │     ├── `production2025SpreadsheetId`, `production2025SheetsJson`
+  │     └── `production2026SpreadsheetId`, `production2026SheetsJson`
+  │
+  └── Future Domain Configs (Proposed Pattern, evaluated per milestone):
+        ├── `financeSpreadsheetId`, `financeSheetsJson`
+        └── `investmentOnFarmSpreadsheetId`, `investmentOnFarmSheetsJson`
+```
+
+Configuration Principles:
+1. **Server-Side Only**: Spreadsheet IDs, sheet names, cell ranges, and credentials exist exclusively in private server configuration. They are never declared in `runtimeConfig.public` or client bundles.
+2. **Pre-Flight Range Validation**: Sheet configurations must be validated on server boot or during the initial request before issuing upstream Google API calls. Missing IDs or malformed A1 range strings immediately yield descriptive `CONFIG_ERROR` responses without issuing invalid requests.
+3. **Structural Independence**: Do not assume all domains share identical workbook structures, reporting year splits, or sheet counts. A domain may utilize a single spreadsheet with multiple tabs or multiple spreadsheets for historical comparison.
+4. **No Premature Registry**: Do not introduce a dynamic generic configuration registry or generic multi-tenant API endpoint until multiple active dashboards have demonstrated identical runtime needs and the abstraction has been formally approved.
+
+## 36.4 End-to-End Data Flow & Layer Responsibilities
+
+```text
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│ 1. Nitro Server Layer                                                                   │
+│                                                                                        │
+│   Google Sheets API (Cloud)                                                            │
+│          │                                                                             │
+│          ▼ [Bearer Token via Shared googleSheetsAccessToken.ts (ADC / Server Token)]   │
+│   Shared Google Sheets Reader (googleSheetsReader.ts: fetch, retry, timeout, raw vals)  │
+│          │                                                                             │
+│          ▼ [Raw values: unknown[][]]                                                   │
+│   Domain-Specific Mapper (e.g., productionMapper.ts: header detection, row parsing)    │
+│          │                                                                             │
+│          ▼ [Candidate domain records]                                                  │
+│   Domain Canonical Validation (schema enforcement, null distinction, deduplication)   │
+│          │                                                                             │
+│          ▼ [Canonical Envelope: { success: true, data: { records, validation, meta } }] │
+│   Domain REST API Endpoint (e.g., /api/v1/dashboard/production.get.ts)                 │
+└────────────────────────────────────────┬───────────────────────────────────────────────┘
+                                         │ JSON over HTTP
+┌────────────────────────────────────────▼───────────────────────────────────────────────┐
+│ 2. Nuxt Client Layer                                                                   │
+│                                                                                        │
+│   Domain Source Adapter (e.g., googleSheetsSource.ts: transport, cache, status state)   │
+│          │                                                                             │
+│          ▼                                                                             │
+│   Domain Composable / Store (e.g., useProductionDashboard.ts / Pinia Store)           │
+│          │                                                                             │
+│          ▼                                                                             │
+│   Dashboard Presentation Layer (Filters, KPI Cards, ECharts Visuals, Data Tables)      │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+Component Boundary Definitions:
+- **Reader (`googleSheetsReader.ts`)**: Pure data retrieval. It has zero awareness of business fields, headers, commodities, or KPI logic.
+- **Mapper**: Translates domain-specific raw grid structures into strongly typed domain entities, handling year variations and column layout shifts.
+- **Canonical Validation**: Verifies integrity, filters out non-data subtotal rows, and produces validation metadata (errors, warnings, record counts).
+- **Frontend Adapter**: Manages client-side fetch state, reactivity, and domain status badges. Never performs credential retrieval or stores secrets.
+- **UI Presentation**: Displays data truthfully. Must clearly differentiate source selection, connection verification, active loading, schema validation failure, empty data, and transport errors.
+
+## 36.5 Source Isolation & Safety Invariants
+
+Every Google Sheets integration must strictly uphold the following invariants:
+
+1. **No Silent Fallback to Development**: If Google Sheets authentication fails, a range is missing, or schema validation rejects rows, the system MUST surface an honest error state. It must NEVER silently fall back to local Development fixtures or mock data.
+2. **Development Fixture Independence**: Development data fixtures and Excel report upload modes remain isolated and functional regardless of Google Sheets network status or credentials.
+3. **Isolation of Shared Changes**: Modifications to shared infrastructure (e.g. reader timeout or token provider) must never alter the output semantics of existing domain mappers or invalidate active API contracts.
+4. **Stale Cache Prevention on Source Switch**: When switching active data sources (e.g. from `development` to `google-sheets`), stale records from the previous source must be cleared immediately (`records.value = []`) before initiating the new fetch.
+5. **Zero Secret Exposure**: Credentials, access tokens, refresh tokens, and internal Google API errors must never appear in client bundles, DOM nodes, browser logs, or client-accessible state.
+6. **Separation of Authentication vs Validation Errors**: Connection failures (invalid credentials, expired tokens, network unreachable) must be handled and presented distinctly from schema failures (missing column header, invalid data type).
+
+## 36.6 Incremental Extension Strategy for Future Domains
+
+When extending Google Sheets integration to subsequent dashboards (Finance, Investment On-Farm, Investment Off-Farm):
+
+1. **Production Remains the Reference Implementation**: Use the Production implementation (`server/api/v1/dashboard/production.get.ts`, `server/utils/productionMapper.ts`, `server/utils/productionSourceConfig.ts`) as the reference pattern.
+2. **Pilot Implementation**: Implement one new domain at a time (e.g., Finance as the first pilot for multi-domain expansion).
+3. **Direct Reuse of Shared Modules**: Directly import `createGoogleSheetsAccessTokenProvider` and `readGoogleSheetsValues` into the new domain's server service.
+4. **Build Domain-Specific Components**: Author a dedicated domain source config, mapper, canonical contract, Nitro endpoint (`/api/v1/dashboard/[domain].get.ts`), client adapter, and test suite.
+5. **Justified Generalization Only**: Evaluate consolidating configurations into a generalized registry or dynamic endpoint only after two or more domains are fully operational and have proven identical structural patterns. Avoid speculative abstractions.

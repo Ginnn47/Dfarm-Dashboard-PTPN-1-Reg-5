@@ -763,3 +763,29 @@ For On Farm data and KPIs:
 Preserve the existing verification protocol and completion report. A future
 On Farm implementation must report its changed files, validation performed,
 known data limitations, and remaining dependency on approved data mappings.
+
+---
+
+# 33. Reusable Google Sheets Integration Rules
+
+When implementing, maintaining, or extending Google Sheets integrations across any DFARM dashboard (Production, Finance, Investment On-Farm, Investment Off-Farm, or new domain modules), agents must strictly enforce the following mandatory rules:
+
+1. **Inspect Before Implementing**: Before implementing Google Sheets for a new dashboard, inspect the working Production implementation (`server/utils/googleSheetsAccessToken.ts`, `server/utils/googleSheetsReader.ts`, `server/utils/productionSourceConfig.ts`, `server/utils/productionMapper.ts`, `server/api/v1/dashboard/production.get.ts`) and reuse shared infrastructure where appropriate.
+2. **Reuse Shared Ingestion Infrastructure**: Do not duplicate Google OAuth authentication, raw Google Sheets API fetch logic, timeout/retry handling, or upstream error sanitization inside individual dashboard modules without a documented technical necessity.
+3. **Do Not Reuse Production Mapper for Unrelated Data**: The Production mapper (`productionMapper.ts`) is tailored exclusively to production commodity sheets. Do not force unrelated datasets (e.g. SAP financial ledgers, WBS investments, balance sheets) into the Production mapper.
+4. **Domain-Specific Canonical Contracts**: Each dashboard domain must define and validate its own canonical data model and TypeScript contract.
+5. **Strict Server-Side Isolation of Configuration & Secrets**: Keep all Spreadsheet IDs, sheet names, A1 ranges, credentials, ADC tokens, and private runtime configuration on the Nitro server. Never expose them to Vue components, client runtime config, or browser storage.
+6. **Minimum Necessary Scope**: Enforce read-only authorization scope (`https://www.googleapis.com/auth/spreadsheets.readonly`) for all dashboards where analytical reporting is read-only.
+7. **No Hardcoded Client Configuration**: Do not hardcode spreadsheet IDs, sheet names, or range boundaries in frontend components or composables.
+8. **Preserve Development Source & Excel Import**: Development source fixtures and manual Excel report import workflows must remain completely independent and fully functional, regardless of Google Sheets network status or credentials.
+9. **Never Silently Fall Back to Development**: When a Google Sheets request fails (due to authentication, timeout, or schema mismatch), the dashboard must display an honest error state. It must never silently fall back to Development data or mock fixtures.
+10. **Test at the Appropriate Layer**: Provide dedicated tests for each layer:
+    - Reader & token provider (server transport tests)
+    - Mapper (unit tests against authentic multi-sheet / multi-year grid fixtures)
+    - API contract (Nitro endpoint validation tests)
+    - Source adapter & source switching (composable and store tests)
+11. **Verify Against Raw Spreadsheet Values**: When creating or updating a mapper, verify mapping logic against representative raw unformatted spreadsheet values (including zero vs dash vs empty cell semantics).
+12. **Isolate Pre-Existing Test Failures**: When running test suites, distinguish and report pre-existing test failures (e.g. missing external sample workbooks) separately from regressions introduced by current changes.
+13. **Do Not Claim Unverified Live Integration**: Do not claim a live Google Sheets integration is functional unless an actual authenticated read has been verified against the target endpoint.
+14. **No Speculative Abstractions**: Do not introduce a generic source registry, universal mapper, or dynamic multi-tenant endpoint merely for theoretical reuse. Abstract shared components only when two or more active dashboards demonstrate identical concrete requirements.
+15. **Respect Repository Structure**: Always inspect existing directory structures, naming conventions, and file roles before adding, moving, or renaming modules.

@@ -6,6 +6,7 @@ import {
   City02Icon,
   Activity04Icon,
   DatabaseSearchIcon,
+  ComingSoon01Icon,
   BoxesIcon,
   MoneyBag02Icon,
   Target01Icon,
@@ -14,6 +15,9 @@ import {
   AlertCircleIcon,
   Chart02Icon,
   Calendar03Icon,
+  Database01Icon,
+  ArrowUpRight01Icon,
+  File01Icon,
 } from '@hugeicons/core-free-icons'
 import { computed, ref } from 'vue'
 import { formatNumberCompact } from '~/utils/formatters'
@@ -141,44 +145,55 @@ function formatCompact(value: number | null | undefined) {
 <template>
   <div class="space-y-7 pb-10">
     <!-- Header Section -->
-    <header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-5">
+    <header class="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <!-- Breadcrumbs -->
-        <nav aria-label="Breadcrumb" class="flex items-center gap-1.5 text-xs font-semibold text-slate-400 mb-1">
-          <NuxtLink to="/production" class="hover:text-emerald-700 transition-colors flex items-center gap-1">
+        <nav aria-label="Breadcrumb" class="flex items-center gap-1.5 text-xs font-semibold text-slate-400 mb-1.5">
+          <NuxtLink to="/production" class="text-sky-600 hover:text-sky-700 transition-colors flex items-center gap-1 font-bold">
             <HugeiconsIcon :icon="Leaf01Icon" :size="14" />
-            Dashboard Produksi
+            <span>Production</span>
           </NuxtLink>
-          <span>/</span>
-          <span class="text-emerald-700">Production Monitoring</span>
+          <span class="text-slate-300">/</span>
+          <span class="text-sky-600 font-bold">Production Monitoring</span>
         </nav>
 
-        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+        <h1 class="text-2xl sm:text-[28px] font-extrabold tracking-tight text-slate-950">
           Production Monitoring
         </h1>
-        <p class="mt-1 text-xs sm:text-sm text-slate-500">
+        <p class="mt-1 text-xs sm:text-sm text-slate-500 max-w-3xl leading-relaxed">
           Monitor produksi, pencapaian RKAP, dan produktivitas berdasarkan periode, komoditas, kebun, dan tahun tanam.
         </p>
       </div>
 
       <!-- Active Source Information & Link to Data Source -->
-      <div class="flex items-center gap-3">
+      <div class="flex flex-col items-start sm:items-end justify-center gap-2 sm:gap-2.5 shrink-0">
         <NuxtLink
           to="/data-source"
-          class="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-2xs"
-          title="Klik untuk mengelola atau memperbarui data di Data Source"
+          class="inline-flex items-center gap-2 rounded-xl border border-sky-400 bg-white px-3.5 py-1.5 text-xs font-semibold text-sky-600 hover:bg-sky-50 transition-colors shadow-2xs"
+          title="Kelola Data Source"
+        >
+          <HugeiconsIcon :icon="Database01Icon" :size="14" class="text-sky-600" />
+          <span>Kelola Data Source</span>
+          <HugeiconsIcon :icon="ArrowUpRight01Icon" :size="14" class="text-sky-600" />
+        </NuxtLink>
+
+        <div
+          class="inline-flex items-center gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50/70 px-3.5 py-1.5 text-xs text-emerald-800 shadow-2xs"
+          role="status"
+          aria-label="Status sumber data"
         >
           <span
             class="size-2 rounded-full shrink-0"
-            :class="activeSourceMeta.status === 'available' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'"
+            :class="activeSourceMeta.connectionStatus === 'connected' && activeSourceMeta.dataStatus !== 'invalid' ? 'bg-emerald-500' : activeSourceMeta.connectionStatus === 'failed' || activeSourceMeta.dataStatus === 'invalid' ? 'bg-rose-500' : 'bg-amber-500 animate-pulse'"
             aria-hidden="true"
           />
-          <span class="font-bold">{{ activeSourceMeta.name }}</span>
+          <span class="font-bold">{{ activeSourceId === 'google-sheets' ? 'sheets' : 'DataDev' }}</span>
           <span class="text-emerald-300">|</span>
+          <HugeiconsIcon :icon="File01Icon" :size="14" class="text-emerald-700 shrink-0" />
           <span class="font-medium text-emerald-950 truncate max-w-[260px]">
-            {{ activeSourceMeta.workbook || 'Data Produksi 2026.xlsx' }}
+            {{ activeSourceMeta.workbook || (activeSourceId === 'google-sheets' ? 'Spreadsheet Produksi' : 'Data Produksi 2026.xlsx') }}
           </span>
-        </NuxtLink>
+        </div>
       </div>
     </header>
 
@@ -189,7 +204,7 @@ function formatCompact(value: number | null | undefined) {
       aria-label="Memuat sumber data"
     >
       <div class="mx-auto flex size-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-200/80">
-        <HugeiconsIcon :icon="DatabaseSearchIcon" :size="32" :stroke-width="2.2" class="animate-pulse text-amber-600" />
+        <HugeiconsIcon :icon="ComingSoon01Icon" :size="32" :stroke-width="2.2" class="animate-pulse text-amber-600" />
       </div>
       <h2 class="mt-4 text-2xl font-bold tracking-tight text-slate-900">Memuat Data Production</h2>
       <p class="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600">Dashboard sedang mengambil data tervalidasi dari Google Sheets melalui backend Nitro.</p>
@@ -202,11 +217,11 @@ function formatCompact(value: number | null | undefined) {
       aria-label="Sumber data belum terhubung"
     >
       <div class="mx-auto flex size-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-200/80">
-        <HugeiconsIcon :icon="DatabaseSearchIcon" :size="32" :stroke-width="2.2" class="text-amber-600" />
+        <HugeiconsIcon :icon="ComingSoon01Icon" :size="32" :stroke-width="2.2" class="text-amber-600" />
       </div>
       <div class="mt-4 inline-flex items-center gap-1.5 rounded-full bg-amber-100/70 px-3 py-1 text-xs font-semibold text-amber-800">
         <span class="size-2 rounded-full bg-amber-500 animate-pulse" />
-        {{ activeSourceMeta.name }} · {{ isError ? 'Gagal Terhubung' : 'Belum Terhubung' }}
+        {{ activeSourceMeta.name }} · {{ activeSourceMeta.statusLabel }}
       </div>
       <h2 class="mt-4 text-2xl font-bold tracking-tight text-slate-900">
         {{ isError ? 'Data Production Gagal Dimuat' : 'Data Produksi Belum Tersedia' }}

@@ -12,6 +12,9 @@ export default defineNuxtConfig({
       production2025SheetsJson: '',
       production2026SpreadsheetId: '',
       production2026SheetsJson: '',
+      leadMeasure2026SpreadsheetId: '',
+      leadMeasure2026SheetsJson: '',
+      leadMeasure2026MasterSheetsJson: '',
     },
   },
 

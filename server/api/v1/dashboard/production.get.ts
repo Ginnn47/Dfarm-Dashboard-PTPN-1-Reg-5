@@ -1,7 +1,7 @@
 import { getQuery, setResponseStatus, type H3Event } from 'h3'
 import { useRuntimeConfig } from '#imports'
 import type { ProductionDashboardErrorResponse } from '../../../../shared/api/production.ts'
-import { createRuntimeGoogleSheetsAccessTokenProvider } from '../../../../server/utils/googleSheetsAccessToken.ts'
+import { createGoogleSheetsAccessTokenProvider } from '../../../../server/utils/googleSheetsAccessToken.ts'
 import { ProductionApiError } from '../../../../server/utils/productionApiError.ts'
 import { readProductionDashboard, type ProductionDashboardQuery } from '../../../../server/utils/productionDashboardService.ts'
 import { getProductionGoogleSourceConfig } from '../../../../server/utils/productionSourceConfig.ts'
@@ -86,7 +86,7 @@ export default defineEventHandler(async (event) => {
     const result = await readProductionDashboard(
       {
         sources: sourceConfig.sources,
-        accessTokenProvider: createRuntimeGoogleSheetsAccessTokenProvider(sourceConfig.accessToken),
+        accessTokenProvider: createGoogleSheetsAccessTokenProvider(sourceConfig.accessToken),
       },
       query,
     )

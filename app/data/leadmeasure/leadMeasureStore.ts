@@ -1,11 +1,13 @@
-﻿/**
+/**
  * DFARM Lead Measure Karet — Store & State Management
- * Singleton reactive state with compact persistence in localStorage (dfarm_leadmeasure_custom_v1).
+ * Singleton reactive state with compact persistence in localStorage (dfarm_leadmeasure_custom_v1)
+ * and remote Google Sheets API integration.
  */
 
 import { ref, computed } from 'vue'
 import type { LeadMeasureDataset, LeadMeasureObservation } from './types.ts'
 import { createMockLeadMeasureDataset } from './mockLeadMeasureData.ts'
+import type { LeadMeasureDashboardSuccess } from '../../../shared/api/leadMeasure.ts'
 
 export const LEAD_MEASURE_STORAGE_KEY = 'dfarm_leadmeasure_custom_v1'
 
@@ -132,26 +134,44 @@ function getStorage(): Storage | null {
   return null
 }
 
+function readSourceErrorMessage(err: unknown): string {
+  if (err && typeof err === 'object') {
+    const data = (err as { data?: { error?: { message?: unknown } } }).data
+    if (typeof data?.error?.message === 'string') {
+      return data.error.message
+    }
+    const msg = (err as { message?: unknown }).message
+    if (typeof msg === 'string') {
+      return msg
+    }
+  }
+  return 'Google Sheets Lead Measure Karet tidak dapat diakses saat ini.'
+}
+
 const dataset = ref<LeadMeasureDataset | null>(null)
 const isLoaded = ref<boolean>(false)
 const isCustomDataActive = ref<boolean>(false)
 const isHydrated = ref<boolean>(false)
+const isLoading = ref<boolean>(false)
+const isError = ref<boolean>(false)
+const sourceError = ref<string | null>(null)
+let activeRemoteRequest: Promise<LeadMeasureDataset> | null = null
 
 export function useLeadMeasureStore() {
   const activeDataset = computed(() => {
-    if (!dataset.value) {
+    if (!dataset.value && !isLoading.value && !isError.value) {
       dataset.value = createMockLeadMeasureDataset()
       isLoaded.value = true
     }
     return dataset.value
   })
 
-  const estates = computed(() => activeDataset.value.estates)
-  const observations = computed(() => activeDataset.value.observations)
-  const availableMonths = computed(() => activeDataset.value.availableMonths)
-  const availableYears = computed(() => activeDataset.value.availableYears)
-  const validationIssues = computed(() => activeDataset.value.validationIssues)
-  const reconciliation = computed(() => activeDataset.value.reconciliation)
+  const estates = computed(() => activeDataset.value?.estates || [])
+  const observations = computed(() => activeDataset.value?.observations || [])
+  const availableMonths = computed(() => activeDataset.value?.availableMonths || [])
+  const availableYears = computed(() => activeDataset.value?.availableYears || [2026])
+  const validationIssues = computed(() => activeDataset.value?.validationIssues || [])
+  const reconciliation = computed(() => activeDataset.value?.reconciliation || null)
 
   const isMock = computed(() => !isCustomDataActive.value)
   const isCustom = computed(() => isCustomDataActive.value)
@@ -169,6 +189,8 @@ export function useLeadMeasureStore() {
     dataset.value = parsed
     isLoaded.value = true
     isCustomDataActive.value = true
+    isError.value = false
+    sourceError.value = null
 
     const storage = getStorage()
     if (storage) {
@@ -187,10 +209,47 @@ export function useLeadMeasureStore() {
     }
   }
 
+  async function loadRemoteLeadMeasureData(): Promise<LeadMeasureDataset> {
+    if (activeRemoteRequest) return activeRemoteRequest
+
+    isLoading.value = true
+    isError.value = false
+    sourceError.value = null
+
+    const fetcher = typeof (globalThis as any).$fetch === 'function'
+      ? (globalThis as any).$fetch
+      : async () => {
+          throw new Error('Endpoint fetcher tidak tersedia di lingkungan saat ini.')
+        }
+
+    activeRemoteRequest = fetcher('/api/v1/dashboard/lead-measure-karet', {
+      query: { source: 'google-sheets' },
+    }).then((response: LeadMeasureDashboardSuccess) => {
+      dataset.value = response.data.dataset
+      isLoaded.value = true
+      isCustomDataActive.value = true
+      isError.value = false
+      sourceError.value = null
+      return dataset.value
+    }).catch((err: unknown) => {
+      dataset.value = null
+      isLoaded.value = false
+      isCustomDataActive.value = false
+      isError.value = true
+      sourceError.value = readSourceErrorMessage(err)
+      throw err
+    }).finally(() => {
+      isLoading.value = false
+      activeRemoteRequest = null
+    })
+
+    return activeRemoteRequest
+  }
+
   function initLeadMeasureStore(force = false): boolean {
     const storage = getStorage()
     if (!storage) {
-      if (!dataset.value) {
+      if (!dataset.value && !isError.value) {
         dataset.value = createMockLeadMeasureDataset()
         isLoaded.value = true
       }
@@ -210,6 +269,8 @@ export function useLeadMeasureStore() {
           isLoaded.value = true
           isCustomDataActive.value = true
           isHydrated.value = true
+          isError.value = false
+          sourceError.value = null
           return true
         }
       }
@@ -222,6 +283,8 @@ export function useLeadMeasureStore() {
     isLoaded.value = true
     isCustomDataActive.value = false
     isHydrated.value = true
+    isError.value = false
+    sourceError.value = null
     return true
   }
 
@@ -229,6 +292,8 @@ export function useLeadMeasureStore() {
     dataset.value = createMockLeadMeasureDataset()
     isLoaded.value = true
     isCustomDataActive.value = false
+    isError.value = false
+    sourceError.value = null
 
     if (clearStorage) {
       const storage = getStorage()
@@ -249,10 +314,14 @@ export function useLeadMeasureStore() {
     validationIssues,
     reconciliation,
     isLoaded,
+    isLoading,
+    isError,
+    sourceError,
     isMock,
     isCustom,
     isHydrated,
     applyParsedData,
+    loadRemoteLeadMeasureData,
     initLeadMeasureStore,
     resetLeadMeasureData,
   }

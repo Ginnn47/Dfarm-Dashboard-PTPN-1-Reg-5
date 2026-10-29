@@ -1,8 +1,9 @@
 ﻿<script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { Plant03Icon, Leaf01Icon, Upload02Icon, DatabaseSearchIcon } from '@hugeicons/core-free-icons'
+import { Plant03Icon, SoilMoistureFieldIcon, DatabaseSearchIcon, Database01Icon, ArrowUpRight01Icon, File01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/vue'
 import { useOnFarmData } from '~/composables/useOnFarmData'
+import { useDataSource } from '~/composables/useDataSource'
 import OnFarmFilterBar from '~/components/dashboard/onfarm/OnFarmFilterBar.vue'
 import OnFarmLayerNavigation from '~/components/dashboard/onfarm/OnFarmLayerNavigation.vue'
 import OnFarmReconciliationBanner from '~/components/dashboard/onfarm/OnFarmReconciliationBanner.vue'
@@ -73,6 +74,8 @@ const {
   applyAnalysisRange,
 } = useOnFarmData()
 
+const { activeSourceId, activeSourceMeta } = useDataSource()
+
 const activeWorkbookName = computed(() => {
   return store.metadata.value?.fileName || 'LM 19 Biaya Investasi Tanpok 2026.xlsx'
 })
@@ -116,40 +119,57 @@ function clearProjectFilter() {
 <template>
   <div class="mx-auto max-w-7xl space-y-7 pb-16">
     <!-- Header Section -->
-    <header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-5">
+    <header class="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <!-- Breadcrumbs -->
-        <nav aria-label="Breadcrumb" class="flex items-center gap-1.5 text-xs font-semibold text-slate-400 mb-1">
-          <NuxtLink to="/investment/on-farm" class="hover:text-sky-600 transition-colors flex items-center gap-1">
-            <HugeiconsIcon :icon="Leaf01Icon" :size="14" />
-            Investasi Tanaman Pokok
+        <nav aria-label="Breadcrumb" class="flex items-center gap-1.5 text-xs font-semibold text-slate-400 mb-1.5">
+          <NuxtLink to="/investment/on-farm" class="text-sky-600 hover:text-sky-700 transition-colors flex items-center gap-1 font-bold">
+            <HugeiconsIcon :icon="SoilMoistureFieldIcon" :size="14" />
+            <span>Investment</span>
           </NuxtLink>
-          <span>/</span>
-          <span class="text-sky-700">Investment On Farm</span>
+          <span class="text-slate-300">/</span>
+          <span class="text-sky-600 font-bold">On Farm</span>
         </nav>
 
-        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+        <h1 class="text-2xl sm:text-[28px] font-extrabold tracking-tight text-slate-950">
           Investment On Farm
         </h1>
-        <p class="mt-1 text-xs sm:text-sm text-slate-500">
+        <p class="mt-1 text-xs sm:text-sm text-slate-500 max-w-3xl leading-relaxed">
           Monitoring realisasi belanja investasi tanaman pokok perkebunan terhadap Target.
         </p>
       </div>
 
       <!-- Active Source Information & Link to Data Source -->
-      <div class="flex items-center gap-3">
+      <div class="flex flex-col items-start sm:items-end justify-center gap-2 sm:gap-2.5 shrink-0">
         <NuxtLink
           to="/data-source"
-          class="inline-flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3.5 py-2 text-xs font-semibold text-sky-800 hover:bg-sky-100 transition-colors shadow-2xs"
-          title="Klik untuk mengelola atau memperbarui data di Data Source"
+          class="inline-flex items-center gap-2 rounded-xl border border-sky-400 bg-white px-3.5 py-1.5 text-xs font-semibold text-sky-600 hover:bg-sky-50 transition-colors shadow-2xs"
+          title="Kelola Data Source"
         >
-          <span class="size-2 rounded-full bg-emerald-500 shrink-0" aria-hidden="true" />
-          <span class="font-bold">Development Data</span>
-          <span class="text-sky-300">|</span>
-          <span class="font-medium text-sky-950 truncate max-w-[260px]">
+          <HugeiconsIcon :icon="Database01Icon" :size="14" class="text-sky-600" />
+          <span>Kelola Data Source</span>
+          <HugeiconsIcon :icon="ArrowUpRight01Icon" :size="14" class="text-sky-600" />
+        </NuxtLink>
+
+        <div
+          class="inline-flex items-center gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50/70 px-3.5 py-1.5 text-xs text-emerald-800 shadow-2xs"
+          role="status"
+          aria-label="Status sumber data"
+        >
+          <span
+            class="size-2 rounded-full shrink-0"
+            :class="activeSourceId === 'google-sheets'
+              ? (activeSourceMeta.connectionStatus === 'connected' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse')
+              : 'bg-emerald-500'"
+            aria-hidden="true"
+          />
+          <span class="font-bold">{{ activeSourceId === 'google-sheets' ? 'sheets' : 'DataDev' }}</span>
+          <span class="text-emerald-300">|</span>
+          <HugeiconsIcon :icon="File01Icon" :size="14" class="text-emerald-700 shrink-0" />
+          <span class="font-medium text-emerald-950 truncate max-w-[260px]">
             {{ activeWorkbookName }}
           </span>
-        </NuxtLink>
+        </div>
       </div>
     </header>
 

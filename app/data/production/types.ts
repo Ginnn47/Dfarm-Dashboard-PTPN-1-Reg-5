@@ -104,6 +104,9 @@ export interface ProductionKpiSummary {
 export type DataSourceId = 'development' | 'google-sheets'
 
 export type DataSourceStatus = 'available' | 'not-connected' | 'loading' | 'error'
+export type DataSourceConnectionStatus = 'not-checked' | 'checking' | 'connected' | 'failed'
+export type DataSourceDataStatus = 'not-checked' | 'loading' | 'success' | 'empty' | 'invalid' | 'error'
+export type DataSourceValidationStatus = 'not-run' | 'valid' | 'warning' | 'invalid'
 
 export interface ProductionDataSourceMeta {
   id: DataSourceId
@@ -113,10 +116,17 @@ export interface ProductionDataSourceMeta {
   status: DataSourceStatus
   statusLabel: string
   type: 'local' | 'remote'
+  connectionStatus: DataSourceConnectionStatus
+  dataStatus: DataSourceDataStatus
+  validationStatus: DataSourceValidationStatus
   lastUpdated?: string
+  lastChecked?: string
+  lastSuccessful?: string
   recordCount?: number
   workbook?: string
   sheet?: string
+  errorCode?: string
+  errorMessage?: string
   note?: string
 }
 

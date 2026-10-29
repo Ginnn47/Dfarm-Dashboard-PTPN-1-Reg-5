@@ -1970,3 +1970,78 @@ Instead of opening a floating modal or fixed slide-over overlay from the right e
 - **Production Theme**: Emerald green (`text-emerald-700`).
 - **On-Farm Theme**: Sky blue (`text-sky-600` / `text-sky-700`).
 - Every card on a page features a unique, contextually appropriate icon (zero repeating icons per page).
+
+---
+
+# 55. Data Source Management and Multi-Source UI/UX Architecture
+
+This section specifies the user experience, component states, and interaction patterns for managing data sources (Development vs. Google Sheets) across DFARM dashboards.
+
+## 55.1 Four-Dimensional Source State Model
+
+To eliminate ambiguous UI states, the user interface must strictly decouple four separate dimensions of data source status:
+
+1. **Selected Source (`id`)**: The user's intended source mode (`development` vs. `google-sheets`).
+2. **Connection Status (`connectionStatus`)**: The connectivity and credential health of the external provider (`not-checked`, `checking`, `connected`, `failed`).
+3. **Data Fetch State (`dataStatus`)**: The progress of active network transport (`idle`, `loading`, `success`, `empty`, `error`).
+4. **Validation Status (`validationStatus`)**: The outcome of backend contract and semantic verification (`not-run`, `valid`, `warning`, `invalid`).
+
+UI Rules:
+- Selecting `google-sheets` must NEVER automatically mark the source as "Connected".
+- A successful HTTP 200 response must NEVER be displayed as "Valid" until the schema validation payload verifies zero critical schema errors.
+- A connection failure must never be masked as an empty dataset.
+
+## 55.2 Data Source Management Page (`/data-source`)
+
+The Data Source page serves as the centralized administrative hub for source governance:
+- **Domain Switcher**: Tabs for independent domain control (`Produksi`, `Lead Measure Karet`, `Investasi On-Farm`, `Keuangan`, `Investasi Off-Farm`).
+- **Available Sources List**: Displays cards for available source adapters with type badge (`Local Fixture`, `Cloud Spreadsheet`), active badge, and description.
+- **Primary Source Selection**: An explicit radio card or button to select the active source for the domain.
+- **Connection Health & Verification**:
+  - `Periksa Koneksi` / `Refresh Data` button to trigger real-time connectivity and schema check on demand.
+  - Live status indicator with timestamp of last successful sync.
+- **Transparent Diagnostics**: Displays technical details (sheet names, cell ranges, record counts, detected columns, and non-fatal warnings) without exposing private spreadsheet IDs or API tokens.
+- **Concise Content Standard**: Avoid duplicate helper text, unneeded placeholder alerts, or redundant status banners.
+
+## 55.3 Dashboard-Level Source Context & Switching
+
+Dashboards supporting multiple compatible data sources (such as Production Monitoring) provide contextual awareness and source controls directly on the dashboard page:
+
+- **Source Selector / Trigger**:
+  - Located within the dashboard header or secondary toolbar.
+  - Reflects the exact reactive source state managed by `useDataSource()`.
+  - Selecting a source immediately triggers a clean reload of dashboard records.
+- **Stale Data Prevention**:
+  - While switching or refreshing, prior records must be cleared immediately. The dashboard must display a dedicated loading indicator rather than continuing to render outdated metrics from the previous source.
+- **Filter Preservation Policy**:
+  - When switching sources, global filters (e.g. year, commodity, estate) are preserved ONLY IF their selected values exist in the new dataset.
+  - If a filter value is invalid in the newly loaded source, it must automatically reset to the domain default (e.g. all commodities, all estates).
+- **Single-Source Dashboards**:
+  - Dashboards currently limited to a single operational mode (e.g., local development or prototype mode) display an informative status pill linked to `/data-source` but do NOT display an active source switch.
+
+## 55.4 Consistent Failure & Edge-Case States
+
+The UI must render distinct visual states for all failure and edge-case categories rather than collapsing them into a generic error message:
+
+| State | Badge Color | User-Facing Message | Actionable Guidance |
+| --- | --- | --- | --- |
+| `Not Configured` | Slate / Gray | "Konfigurasi Belum Lengkap" | Inform user that spreadsheet ID or range environment variables are missing on the server. |
+| `Not Checked` | Slate / Gray | "Belum Diverifikasi" | Provide "Periksa Koneksi" button to run live verification. |
+| `Connecting / Loading` | Amber Pulse | "Memeriksa Koneksi..." / "Memuat Data..." | Display spinner / animated pulse; disable filter controls during fetch. |
+| `Connected & Valid` | Emerald Green | "Terhubung · Valid" | Display record count and last checked timestamp. |
+| `Authentication Failure` | Rose / Red | "Gagal Autentikasi Google" | Check Google ADC credentials or service account permissions. |
+| `Access Denied` | Rose / Red | "Akses Spreadsheet Ditolak" | Confirm the target spreadsheet is shared with the configured Google identity. |
+| `Schema Invalid` | Rose / Red | "Struktur Data Tidak Sesuai" | Detail missing columns or altered sheet headers in the diagnostics panel. |
+| `Empty but Valid` | Amber Yellow | "Data Kosong" | Inform user that the sheet is connected and valid, but contains zero rows. |
+| `Request Failure / Timeout`| Rose / Red | "Permintaan Waktu Habis (Timeout)" | Prompt user to verify network stability and retry. |
+
+*UI Invariant: Never label schema or mapping errors as a "connection failure". Always distinguish credential/transport errors from data structure errors.*
+
+## 55.5 Visual Consistency & Design Token Compliance
+
+All source management UI components must adhere to the DFARM Design System:
+- **Card Containers**: White card, `border border-slate-200/80`, `rounded-2xl`, subtle elevation `shadow-2xs`, and standard padding (`p-5 sm:p-6`).
+- **Typography**: Subtitle font `text-xs sm:text-sm text-slate-500`, section titles `font-bold text-slate-900`.
+- **Status Pills**: Fully rounded or `rounded-xl`, uppercase/semibold status text (`text-xs font-semibold`), accompanied by colored dot indicators (`size-2 rounded-full`).
+- **Icons**: Authentic **Hugeicons** (`Database01Icon`, `File01Icon`, `ArrowUpRight01Icon`, `CheckmarkCircle02Icon`, `AlertCircleIcon`), styled with context-specific stroke weights.
+- **Responsiveness**: Grid layouts collapse gracefully from multi-column desktop to single-column mobile without horizontal overflow or clipped text.

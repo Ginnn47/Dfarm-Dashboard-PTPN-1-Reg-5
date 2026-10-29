@@ -2,7 +2,7 @@
 
 > Status: Proposed - Pending Review
 > Phase: 2 - Production API Contract and Architecture Specification
-> Scope: Documentation only. No Nitro route or backend service is implemented by this document.
+> Scope: API contract documentation for the implemented Nitro Production route.
 
 ## 1. Executive Decision
 
@@ -70,7 +70,7 @@ The proposal is based on the following inspected paths:
 | --- | --- | --- |
 | Canonical model | `app/data/production/types.ts` | Reuse `ProductionRecord`; do not invent a second Production model. |
 | Source registry | `app/data/sources/index.ts` | Existing IDs are `development` and `google-sheets`; remote failure must not select Development. |
-| Google adapter | `app/data/sources/googleSheetsSource.ts` | Current adapter is an empty `not-connected` placeholder; the API is proposed, not implemented. |
+| Google adapter | `app/data/sources/googleSheetsSource.ts` | Calls the implemented Nitro Production API and preserves explicit remote error states. |
 | Source selection | `app/composables/useDataSource.ts` | Production defaults to Development and selection is independent from connection state. |
 | Dashboard filters and calculations | `app/composables/useProductionDashboard.ts` | Preserve current filters, period slicing, and frontend KPI calculations for the first integration. |
 | Production UI | `app/pages/production/index.vue` | UI already has source status, loading/empty/error-oriented patterns, charts, KPI cards, and detail data views. |
@@ -89,16 +89,16 @@ The audit distinguishes code evidence from live workbook verification:
 
 | Source detail | Audit result | Contract treatment |
 | --- | --- | --- |
-| Production 2025/2026 workbook identity | The expected local paths are referenced by `tests/excelReportMode.test.ts`, but the two workbooks were not available in the workspace during this audit. | Treat the two workbooks as the approved intended sources, but verify workbook IDs, sheet names, ranges, and current headers before Phase 3 configuration. |
-| Detail worksheet names | Tests expect `Prod Per TT Karet`, `Prod Per TT Teh`, `Prod Per TT Arabika`, `Prod Per TT Robusta`, `Prod Per TT Edel`, and `Prod Per TT Bulk`; summary sheets include `PRODUKSI` and `REKAP Prod per TT`. | Use as test-backed evidence, not as a substitute for inspecting the live Google workbook. Summary sheets must not be double-counted. |
-| Header detection | The local parser scans rows 1-10 and recognizes patterns for commodity, estate code/name, afdeling, planting year, area, and population. | Reuse the same mapping baseline only after confirming the remote Sheets layout is unchanged. Do not hardcode a range based only on this parser. |
-| Monthly columns | The parser identifies `Januari` in a subheader, pairs production columns for RKAP/actual, and reads 12 consecutive months. | Require a canonical January-December sequence; confirm the live header/subheader arrangement before implementation. |
+| Production 2025/2026 workbook identity | Local reference workbooks and the configured live workbooks are available. | Preserve one workbook per reporting year and keep IDs server-only. |
+| Detail worksheet names | Live responses contain the six configured detail sheets; summary sheets include `PRODUKSI` and `REKAP Prod per TT`. | Summary sheets must not be double-counted. |
+| Header detection | The local parser and live responses identify the header on row 5 and recognize commodity, estate code/name, afdeling, planting year, area, and population. | Reuse the mapper baseline while re-auditing after source layout changes. |
+| Monthly columns | Live responses expose the expected `Januari` subheaders and RKAP/actual starts for Karet 2025 (`G`/`AS`), Karet 2026 (`G`/`AR`), and non-Karet (`F`/`AA`). | Keep the year-aware mapper positions and verify changes before deployment. |
 | Area and population units | The parser maps headers matching `luas` and `pop`, `pohon`, or `populasi`, but the repository does not establish an authoritative unit declaration. | Preserve numeric values and document units as unresolved until the source owner confirms them. |
 | Afdeling master workbook | The repository contains the compiled reference implementation and metadata for `AREAL & POPULASI MASTERFIELD 2026.xlsx`, sheet `AFD`, with 178 records and version `2026.1`. | Use it as a separate identity reference layer; do not merge it into Production quantities. |
 
-The audit therefore verifies the transformation behavior and identity
-mechanism from code, but does not claim that the live Google workbook headers,
-ranges, units, or current contents were inspected.
+The audit now verifies the configured live ranges and header layout. Numeric
+units and the business meaning of blank monthly cells remain unresolved and
+must not be inferred by the ingestion layer.
 
 ## 4. Contract Principles
 
@@ -124,21 +124,21 @@ ranges, units, or current contents were inspected.
   identity matcher after canonical field mapping.
 - Original Production identity and numeric values remain intact. Matching adds
   metadata; it does not rewrite production values.
-- Exact Google workbook IDs, ranges, live headers, and units remain pending
-  verification because the two Production workbooks were unavailable during
-  this repository audit.
+- Exact workbook IDs remain server configuration. Ranges and live headers are
+  verified for the current 2025/2026 sources; numeric units remain pending
+  source-owner confirmation.
 
 ### Decision D2 - Monthly Completeness and Numeric Semantics
 
 - The canonical output contains January through December in `months`.
-- Zero, blank, nonnumeric, and formula-error cells are distinct input states.
-- The remote ingestion contract must not silently convert blank or invalid
-  values to zero.
-- The current local parser uses numeric fallbacks such as `?? 0` and
-  `Number(...) || 0`; this is an implementation gap to correct or isolate in
-  Phase 3 before reusing the parser for Google Sheets.
-- The exact nullability policy for a valid but blank monthly cell requires
-  source-owner confirmation.
+- Numeric zero remains zero. In the verified live workbooks, blank monthly
+  cells and the `-` marker represent no recorded monthly value and are mapped
+  to canonical zero for that month.
+- Malformed numeric text and formula errors remain validation failures; they
+  are never converted to zero.
+- Required identity and planting-year fields remain strict. Blank or `-`
+  values in numeric `area` and `population` source cells normalize to zero;
+  malformed text and formula errors remain invalid.
 
 ### Decision D3 - Afdeling Identity
 
@@ -419,6 +419,11 @@ Canonical invariants for a successful response:
   `sourceRow` is positive.
 - `area`, `population`, `actual`, `rkap`, and monthly numeric values are finite
   numbers. No silent numeric coercion of malformed values is permitted.
+- Blank monthly, `area`, and `population` cells and the source `-` marker are
+  accepted only as field-specific zero representations. Formula errors remain
+  invalid for detail rows; the known planting-year aggregate block embedded in
+  the Karet detail sheet is excluded when it has no source identity and its
+  monthly cells contain formula errors.
 - `months` contains the canonical January-December sequence required by the
   existing aggregation and period slicing functions.
 - Optional matching fields are nullable and must not be fabricated when a
@@ -427,11 +432,15 @@ Canonical invariants for a successful response:
   identity. It must not be silently relabeled as `matched`.
 
 The exact spreadsheet header names, aliases, units, and source-to-canonical
-mapping for the live Google workbooks are not fully established because the
-Production 2025/2026 workbooks were not available during this audit. The
-parser's recognized header patterns and transformations are documented in
-Section 3.1 and are the only approved baseline until the live source is
-verified.
+mapping for the current live Google responses have been checked against the
+configured ranges and the local workbook baseline. Numeric units still require
+source-owner confirmation. The verified monthly empty-value convention is
+implemented as a field-specific normalization: blank and `-` become zero,
+while detail-row formula errors remain rejected. The mapper ignores the
+verified embedded Karet planting-year aggregate rows that have no commodity,
+estate, or afdeling identity and emits a warning instead of treating them as
+canonical production records. The parser's recognized header patterns and
+transformations remain the approved baseline.
 
 ### 8.1 Afdeling Identity Enrichment
 
@@ -630,11 +639,12 @@ No alias table, unit conversion, or semantic mapping may be invented in Phase
 - Missing required cells: reject the complete authoritative dataset with
   `VALIDATION_FAILED` unless an approved field-specific nullability rule exists.
 - Invalid numeric values: reject; do not coerce malformed strings to zero.
-- Blank numeric cells: keep distinct from numeric zero. The current local
-  parser's zero fallback is not sufficient evidence for remote ingestion and
-  must not be copied without an approved nullability rule.
-- Formula errors: reject or report as a source validation error; do not treat an
-  error token as zero.
+- Blank monthly, `area`, and `population` cells and a source `-` marker:
+  normalize to canonical zero for those numeric fields. Blank identity or
+  planting-year cells remain invalid.
+- Formula errors, including Google error tokens followed by a descriptive
+  message: reject or report as a source validation error; do not treat an error
+  token as zero.
 - Invalid dates: reject if a future approved source field requires a date. The
   current canonical `ProductionRecord` does not contain a date field.
 - Invalid month sequence or missing monthly values: reject because the current
@@ -647,6 +657,10 @@ No alias table, unit conversion, or semantic mapping may be invented in Phase
   name. The current local Excel parser rejects an empty afdeling name, so the
   remote contract must either reject the row or obtain an explicitly approved
   source-specific rule before implementation.
+- When the source groups planting-year rows under a merged afdeling cell, the
+  mapper may carry forward the last explicit afdeling within the current estate
+  group. It resets that context when a new estate is detected and does not
+  infer an afdeling from the master alone.
 - Unexpected Google API payload: return `UPSTREAM_RESPONSE_INVALID`.
 
 ### 11.3 Partial Results
@@ -762,7 +776,9 @@ complete. They are specified here but are not created or executed in Phase 2:
 7. Missing required headers returns `SCHEMA_INVALID`.
 8. Duplicate or ambiguous headers are rejected or reported per the approved mapping.
 9. Invalid numeric cells return `VALIDATION_FAILED`.
-10. Blank numeric cells and formula errors are not silently converted to zero.
+10. Blank monthly, area, and population cells plus `-` markers normalize to
+    zero; detail-row formula errors are not converted to zero, and embedded
+    identity-free aggregate rows are excluded with a warning.
 11. Identity matching preserves the original fields and exposes matched or unresolved metadata.
 12. Authentication failure maps to `SOURCE_AUTH_FAILED` without leaking secrets.
 13. Permission denied maps to `SOURCE_ACCESS_DENIED`.
@@ -790,16 +806,16 @@ complete. They are specified here but are not created or executed in Phase 2:
 | Production sheet names | Test-backed only | `excelReportMode.test.ts` documents expected detail and summary names; live Google sheets still require verification. |
 | Afdeling master source identified | Met from repository | `AREAL & POPULASI MASTERFIELD 2026.xlsx`, sheet `AFD`, represented by `afdelingMaster.ts`. |
 | Afdeling identity matching identified | Met | `matchAfdelingIdentity()` preserves original identity and adds deterministic match metadata. |
-| Monthly twelve-period transformation | Met from parser contract; live layout pending | Parser reads January-December; live subheaders and numeric semantics require verification. |
-| Google adapter implementation | Not met | `googleSheetsSource.ts` is a placeholder and returns empty/not-connected. |
-| Server validation/mapping engine | Not met | No Nitro route/service exists; contract proposes behavior only. |
-| Exact live spreadsheet header/range mapping | Unresolved | Production workbooks were unavailable during this audit; parser patterns are only a baseline. |
-| Numeric units and blank/formula-error semantics | Unresolved | Parser recognizes numeric positions but repository does not establish authoritative units or nullability. |
+| Monthly twelve-period transformation | Met | Parser reads January-December; live subheaders and the 2025/2026 month offsets were verified. |
+| Google adapter implementation | Met for initial read-only path | `googleSheetsSource.ts` calls `GET /api/v1/dashboard/production`; live Google verification remains environment-dependent. |
+| Server validation/mapping engine | Met for initial Production path | Nitro route, reader, source config, mapper, and validation services are implemented and unit-tested. |
+| Exact live spreadsheet header/range mapping | Met for current sources | Configured ranges, row-5 headers, and Karet/non-Karet month offsets were verified; future workbook layout changes still require re-audit. |
+| Numeric units and blank/formula-error semantics | Partially met | Live workbooks establish blank/`-` as empty monthly values; detail-row formula errors remain invalid while the verified identity-free Karet aggregate block is excluded with a warning. Numeric units still require source-owner confirmation. |
 | API authentication/deployment identity | Unresolved | Must be decided before production deployment. |
 | Timeout/retry/response-size policy | Proposed | 10-second timeout, one bounded retry, and full dataset pending measurement and operational approval. |
 | Periodic source-change monitoring | Required for Phase 3 | Requirement is documented; no scheduler, fingerprint, or persistence is implemented. |
 | Persistent cache | Intentionally deferred | No cache required by approved Phase 2 scope. |
-| API tests | Not met by design | Must be implemented in Phase 3/QA; no tests changed here. |
+| API tests | Met for mock/unit coverage | Google/Production/Development contract tests exist; live ADC and workbook verification remain separate integration gates. |
 
 ## 17. Decisions Requiring Approval
 
@@ -808,7 +824,7 @@ complete. They are specified here but are not created or executed in Phase 2:
 | Decision | Status | Result |
 | --- | --- | --- |
 | D1 - Source and mapping | Partially finalized | Remote source is the same Production workbook family as local Development; exact live IDs, ranges, headers, and units remain pending verification. |
-| D2 - Monthly completeness | Proposed with blocker | Twelve months are required; blank, zero, nonnumeric, and formula-error semantics need source-owner confirmation. |
+| D2 - Monthly completeness | Implemented with scoped source-error handling | Twelve months are required; blank/`-` monthly values normalize to zero, detail-row formula errors block the authoritative response, and the verified identity-free Karet aggregate block is excluded with a warning. |
 | D3 - Afdeling identity | Finalized for baseline | Reuse the `AFD` master and `matchAfdelingIdentity()`; preserve original identity and allow explicit unresolved status. |
 | D4 - Filters and processing | Finalized for initial integration | Retrieve full validated dataset and preserve frontend filters/KPIs; measure response before pagination. |
 | D5 - Authentication | Partially finalized | Server-only organization-approved authentication; deployment identity remains unresolved. |
@@ -818,7 +834,10 @@ The following items must be resolved before implementation:
 
 1. Confirm the exact Google workbook IDs, sheet names, ranges, and header rows for reporting years 2025 and 2026.
 2. Approve the canonical source-to-`ProductionRecord` mapping, including aliases, units, and optional field treatment.
-3. Confirm whether every monthly cell is required and how blank or formula-error cells are represented.
+3. Resolve or remove the obsolete aggregate formulas in the source workbooks
+   and confirm numeric units; until then, the mapper excludes only the
+   verified identity-free aggregate block and handles blank/`-` monthly cells
+   according to the observed source convention.
 4. Confirm the policy for missing `afdeling` and for rows with unresolved semantic identity.
 5. Confirm the initial API caller authentication and deployment authorization mechanism.
 6. Confirm the HTTP status-code policy if it differs from Section 9.

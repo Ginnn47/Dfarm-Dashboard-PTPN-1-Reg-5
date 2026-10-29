@@ -1,4 +1,4 @@
-import { computed, onMounted, type Ref } from 'vue'
+import { computed, onMounted, watch, type Ref } from 'vue'
 import { useDataSource } from '~/composables/useDataSource'
 import {
   aggregateByAfdeling,
@@ -129,6 +129,17 @@ export function useProductionDashboard(filters: Ref<ProductionDashboardFilters>)
     return Array.from(new Set(sourceRecords.value.map((record) => record.plantingYear)))
       .sort((a, b) => a - b)
       .map((year) => ({ value: String(year), label: String(year) }))
+  })
+
+  watch(activeSourceId, (sourceId, previousSourceId) => {
+    if (sourceId === previousSourceId) return
+
+    // A source switch starts a fresh request and avoids carrying incompatible filters.
+    filters.value.komoditas = ''
+    filters.value.kebun = ''
+    filters.value.afdeling = ''
+    filters.value.tahunTanam = ''
+    void refreshSource()
   })
 
   const monthlyData = computed(() => {

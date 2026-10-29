@@ -175,7 +175,8 @@ export class GoogleSheetsReader {
       try {
         const response = await this.fetchWithTimeout(endpoint, accessToken)
         if (!response.ok) {
-          const mapped = errorForStatus(response.status)
+          const rawErr = await response.text().catch(() => '')
+          const mapped = errorForStatus(response.status, new Error(rawErr))
           if (mapped.retryable && attempt < this.options.maxRetries) {
             attempt++
             await this.options.sleep(this.options.retryDelayMs)

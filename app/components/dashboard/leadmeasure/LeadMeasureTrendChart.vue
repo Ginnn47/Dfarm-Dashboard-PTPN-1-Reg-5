@@ -31,6 +31,7 @@ const metricPillStyles: Record<string, { dot: string; text: string; bg: string }
         <v-chart
           v-if="trendOption"
           :option="trendOption"
+          :update-options="{ notMerge: true }"
           autoresize
           class="h-full w-full"
         />

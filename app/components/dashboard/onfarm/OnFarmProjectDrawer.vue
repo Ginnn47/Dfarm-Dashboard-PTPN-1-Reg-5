@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import {
+  RankingIcon,
   CardExchange01Icon,
   Analytics03Icon,
   WorkflowSquare08Icon,
@@ -573,6 +574,61 @@ const selectedWbsCostElements = computed(() => {
 })
 
 // Monthly Spend Profile for selected WBS with detailed tooltip items (Cost Elements & Materials)
+// Tooltip interactive state for monthly mutation chart
+const tooltipActiveTab = ref<'accounting' | 'materials'>('accounting')
+const tooltipExpanded = ref(false)
+const activeHoveredPeriod = ref<number | null>(null)
+let hoverLeaveTimeout: ReturnType<typeof setTimeout> | null = null
+
+function formatTooltipPercent(val: number | null | undefined): string {
+  if (val == null || isNaN(val)) return '—'
+  return val.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%'
+}
+
+function onMouseEnterBar(period: number) {
+  if (hoverLeaveTimeout) {
+    clearTimeout(hoverLeaveTimeout)
+    hoverLeaveTimeout = null
+  }
+  if (activeHoveredPeriod.value !== period) {
+    tooltipExpanded.value = false
+  }
+  activeHoveredPeriod.value = period
+}
+
+function onMouseLeaveBar(period: number) {
+  if (hoverLeaveTimeout) clearTimeout(hoverLeaveTimeout)
+  hoverLeaveTimeout = setTimeout(() => {
+    if (activeHoveredPeriod.value === period) {
+      activeHoveredPeriod.value = null
+      tooltipExpanded.value = false
+    }
+  }, 220)
+}
+
+function onMouseEnterTooltip(period: number) {
+  if (hoverLeaveTimeout) {
+    clearTimeout(hoverLeaveTimeout)
+    hoverLeaveTimeout = null
+  }
+  activeHoveredPeriod.value = period
+}
+
+function onMouseLeaveTooltip(period: number) {
+  if (hoverLeaveTimeout) clearTimeout(hoverLeaveTimeout)
+  hoverLeaveTimeout = setTimeout(() => {
+    if (activeHoveredPeriod.value === period) {
+      activeHoveredPeriod.value = null
+      tooltipExpanded.value = false
+    }
+  }, 220)
+}
+
+onUnmounted(() => {
+  if (hoverLeaveTimeout) clearTimeout(hoverLeaveTimeout)
+})
+
+// Monthly Spend Profile for selected WBS with detailed tooltip items (Cost Elements & Materials)
 const selectedWbsMonthly = computed(() => {
   const months: Array<{
     period: number
@@ -580,73 +636,130 @@ const selectedWbsMonthly = computed(() => {
     fullLabel: string
     cost: number
     heightPct: number
-    costElements: Array<{ code: string; desc: string; cost: number; count: number }>
-    materials: Array<{ desc: string; cost: number; quantity: number; uom: string }>
+    sharePercent: number
+    accountingItems: Array<{
+      code: string
+      desc: string
+      monthCost: number
+      totalCost: number
+      percent: number
+      monthCostFormatted: string
+      totalCostFormatted: string
+    }>
+    materialItems: Array<{
+      key: string
+      code: string | null
+      desc: string
+      monthCost: number
+      totalCost: number
+      percent: number
+      monthCostFormatted: string
+      totalCostFormatted: string
+    }>
   }> = []
   const startPeriod = Math.max(1, Math.min(12, props.analysisRangeStartPeriod || 1))
   const endPeriod = Math.max(startPeriod, Math.min(12, props.analysisRangeEndPeriod || props.cutOffPeriod || 9))
+
+  // Precompute totals across the entire analysis period for selected WBS
+  const totalCostByCe = new Map<string, number>()
+  const totalCostByMat = new Map<string, number>()
+
+  for (const tx of selectedWbsTxList.value) {
+    const ceCode = tx.costElement || 'N/A'
+    totalCostByCe.set(ceCode, (totalCostByCe.get(ceCode) || 0) + tx.actualCost)
+
+    if (tx.materialCode || tx.quantity || tx.materialDesc) {
+      const matKey = (tx.materialCode || 'NON_MAT') + '|' + (tx.uom || '—')
+      totalCostByMat.set(matKey, (totalCostByMat.get(matKey) || 0) + tx.actualCost)
+    }
+  }
 
   for (let p = startPeriod; p <= endPeriod; p++) {
     const txsInMonth = selectedWbsTxList.value.filter((tx) => tx.period === p)
     const totalCost = txsInMonth.reduce((sum, tx) => sum + tx.actualCost, 0)
 
     // Group cost elements in this month
-    const ceMap = new Map<string, { code: string; desc: string; cost: number; count: number }>()
+    const ceMonthMap = new Map<string, { code: string; desc: string; monthCost: number; totalCost: number }>()
     // Group physical materials in this month
-    const matMap = new Map<string, { desc: string; cost: number; quantity: number; uom: string }>()
+    const matMonthMap = new Map<string, { key: string; code: string | null; desc: string; monthCost: number; totalCost: number }>()
 
     for (const tx of txsInMonth) {
-      // Cost element
       const ceCode = tx.costElement || 'N/A'
-      const existingCe = ceMap.get(ceCode)
+      const existingCe = ceMonthMap.get(ceCode)
       if (existingCe) {
-        existingCe.cost += tx.actualCost
-        existingCe.count++
+        existingCe.monthCost += tx.actualCost
       } else {
-        ceMap.set(ceCode, {
+        ceMonthMap.set(ceCode, {
           code: ceCode,
           desc: formatCleanTitle(tx.costElementDesc || ceCode),
-          cost: tx.actualCost,
-          count: 1,
+          monthCost: tx.actualCost,
+          totalCost: totalCostByCe.get(ceCode) || tx.actualCost,
         })
       }
 
-      // Material
-      if (tx.materialCode || tx.quantity) {
-        const matKey = (tx.materialCode || tx.materialDesc || 'MAT') + '|' + (tx.uom || '—')
-        const existingMat = matMap.get(matKey)
+      if (tx.materialCode || tx.quantity || tx.materialDesc) {
+        const matKey = (tx.materialCode || 'NON_MAT') + '|' + (tx.uom || '—')
+        const existingMat = matMonthMap.get(matKey)
         if (existingMat) {
-          existingMat.cost += tx.actualCost
-          existingMat.quantity += tx.quantity || 0
+          existingMat.monthCost += tx.actualCost
         } else {
-          matMap.set(matKey, {
-            desc: formatCleanTitle(tx.materialDesc || tx.costElementDesc || 'Material'),
-            cost: tx.actualCost,
-            quantity: tx.quantity || 0,
-            uom: tx.uom || '—',
+          matMonthMap.set(matKey, {
+            key: matKey,
+            code: tx.materialCode || null,
+            desc: formatCleanTitle(tx.materialDesc || tx.costElementDesc || 'Material Fisik'),
+            monthCost: tx.actualCost,
+            totalCost: totalCostByMat.get(matKey) || tx.actualCost,
           })
         }
       }
     }
+
+    const accountingItems = Array.from(ceMonthMap.values())
+      .map((item) => {
+        const percent = item.totalCost > 0 ? (item.monthCost / item.totalCost) * 100 : 0
+        return {
+          ...item,
+          percent,
+          monthCostFormatted: formatRupiahCompact(item.monthCost),
+          totalCostFormatted: formatRupiahCompact(item.totalCost),
+        }
+      })
+      .sort((a, b) => b.monthCost - a.monthCost)
+
+    const materialItems = Array.from(matMonthMap.values())
+      .map((item) => {
+        const percent = item.totalCost > 0 ? (item.monthCost / item.totalCost) * 100 : 0
+        return {
+          ...item,
+          percent,
+          monthCostFormatted: formatRupiahCompact(item.monthCost),
+          totalCostFormatted: formatRupiahCompact(item.totalCost),
+        }
+      })
+      .sort((a, b) => b.monthCost - a.monthCost)
 
     months.push({
       period: p,
       label: MONTH_SHORT[p - 1] || ('Bln ' + p),
       fullLabel: MONTH_FULL[p - 1] || ('Bulan ' + p),
       cost: totalCost,
-      heightPct: 10, // will compute below
-      costElements: Array.from(ceMap.values()).sort((a, b) => b.cost - a.cost),
-      materials: Array.from(matMap.values()).sort((a, b) => b.cost - a.cost),
+      heightPct: 10,
+      sharePercent: 0,
+      accountingItems,
+      materialItems,
     })
   }
 
   let maxCost = 0
+  let totalCostInYear = 0
   for (const m of months) {
     if (m.cost > maxCost) maxCost = m.cost
+    totalCostInYear += m.cost
   }
 
   for (const m of months) {
     m.heightPct = maxCost > 0 ? Math.max(10, Math.round((m.cost / maxCost) * 100)) : 10
+    m.sharePercent = totalCostInYear > 0 ? (m.cost / totalCostInYear) * 100 : 0
   }
 
   return months
@@ -657,6 +770,52 @@ const maxMonthlySpend = computed(() => {
   if (!list.length) return null
   return list.reduce((max, cur) => cur.cost > max.cost ? cur : max, list[0])
 })
+
+function getMonthlyTooltipClass(idx: number, total: number): string {
+  if (total <= 1) {
+    return 'left-1/2 -translate-x-1/2';
+  }
+  if (total <= 3) {
+    if (idx === 0) return 'left-0';
+    if (idx === total - 1) return 'right-0';
+    return 'left-1/2 -translate-x-1/2';
+  }
+  if (total <= 5) {
+    if (idx <= 1) return 'left-0';
+    if (idx >= total - 2) return 'right-0';
+    return 'left-1/2 -translate-x-1/2';
+  }
+  if (idx <= 2) {
+    return 'left-0';
+  }
+  if (idx >= total - 3) {
+    return 'right-0';
+  }
+  return 'left-1/2 -translate-x-1/2';
+}
+
+function getTooltipTailClass(idx: number, total: number): string {
+  if (total <= 1) {
+    return 'left-1/2 -translate-x-1/2';
+  }
+  if (total <= 3) {
+    if (idx === 0) return 'left-6 sm:left-7';
+    if (idx === total - 1) return 'right-6 sm:right-7';
+    return 'left-1/2 -translate-x-1/2';
+  }
+  if (total <= 5) {
+    if (idx <= 1) return 'left-6 sm:left-7';
+    if (idx >= total - 2) return 'right-6 sm:right-7';
+    return 'left-1/2 -translate-x-1/2';
+  }
+  if (idx <= 2) {
+    return 'left-6 sm:left-7';
+  }
+  if (idx >= total - 3) {
+    return 'right-6 sm:right-7';
+  }
+  return 'left-1/2 -translate-x-1/2';
+}
 
 const minMonthlySpend = computed(() => {
   const list = selectedWbsMonthly.value.filter(m => m.cost > 0)
@@ -1438,60 +1597,164 @@ function nextTxPage() {
             <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs">
               <div class="grid grid-cols-9 gap-2 sm:gap-3 items-end h-40 pt-4 pb-1">
                 <div
-                  v-for="m in selectedWbsMonthly"
+                  v-for="(m, idx) in selectedWbsMonthly"
                   :key="m.period"
                   class="flex flex-col items-center h-full justify-end group relative cursor-pointer"
+                  @mouseenter="onMouseEnterBar(m.period)"
+                  @mouseleave="onMouseLeaveBar(m.period)"
                 >
-                  <!-- RICH INTERACTIVE TOOLTIP ON HOVER -->
-                  <div class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block z-40 w-72 sm:w-80 rounded-2xl bg-slate-900/95 p-3.5 text-white text-[11px] shadow-2xl backdrop-blur-xs pointer-events-none transition-all">
-                    <!-- Tooltip Header -->
-                    <div class="flex items-center justify-between border-b border-slate-700/80 pb-2 mb-2.5">
+                  <!-- RICH INTERACTIVE TOOLTIP ON HOVER (Exact Default / Standard Reference Layout) -->
+                  <div
+                    class="absolute bottom-full mb-2.5 hidden group-hover:block z-40 w-72 sm:w-80 max-w-[calc(100vw-2.5rem)] rounded-2xl bg-[#0f172a] border border-slate-700/80 p-4 text-white shadow-2xl backdrop-blur-xs pointer-events-auto transition-all before:content-[''] before:absolute before:top-full before:left-0 before:right-0 before:h-4"
+                    :class="[getMonthlyTooltipClass(idx, selectedWbsMonthly.length), { '!block': activeHoveredPeriod === m.period }]"
+                    @mouseenter="onMouseEnterTooltip(m.period)"
+                    @mouseleave="onMouseLeaveTooltip(m.period)"
+                  >
+                    <!-- A. Header: Month Name & Period on Left, Nominal on Right -->
+                    <div class="flex items-start justify-between gap-3 text-left">
                       <div>
-                        <span class="font-bold text-white text-xs block">{{ m.fullLabel }}</span>
-                        <span class="text-[10px] text-slate-400">Periode {{ m.period }} Tahun 2026</span>
+                        <h6 class="text-sm font-bold text-white leading-tight">
+                          {{ m.fullLabel }}
+                        </h6>
+                        <p class="text-[11px] text-slate-400 mt-0.5">
+                          Periode {{ m.period }} Tahun 2026
+                        </p>
                       </div>
-                      <span class="font-mono font-extrabold text-sky-400 text-xs">{{ formatRupiahFull(m.cost) }}</span>
-                    </div>
-
-                    <!-- Cost Elements Breakdown in Month -->
-                    <div class="space-y-1 mb-2.5">
-                      <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
-                        Akun Beban Akuntansi:
-                      </span>
-                      <div v-if="m.costElements.length > 0" class="space-y-1">
-                        <div v-for="ce in m.costElements.slice(0, 3)" :key="ce.code" class="flex items-center justify-between text-[10px]">
-                          <span class="truncate max-w-[170px] text-slate-200" :title="ce.desc">{{ ce.desc }}</span>
-                          <span class="font-mono text-slate-300 tabular-nums shrink-0 ml-1">{{ formatRupiahCompact(ce.cost) }}</span>
-                        </div>
-                        <span v-if="m.costElements.length > 3" class="text-[9px] text-slate-400 block pt-0.5">
-                          +{{ m.costElements.length - 3 }} akun beban lainnya
-                        </span>
-                      </div>
-                      <span v-else class="text-[10px] text-slate-400 italic block">
-                        Tidak ada akun beban khusus tercatat
+                      <span class="font-mono font-bold text-sm text-[#00A3FF] shrink-0">
+                        {{ formatRupiahCompact(m.cost) }}
                       </span>
                     </div>
 
-                    <!-- Physical Materials Breakdown in Month -->
-                    <div class="space-y-1 pt-2 border-t border-slate-700/80">
-                      <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
-                        Material Fisik:
-                      </span>
-                      <div v-if="m.materials.length > 0" class="space-y-1">
-                        <div v-for="mat in m.materials.slice(0, 3)" :key="mat.desc" class="flex items-center justify-between text-[10px]">
-                          <span class="truncate max-w-[170px] text-slate-200" :title="mat.desc">
-                            {{ mat.desc }} ({{ mat.quantity.toLocaleString('id-ID') }} {{ mat.uom }})
-                          </span>
-                          <span class="font-mono text-slate-300 tabular-nums shrink-0 ml-1">{{ formatRupiahCompact(mat.cost) }}</span>
-                        </div>
-                        <span v-if="m.materials.length > 3" class="text-[9px] text-slate-400 block pt-0.5">
-                          +{{ m.materials.length - 3 }} material fisik lainnya
-                        </span>
+                    <!-- B. Main Monthly Progress Bar: Kontribusi Bulan Ini -->
+                    <div class="mt-3">
+                      <div class="flex items-center justify-between text-xs mb-1.5">
+                        <span class="text-slate-300 font-medium">Kontribusi bulan ini</span>
+                        <span class="font-bold text-[#00A3FF] font-mono">{{ formatTooltipPercent(m.sharePercent) }}</span>
                       </div>
-                      <span v-else class="text-[10px] text-slate-400 italic block">
-                        Tidak ada transaksi material fisik (beban operasional/jasa)
-                      </span>
+                      <div class="w-full h-2 rounded-full bg-slate-800/90 overflow-hidden">
+                        <div
+                          class="h-full rounded-full bg-[#00A3FF] transition-all duration-300"
+                          :style="{ width: Math.min(100, Math.max(0, m.sharePercent)) + '%' }"
+                        />
+                      </div>
                     </div>
+
+                    <!-- C. Tab-Line Switch (Beban Akuntansi vs Material Fisik) -->
+                    <div class="mt-4 flex border-b border-slate-700/80">
+                      <button
+                        type="button"
+                        class="flex-1 pb-2 text-xs font-semibold text-center transition-colors relative cursor-pointer"
+                        :class="tooltipActiveTab === 'accounting'
+                          ? 'text-[#00A3FF] border-b-2 border-[#00A3FF] -mb-[1px]'
+                          : 'text-slate-400 hover:text-slate-200'"
+                        @click.stop="tooltipActiveTab = 'accounting'"
+                      >
+                        Beban Akuntansi
+                      </button>
+                      <button
+                        type="button"
+                        class="flex-1 pb-2 text-xs font-semibold text-center transition-colors relative cursor-pointer"
+                        :class="tooltipActiveTab === 'materials'
+                          ? 'text-[#00A3FF] border-b-2 border-[#00A3FF] -mb-[1px]'
+                          : 'text-slate-400 hover:text-slate-200'"
+                        @click.stop="tooltipActiveTab = 'materials'"
+                      >
+                        Material Fisik
+                      </button>
+                    </div>
+
+                    <!-- D. Dynamic Multi-Row Details -->
+                    <div class="pt-2 text-left">
+                      <!-- TAB 1: BEBAN AKUNTANSI -->
+                      <template v-if="tooltipActiveTab === 'accounting'">
+                        <div
+                          v-if="m.accountingItems.length > 0"
+                          class="divide-y divide-slate-800/70"
+                          :class="{ 'max-h-52 overflow-y-auto no-scrollbar': tooltipExpanded }"
+                        >
+                          <div
+                            v-for="item in (tooltipExpanded ? m.accountingItems : m.accountingItems.slice(0, 3))"
+                            :key="item.code"
+                            class="py-2.5 first:pt-1.5 last:pb-1 text-left"
+                          >
+                            <p class="text-xs font-bold text-white truncate" :title="item.desc">
+                              {{ item.desc }}
+                            </p>
+                            <p class="text-[11px] font-mono text-slate-400 mt-0.5 tabular-nums">
+                              {{ item.monthCostFormatted }} / {{ item.totalCostFormatted }}
+                            </p>
+                          </div>
+                        </div>
+                        <div v-else class="py-4 text-center text-xs text-slate-400 italic">
+                          Tidak ada catatan beban akuntansi pada periode ini.
+                        </div>
+
+                        <!-- Expand / Collapse control -->
+                        <div v-if="m.accountingItems.length > 3" class="pt-2 text-left">
+                          <button
+                            type="button"
+                            class="inline-flex items-center gap-1 text-xs text-slate-300 hover:text-white transition-colors cursor-pointer"
+                            @click.stop="tooltipExpanded = !tooltipExpanded"
+                          >
+                            <span>{{ tooltipExpanded ? 'Tampilkan ringkas' : ('Lihat semua ' + m.accountingItems.length + ' akun') }}</span>
+                            <HugeiconsIcon
+                              :icon="ChevronDownIcon"
+                              :size="13"
+                              class="transition-transform duration-200"
+                              :class="{ 'rotate-180': tooltipExpanded }"
+                            />
+                          </button>
+                        </div>
+                      </template>
+
+                      <!-- TAB 2: MATERIAL FISIK -->
+                      <template v-else>
+                        <div
+                          v-if="m.materialItems.length > 0"
+                          class="divide-y divide-slate-800/70"
+                          :class="{ 'max-h-52 overflow-y-auto no-scrollbar': tooltipExpanded }"
+                        >
+                          <div
+                            v-for="item in (tooltipExpanded ? m.materialItems : m.materialItems.slice(0, 3))"
+                            :key="item.key"
+                            class="py-2.5 first:pt-1.5 last:pb-1 text-left"
+                          >
+                            <p class="text-xs font-bold text-white truncate" :title="item.desc">
+                              {{ item.desc }}
+                            </p>
+                            <p class="text-[11px] font-mono text-slate-400 mt-0.5 tabular-nums">
+                              {{ item.monthCostFormatted }} / {{ item.totalCostFormatted }}
+                            </p>
+                          </div>
+                        </div>
+                        <div v-else class="py-4 text-center text-xs text-slate-400 italic">
+                          Tidak ada transaksi material fisik pada periode ini.
+                        </div>
+
+                        <!-- Expand / Collapse control -->
+                        <div v-if="m.materialItems.length > 3" class="pt-2 text-left">
+                          <button
+                            type="button"
+                            class="inline-flex items-center gap-1 text-xs text-slate-300 hover:text-white transition-colors cursor-pointer"
+                            @click.stop="tooltipExpanded = !tooltipExpanded"
+                          >
+                            <span>{{ tooltipExpanded ? 'Tampilkan ringkas' : ('Lihat semua ' + m.materialItems.length + ' material') }}</span>
+                            <HugeiconsIcon
+                              :icon="ChevronDownIcon"
+                              :size="13"
+                              class="transition-transform duration-200"
+                              :class="{ 'rotate-180': tooltipExpanded }"
+                            />
+                          </button>
+                        </div>
+                      </template>
+                    </div>
+
+                    <!-- Downward Speech Bubble Tail -->
+                    <div
+                      class="absolute -bottom-1.5 w-3 h-3 bg-[#0f172a] border-r border-b border-slate-700/80 rotate-45 transform pointer-events-none"
+                      :class="getTooltipTailClass(idx, selectedWbsMonthly.length)"
+                    />
                   </div>
 
                   <!-- Top Value Label -->

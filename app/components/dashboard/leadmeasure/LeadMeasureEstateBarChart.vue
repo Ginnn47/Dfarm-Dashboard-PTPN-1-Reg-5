@@ -89,6 +89,7 @@ function onChartMouseOut() {
       <ClientOnly>
         <v-chart
           :option="barOption"
+          :update-options="{ notMerge: true }"
           autoresize
           class="h-full w-full"
           @mouseover="onChartMouseOver"

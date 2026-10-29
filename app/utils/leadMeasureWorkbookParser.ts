@@ -26,7 +26,17 @@ const MONTH_NAMES = [
 
 function parseCellNumber(valStr: string | null | undefined): number | null {
   if (valStr == null || valStr === '') return null
-  const parsed = parseFloat(valStr)
+  let clean = valStr.trim().replace(/%/g, '').replace(/\s/g, '')
+  if (!clean || clean === '-') return null
+  if (clean.includes(',') && clean.includes('.')) {
+    clean = clean.lastIndexOf(',') > clean.lastIndexOf('.')
+      ? clean.replace(/\./g, '').replace(',', '.')
+      : clean.replace(/,/g, '')
+  } else if (clean.includes(',')) {
+    clean = clean.replace(',', '.')
+  }
+  if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(clean)) return null
+  const parsed = parseFloat(clean)
   return isNaN(parsed) ? null : parsed
 }
 
@@ -41,6 +51,85 @@ export function normalizeEstateKey(name: string): string {
   if (clean.includes('kendeng') || clean.includes('kembu') || clean.includes('rejo')) return 'kendenglembu'
   if (clean.includes('sumbertengah')) return 'sumbertengah'
   return clean
+}
+
+interface MasterProdSection {
+  headerRow: number
+  endRow: number
+  metricCode: LeadMeasureMetricCode
+  dayColumns: Array<{ col: string; day: number }>
+}
+
+function normalizeMasterEstateKey(name: string): string {
+  const normalized = normalizeEstateKey(name)
+  if (normalized === 'kanenkobla') return 'kalisanen'
+  if (normalized === 'renbansar') return 'banjarsari'
+  return normalized
+}
+
+function columnIndex(col: string): number {
+  let index = 0
+  for (const character of col) index = index * 26 + character.charCodeAt(0) - 64
+  return index
+}
+
+function detectMasterDayColumns(cells: Map<string, string>): Array<{ col: string; day: number }> {
+  const numericCells = [...cells.entries()]
+    .map(([col, value]) => ({ col, day: parseCellNumber(value) }))
+    .filter((cell): cell is { col: string; day: number } => cell.day != null && Number.isInteger(cell.day) && cell.day >= 1 && cell.day <= 31)
+    .sort((a, b) => columnIndex(a.col) - columnIndex(b.col))
+
+  let bestRun: Array<{ col: string; day: number }> = []
+  for (let index = 0; index < numericCells.length; index++) {
+    const first = numericCells[index]
+    if (!first || first.day !== 1) continue
+
+    const run = [first]
+    for (let nextIndex = index + 1; nextIndex < numericCells.length; nextIndex++) {
+      const previous = run[run.length - 1]!
+      const next = numericCells[nextIndex]
+      if (columnIndex(next.col) !== columnIndex(previous.col) + 1 || next.day !== previous.day + 1) break
+      run.push(next)
+    }
+    if (run.length > bestRun.length) bestRun = run
+  }
+
+  return bestRun
+}
+
+function masterMetricFromHeader(cells: Map<string, string>): LeadMeasureMetricCode | null {
+  const text = [...cells.values()].map((value) => value.trim().toUpperCase()).filter(Boolean).join(' ')
+  if (text.includes('% PRODUKSI')) return 'production_achievement_pct'
+  if (text.includes('% HKO SADAP')) return 'tapping_day_achievement_pct'
+  if (text.includes('PER TAPPER')) return 'productivity_per_tapper'
+  if (text.includes('DRC')) return 'drc_pct'
+  return null
+}
+
+function detectMasterProdSections(sheetRows: Map<number, Map<string, string>>): MasterProdSection[] {
+  const headers: Array<{ headerRow: number; metricCode: LeadMeasureMetricCode; dayColumns: Array<{ col: string; day: number }> }> = []
+  for (const [rowNumber, cells] of sheetRows.entries()) {
+    if ((cells.get('B') || '').trim().toUpperCase() !== 'KEBUN') continue
+    const metricCode = masterMetricFromHeader(cells)
+    const dayColumns = detectMasterDayColumns(sheetRows.get(rowNumber + 1) || new Map())
+    if (metricCode && dayColumns.length > 0) headers.push({ headerRow: rowNumber, metricCode, dayColumns })
+  }
+
+  return headers.map((section, index) => ({
+    ...section,
+    endRow: headers[index + 1]?.headerRow ?? (Math.max(...sheetRows.keys()) + 1),
+  }))
+}
+
+function masterEstateForCells(cells: Map<string, string>, estates: LeadMeasureEstate[]): LeadMeasureEstate | null {
+  const a = (cells.get('A') || '').trim()
+  const b = (cells.get('B') || '').trim()
+  if (a && !b && (a.toLowerCase().includes('ptpn') || a.toLowerCase().includes('total reg'))) {
+    return { estateId: 'ALL', estateName: 'PTPN 1 Reg 5' }
+  }
+  if (!b) return null
+  const key = normalizeMasterEstateKey(b)
+  return estates.find((estate) => estate.estateId === key) || null
 }
 
 export async function parseLeadMeasureWorkbook(
@@ -156,8 +245,33 @@ export async function parseLeadMeasureWorkbook(
     .filter((s) => s.monthIdx > 0)
     .sort((a, b) => a.monthIdx - b.monthIdx)
 
+  const masterSheets = sheetEntries
+    .filter((s) => /^(?:Master\s*Prod)(?:\s|$)/i.test(s.normalized) && s.normalized.includes(yrSuffix))
+    .map((s) => {
+      const mStr = s.normalized.replace(/^Master\s*Prod/i, '').replace(yrSuffix, '').trim().toUpperCase()
+      let monthIdx = 0
+      if (mStr.startsWith('JAN')) monthIdx = 1
+      else if (mStr.startsWith('FEB')) monthIdx = 2
+      else if (mStr.startsWith('MAR')) monthIdx = 3
+      else if (mStr.startsWith('APR')) monthIdx = 4
+      else if (mStr.startsWith('MEI')) monthIdx = 5
+      else if (mStr.startsWith('JUN')) monthIdx = 6
+      else if (mStr.startsWith('JUL')) monthIdx = 7
+      else if (mStr.startsWith('AGS')) monthIdx = 8
+      else if (mStr.startsWith('SEP')) monthIdx = 9
+      else if (mStr.startsWith('OKT')) monthIdx = 10
+      else if (mStr.startsWith('NOV')) monthIdx = 11
+      else if (mStr.startsWith('DES')) monthIdx = 12
+      return { ...s, monthIdx }
+    })
+    .filter((s) => s.monthIdx > 0)
+    .sort((a, b) => a.monthIdx - b.monthIdx)
+
   if (evaSheets.length === 0) {
     throw new Error(`Sheet EvaProKebun untuk tahun pelaporan ${targetYear} tidak ditemukan dalam workbook.`)
+  }
+  if (masterSheets.length === 0) {
+    throw new Error(`Sheet Master Prod untuk tahun pelaporan ${targetYear} tidak ditemukan dalam workbook.`)
   }
 
   const latestEvaSheet = evaSheets[evaSheets.length - 1]
@@ -325,7 +439,7 @@ export async function parseLeadMeasureWorkbook(
     }
   }
 
-  // 3. Extract daily observations from active month sheets (e.g. Sep and Okt)
+  // 3. Extract daily observations exclusively from Master Prod month sheets.
   const availableMonthsMap = new Map<number, LeadMeasureMonthInfo>()
 
   for (const [col, mIdx] of monthlyColMap.entries()) {
@@ -339,10 +453,23 @@ export async function parseLeadMeasureWorkbook(
     })
   }
 
-  for (const evaSheet of evaSheets) {
-    const sheetXml = entries.get(evaSheet.target)
+  for (const masterSheet of masterSheets) {
+    const mIdx = masterSheet.monthIdx
+    if (mIdx < 1 || mIdx > 12 || availableMonthsMap.has(mIdx)) continue
+    availableMonthsMap.set(mIdx, {
+      monthIndex: mIdx,
+      monthKey: `${targetYear}-${String(mIdx).padStart(2, '0')}`,
+      monthLabel: MONTH_NAMES[mIdx - 1],
+      isAuthoritativeAverage: [...monthlyColMap.values()].includes(mIdx),
+      hasDailyObservations: false,
+      dailyCount: 0,
+    })
+  }
+
+  for (const masterSheet of masterSheets) {
+    const sheetXml = entries.get(masterSheet.target)
     if (!sheetXml) continue
-    const mIdx = evaSheet.monthIdx
+    const mIdx = masterSheet.monthIdx
     const mName = MONTH_NAMES[mIdx - 1]
 
     const curSheetRows = new Map<number, Map<string, string>>()
@@ -350,110 +477,77 @@ export async function parseLeadMeasureWorkbook(
       curSheetRows.set(parseInt(r[1], 10), parseRowCells(r[2], sharedStrings))
     }
 
-    const r5 = curSheetRows.get(5) || new Map<string, string>()
-    const dailyColMap = new Map<string, number>()
-    for (const [col, val] of r5.entries()) {
-      const dayNum = parseFloat(val || '')
-      if (!isNaN(dayNum) && dayNum >= 1 && dayNum <= 31) {
-        dailyColMap.set(col, dayNum)
+    const sections = detectMasterProdSections(curSheetRows)
+    if (sections.length === 0) continue
+
+    const sheetDays = new Set<number>()
+    let lastObservedDay = 0
+    let lastNumericDay = 0
+
+    for (const section of sections) {
+      for (let r = section.headerRow + 2; r < section.endRow; r++) {
+        const cells = curSheetRows.get(r) || new Map<string, string>()
+        if (!masterEstateForCells(cells, estates)) continue
+        for (const { col, day } of section.dayColumns) {
+          if (day > new Date(targetYear, mIdx, 0).getDate()) continue
+          const value = parseCellNumber(cells.get(col))
+          if (value != null) lastNumericDay = Math.max(lastNumericDay, day)
+          if (value != null && value !== 0) lastObservedDay = Math.max(lastObservedDay, day)
+        }
       }
     }
+    const observedCutoff = lastObservedDay || lastNumericDay
 
-    if (dailyColMap.size === 0) continue
+    for (const section of sections) {
+      for (let r = section.headerRow + 2; r < section.endRow; r++) {
+        const cells = curSheetRows.get(r) || new Map<string, string>()
+        const estate = masterEstateForCells(cells, estates)
+        if (!estate) continue
 
-    const curEstateStarts: Array<{ row: number; estate: LeadMeasureEstate }> = []
-    for (const [rNum, cells] of curSheetRows.entries()) {
-      const b = (cells.get('B') || '').trim()
-      const a = (cells.get('A') || '').trim()
-      if (b && !a && !cells.get('C') && !cells.get('D') && !cells.get('M') && b !== 'Leadmeasure' && !b.startsWith('Kuantum') && !b.startsWith('Hari') && !b.startsWith('Jumlah') && !b.startsWith('KETERANGAN')) {
-        const eKey = normalizeEstateKey(b)
-        const matchedEst = estates.find((e) => e.estateId === eKey)
-        if (matchedEst) {
-          curEstateStarts.push({ row: rNum, estate: matchedEst })
-        }
-      } else if (a && !b && (a.toLowerCase().includes('ptpn') || a.toLowerCase().includes('total reg'))) {
-        curEstateStarts.push({
-          row: rNum,
-          estate: {
-            estateId: 'ALL',
-            estateName: 'PTPN 1 Reg 5',
-          },
-        })
-      }
-    }
-
-    let dailyCountForSheet = 0
-
-    for (const item of curEstateStarts) {
-      const { row: startRow, estate } = item
-      let curSection = ''
-
-      for (let r = startRow; r < startRow + 36; r++) {
-        const cells = curSheetRows.get(r)
-        if (!cells) continue
-        const colA = (cells.get('A') || '').trim()
-        const colB = (cells.get('B') || '').trim()
-
-        if (colA && colB) curSection = colB
-
-        let metricCode: LeadMeasureMetricCode | null = null
-        if (curSection.includes('Produksi') && colB.includes('Hari Kerja Efektif (HKE) (%)')) {
-          metricCode = 'production_achievement_pct'
-        } else if (curSection.includes('HKO Sadap') && colB.includes('Hari Kerja Efektif (HKE) (%)')) {
-          metricCode = 'tapping_day_achievement_pct'
-        } else if (curSection.includes('Per Tapper') && colB.includes('Hari Kerja Efektif (HKE)')) {
-          metricCode = 'productivity_per_tapper'
-        } else if ((curSection.includes('KKK') || curSection.includes('DRC')) && colB.includes('Hari Kerja Efektif (HKE)')) {
-          metricCode = 'drc_pct'
-        }
-
-        if (metricCode) {
-          for (const [col, dayNum] of dailyColMap.entries()) {
-            const rawVal = cells.get(col)
-            const val = parseCellNumber(rawVal)
-            // Skip unrendered future zero days in active partial month (e.g. October days > 15)
-            if (val == null || (val === 0 && mIdx === 10 && dayNum > 15)) {
-              continue
-            }
-            observations.push({
-              id: `${estate.estateId}-${metricCode}-${targetYear}-${String(mIdx).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}-daily`,
-              estateId: estate.estateId,
-              estateName: estate.estateName,
-              reportingYear: targetYear,
-              metricCode,
-              periodType: 'daily',
-              periodKey: `${targetYear}-${String(mIdx).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`,
-              periodIndex: dayNum,
-              periodLabel: `${dayNum} ${mName}`,
-              value: val,
-              unit: metricCode === 'productivity_per_tapper' ? 'kg/OHK' : '%',
-              measurementBasis: 'working_day',
-              sourceSheet: evaSheet.rawName,
-              sourceReference: `${col}${r}`,
-              dataStatus: 'valid',
-            })
-            if (metricCode === 'production_achievement_pct' && estate.estateId === estates[0]?.estateId) {
-              dailyCountForSheet++
-            }
-          }
+        for (const { col, day } of section.dayColumns) {
+          if (day > new Date(targetYear, mIdx, 0).getDate() || day > observedCutoff) continue
+          const value = parseCellNumber(cells.get(col))
+          if (value == null) continue
+          observations.push({
+            id: `${estate.estateId}-${section.metricCode}-${targetYear}-${String(mIdx).padStart(2, '0')}-${String(day).padStart(2, '0')}-daily`,
+            estateId: estate.estateId,
+            estateName: estate.estateName,
+            reportingYear: targetYear,
+            metricCode: section.metricCode,
+            periodType: 'daily',
+            periodKey: `${targetYear}-${String(mIdx).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+            periodIndex: day,
+            periodLabel: `${day} ${mName}`,
+            value,
+            unit: section.metricCode === 'productivity_per_tapper' ? 'kg/OHK' : '%',
+            measurementBasis: 'working_day',
+            sourceSheet: masterSheet.rawName,
+            sourceReference: `${col}${r}`,
+            dataStatus: 'valid',
+          })
+          sheetDays.add(day)
         }
       }
     }
 
-    if (dailyCountForSheet > 0) {
+    if (sheetDays.size > 0) {
       const curMonthInfo = availableMonthsMap.get(mIdx) || {
         monthIndex: mIdx,
         monthKey: `${targetYear}-${String(mIdx).padStart(2, '0')}`,
         monthLabel: mName,
         isAuthoritativeAverage: false,
         hasDailyObservations: true,
-        dailyCount: dailyCountForSheet,
+        dailyCount: sheetDays.size,
       }
       curMonthInfo.hasDailyObservations = true
-      curMonthInfo.dailyCount = dailyCountForSheet
+      curMonthInfo.dailyCount = sheetDays.size
       availableMonthsMap.set(mIdx, curMonthInfo)
     }
   }
+
+  const deduplicatedObservations = Array.from(
+    new Map(observations.map((observation) => [observation.id, observation])).values(),
+  )
 
   // 4. Reconciliation against Sheet6 recap
   let comparedItems = 0
@@ -467,7 +561,7 @@ export async function parseLeadMeasureWorkbook(
     difference: number
   }> = []
 
-  for (const obs of observations) {
+  for (const obs of deduplicatedObservations) {
     if (obs.periodType === 'monthly') {
       const key = `${obs.estateId}|${obs.metricCode}|${obs.periodIndex}`
       if (sheet6Recap.has(key)) {
@@ -512,7 +606,7 @@ export async function parseLeadMeasureWorkbook(
       authoritativeSheet: latestEvaSheet.rawName,
     },
     estates,
-    observations,
+    observations: deduplicatedObservations,
     validationIssues,
     reconciliation: {
       comparedItems,

@@ -15,13 +15,13 @@ export interface ProductionGoogleSheetRangeConfig {
 export interface ProductionGoogleSheetsRuntimeConfig {
   accessToken?: string
   production2025SpreadsheetId?: string
-  production2025SheetsJson?: string
+  production2025SheetsJson?: string | ProductionGoogleSheetRangeConfig[]
   production2026SpreadsheetId?: string
-  production2026SheetsJson?: string
+  production2026SheetsJson?: string | ProductionGoogleSheetRangeConfig[]
 }
 
 export interface ProductionGoogleSourceConfig {
-  accessToken: string
+  accessToken?: string
   sources: ProductionGoogleSheetConfig[]
 }
 
@@ -34,7 +34,28 @@ function qualifyRange(sheetName: string, range: string): string {
   return `'${escapedSheetName}'!${range}`
 }
 
+function isValidSpreadsheetId(value: string): boolean {
+  return /^[A-Za-z0-9_-]+$/.test(value)
+}
+
+function isValidSheetName(value: string): boolean {
+  return value.length > 0 && !/[!\u0000-\u001F]/.test(value)
+}
+
+function isValidA1Range(value: string): boolean {
+  const cell = '[A-Za-z]{1,3}[1-9][0-9]*'
+  return new RegExp(`^${cell}(?::${cell})?$`).test(value)
+}
+
+function isProductionTableRange(value: string): boolean {
+  return value.includes(':')
+}
+
 function parseSheetRanges(value: unknown, reportingYear: number): ProductionGoogleSheetRangeConfig[] {
+  if (Array.isArray(value)) {
+    return validateSheetRanges(value, reportingYear)
+  }
+
   const raw = requiredValue(value)
   if (!raw) return []
 
@@ -49,6 +70,10 @@ function parseSheetRanges(value: unknown, reportingYear: number): ProductionGoog
     )
   }
 
+  return validateSheetRanges(parsed, reportingYear)
+}
+
+function validateSheetRanges(parsed: unknown, reportingYear: number): ProductionGoogleSheetRangeConfig[] {
   if (!Array.isArray(parsed) || parsed.length === 0) return []
 
   const ranges = parsed.map((entry): ProductionGoogleSheetRangeConfig => {
@@ -61,7 +86,7 @@ function parseSheetRanges(value: unknown, reportingYear: number): ProductionGoog
   const seen = new Set<string>()
   if (ranges.some((source) => {
     const key = `${source.sheetName}\u0000${source.range}`
-    if (!source.sheetName || !source.range || source.range.includes('!') || seen.has(key)) return true
+    if (!isValidSheetName(source.sheetName) || !isValidA1Range(source.range) || !isProductionTableRange(source.range) || seen.has(key)) return true
     seen.add(key)
     return false
   })) {
@@ -92,7 +117,7 @@ export function getProductionGoogleSourceConfig(
     },
   ]
 
-  if (workbookConfigs.some((workbook) => !workbook.spreadsheetId || workbook.sheets.length === 0)) {
+  if (workbookConfigs.some((workbook) => !isValidSpreadsheetId(workbook.spreadsheetId) || workbook.sheets.length === 0)) {
     throw new ProductionApiError(
       'SOURCE_NOT_CONFIGURED',
       'Sumber Google Sheets Production belum dikonfigurasi lengkap di server.',
@@ -100,16 +125,8 @@ export function getProductionGoogleSourceConfig(
     )
   }
 
-  if (!accessToken) {
-    throw new ProductionApiError(
-      'SOURCE_AUTH_FAILED',
-      'Token akses Google Sheets belum dikonfigurasi di server.',
-      { statusCode: 502 },
-    )
-  }
-
   return {
-    accessToken,
+    accessToken: accessToken || undefined,
     sources: workbookConfigs.flatMap((workbook) => workbook.sheets.map((sheet) => ({
       reportingYear: workbook.reportingYear,
       spreadsheetId: workbook.spreadsheetId,

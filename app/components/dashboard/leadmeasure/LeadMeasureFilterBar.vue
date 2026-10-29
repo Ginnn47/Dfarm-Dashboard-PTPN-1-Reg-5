@@ -105,10 +105,7 @@ onUnmounted(() => {
 
 // Daily mode days list
 const daysInActiveMonth = computed(() => {
-  if (props.availableDays && props.availableDays.length > 0) {
-    return props.availableDays
-  }
-  return Array.from({ length: 30 }, (_, i) => i + 1)
+  return props.availableDays || []
 })
 </script>
 

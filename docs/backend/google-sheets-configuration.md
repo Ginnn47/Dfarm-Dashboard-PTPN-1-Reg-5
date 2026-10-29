@@ -20,10 +20,10 @@ chat.
 | Environment variable | Nilai yang diperlukan | Sumber memperoleh nilai | Sensitif |
 | --- | --- | --- | --- |
 | `NUXT_GOOGLE_SHEETS_PRODUCTION2025_SPREADSHEET_ID` | ID workbook Production untuk reporting year 2025 | URL spreadsheet resmi setelah `/spreadsheets/d/` dan sebelum `/edit` | Tidak, tetapi tetap server-only |
-| `NUXT_GOOGLE_SHEETS_PRODUCTION2025_SHEETS_JSON` | JSON array seluruh tab detail dan range A1 Production 2025 | Hasil audit workbook resmi dan parser Development | Tidak |
+| `NUXT_GOOGLE_SHEETS_PRODUCTION2025_SHEETS_JSON` | JSON array seluruh tab detail dan range tabel A1 Production 2025 | Hasil audit workbook resmi dan parser Development | Tidak |
 | `NUXT_GOOGLE_SHEETS_PRODUCTION2026_SPREADSHEET_ID` | ID workbook Production untuk reporting year 2026 | URL spreadsheet resmi setelah `/spreadsheets/d/` dan sebelum `/edit` | Tidak, tetapi tetap server-only |
-| `NUXT_GOOGLE_SHEETS_PRODUCTION2026_SHEETS_JSON` | JSON array seluruh tab detail dan range A1 Production 2026 | Hasil audit workbook resmi dan parser Development | Tidak |
-| `NUXT_GOOGLE_SHEETS_ACCESS_TOKEN` | OAuth 2.0 bearer access token dengan scope Google Sheets read-only | Mekanisme OAuth/identitas organisasi yang disetujui | **Ya** |
+| `NUXT_GOOGLE_SHEETS_PRODUCTION2026_SHEETS_JSON` | JSON array seluruh tab detail dan range tabel A1 Production 2026 | Hasil audit workbook resmi dan parser Development | Tidak |
+| `NUXT_GOOGLE_SHEETS_ACCESS_TOKEN` | Token bearer statis untuk compatibility test atau deployment yang disetujui | Mekanisme credential organisasi yang disetujui | **Ya, opsional** |
 
 Nama environment mengikuti key private pada `runtimeConfig.googleSheets` di
 `nuxt.config.ts`. Bila platform deployment menggunakan konvensi environment
@@ -52,7 +52,7 @@ Reader akan menolak nilai yang berbentuk URL/path.
 1. Buka workbook Production resmi untuk tahun yang sesuai.
 2. Catat seluruh tab detail yang benar-benar dipakai Development, termasuk spasi dan kapitalisasi.
 3. Verifikasi header identitas, tahun tanam, luas, populasi, serta dua blok Januari-Desember untuk RKAP dan aktual pada setiap tab.
-4. Isi satu objek JSON untuk setiap tab detail dengan `sheetName` dan range A1 tanpa nama sheet.
+4. Isi satu objek JSON untuk setiap tab detail dengan `sheetName` dan range tabel A1 tanpa nama sheet. Range satu sel seperti `A1` ditolak karena tidak memuat header dan blok bulan.
 5. Jangan masukkan tab summary seperti `PRODUKSI`, `REKAP`, `SUMMARY`, atau `TOTAL` ke daftar detail. Reader tetap mengenali summary bila terlanjur dibaca, tetapi daftar konfigurasi harus hanya berisi sumber detail.
 
 Format JSON wajib berupa array. Contoh placeholder multi-sheet:
@@ -71,40 +71,117 @@ Server mengubah setiap item menjadi A1 range:
 'Prod Per TT Karet'!A1:AD600
 ```
 
-Daftar test-backed untuk workbook 2026 adalah `Prod Per TT Karet`, `Prod Per
-TT Teh`, `Prod Per TT Arabika`, `Prod Per TT Robusta`, `Prod Per TT Edel`, dan
-`Prod Per TT Bulk`. Sheet summary yang dibuktikan oleh test adalah `PRODUKSI`
-dan `REKAP Prod per TT`. Ini adalah baseline dari parser/test lokal, bukan
-verifikasi workbook Google live. Fixture Development 2025 hanya membuktikan
-keluarga Karet, Teh, Arabika, dan Robusta melalui metadata fixture; daftar
-sheet/range live 2025 tetap harus diverifikasi.
+## Lead Measure Karet
+
+Lead Measure Karet memakai workbook 2026 yang sama untuk dua jalur data:
+
+- `NUXT_GOOGLE_SHEETS_LEAD_MEASURE2026_SHEETS_JSON` berisi `Sheet6` dan seluruh
+  sheet `EvaProKebun`; jalur ini menjadi sumber observasi bulanan dan detail
+  evaluasi.
+- `NUXT_GOOGLE_SHEETS_LEAD_MEASURE2026_MASTER_SHEETS_JSON` berisi sheet
+  `Master Prod Jan26` sampai `Master Prod Nov26`; jalur ini menjadi satu-satunya
+  sumber observasi harian.
+
+Kedua daftar menggunakan objek `{ "sheetName": "...", "range": "A1:..." }`.
+Jangan menghapus sheet `Master Prod` yang masih kosong karena sheet tersebut
+menandai bulan yang sudah disiapkan dan akan mulai menghasilkan observasi saat
+nilai hariannya tersedia. Nilai kosong, formula error, dan hari di luar tanggal
+valid kalender tidak dipetakan menjadi observasi sintetis.
+
+Range yang diverifikasi terhadap workbook lokal dan struktur respons Google
+live saat Phase 3 adalah:
+
+| Tahun | Sheet | Range tabel |
+| --- | --- | --- |
+| 2025 | Prod Per TT Karet | `A1:CJ469` |
+| 2025 | Prod Per TT Teh | `A1:AP198` |
+| 2025 | Prod Per TT Arabika | `A1:AN288` |
+| 2025 | Prod Per TT Robusta | `A1:AN276` |
+| 2025 | Prod Per TT Edel | `A1:AN89` |
+| 2025 | Prod Per TT Bulk | `A1:AN141` |
+| 2026 | Prod Per TT Karet | `A1:CW530` |
+| 2026 | Prod Per TT Teh | `A1:AP192` |
+| 2026 | Prod Per TT Arabika | `A1:AN328` |
+| 2026 | Prod Per TT Robusta | `A1:AN403` |
+| 2026 | Prod Per TT Edel | `A1:AN89` |
+| 2026 | Prod Per TT Bulk | `A1:AN141` |
+
+Header live terdeteksi pada baris 5. Posisi awal RKAP/aktual Karet adalah
+`G`/`AS` untuk 2025 dan `G`/`AR` untuk 2026; sheet non-Karet memakai `F`/`AA`.
+Range tetap harus diaudit ulang jika pemilik workbook menambah kolom atau baris.
 
 ## Autentikasi Google
 
-`NUXT_GOOGLE_SHEETS_ACCESS_TOKEN` **bukan API key**. Reader mengirimkannya
-sebagai:
+Provider autentikasi memiliki prioritas berikut:
+
+1. Jika `NUXT_GOOGLE_SHEETS_ACCESS_TOKEN` terisi, token tersebut digunakan untuk
+   compatibility mode.
+2. Jika token kosong, Nitro menggunakan Google Application Default Credentials
+   melalui `google-auth-library`.
+3. Jika keduanya gagal, endpoint mengembalikan `SOURCE_AUTH_FAILED` tanpa
+   menampilkan detail kredensial.
+
+Scope yang diminta provider ADC adalah:
+
+```text
+https://www.googleapis.com/auth/spreadsheets.readonly
+```
+
+Reader mengirim bearer token ke Google Sheets API sebagai:
 
 ```http
 Authorization: Bearer <access-token>
 ```
 
-Access token harus diterbitkan oleh mekanisme yang disetujui organisasi,
-misalnya OAuth server-side atau workload identity/service account yang
-dikelola deployment. Token memiliki masa berlaku; jangan menempelkan token
-jangka pendek ke source code atau meminta pengguna mengirimkannya melalui chat.
+### Setup developer lokal dengan ADC
 
-Implementasi saat ini sengaja memakai provider token server-injected agar
-reader tidak mengarang mekanisme credential. Sebelum production deployment,
-owner infrastruktur perlu mengganti pemasokan token ini dengan mekanisme
-rotasi/renewal organisasi bila token statis tidak diperbolehkan.
+ADC dicari oleh `google-auth-library` melalui resolver resmi Google. Jangan
+membaca atau mem-parsing file ADC dari kode aplikasi. Untuk workbook yang
+memberi akses kepada service account, setup lokal yang direkomendasikan adalah
+ADC dengan impersonasi service account:
 
-Untuk akses spreadsheet, identitas Google tersebut juga harus diberi izin
-Viewer pada workbook resmi. API key saja tidak memenuhi kontrak reader saat
-ini karena reader menggunakan Authorization bearer token.
+```powershell
+gcloud auth application-default login --impersonate-service-account=SERVICE_ACCOUNT_EMAIL
+```
+
+Ganti `SERVICE_ACCOUNT_EMAIL` dengan service account yang sudah diberi akses
+`Viewer` pada workbook. Akun developer harus memiliki izin
+`Service Account Token Creator` untuk service account tersebut. Resolver
+`google-auth-library` kemudian meminta scope read-only yang didefinisikan
+aplikasi:
+
+```text
+https://www.googleapis.com/auth/spreadsheets.readonly
+```
+
+ADC personal yang dibuat dengan scope default `cloud-platform` dapat ditolak
+Google Sheets dengan error `insufficient authentication scopes`, walaupun akun
+tersebut adalah pemilik workbook. Scope Sheets melalui default OAuth client
+juga dapat diblokir; jangan mengatasi ini dengan menaruh token statis di `.env`.
+
+Perintah tersebut tidak diperlukan setiap kali server dijalankan. Jangan
+mencetak access token, refresh token, atau isi file ADC ke terminal, repository,
+chat, maupun frontend.
+
+### Production
+
+ADC laptop developer bukan identitas production. Production harus memakai
+service identity organisasi yang dikelola platform, misalnya attached service
+account atau Workload Identity Federation bila didukung hosting. Identitas
+tersebut harus diberi akses `Viewer` hanya pada workbook Production yang
+diperlukan.
+
+Target hosting, identitas service, dan autentikasi caller API masih merupakan
+keputusan operasional terpisah dan belum dianggap selesai oleh integrasi ADC.
+
+API key tidak memenuhi kontrak reader karena reader menggunakan Authorization
+bearer token. Scope read-only juga tidak menggantikan permission workbook;
+identitas Google tetap harus diberi izin `Viewer` pada workbook resmi.
 
 ## Verifikasi Setelah Konfigurasi
 
-1. Isi dua Spreadsheet ID, dua daftar `SHEETS_JSON`, dan satu access token di environment server tanpa mengubah kode.
+1. Isi dua Spreadsheet ID dan dua daftar `SHEETS_JSON` di environment server.
+   Biarkan `NUXT_GOOGLE_SHEETS_ACCESS_TOKEN` kosong jika pengujian memakai ADC.
 2. Restart `npm run dev` agar runtime config terbaca.
 3. Buka endpoint dengan parameter wajib:
 

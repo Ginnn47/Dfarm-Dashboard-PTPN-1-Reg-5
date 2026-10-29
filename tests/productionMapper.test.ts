@@ -71,7 +71,24 @@ test('Production mapper: canonical record is mapped and identity is enriched', (
   assert.equal(result.records[0]?.months.length, 12)
 })
 
-test('Production mapper: blank and invalid numeric values are rejected, not converted to zero', () => {
+test('Production mapper: carries an afdeling through grouped detail rows', () => {
+  const firstRow = productionRow({ afdeling: 'Afd. Pakaoda', plantingYear: 2005, rkap: [10], actual: [7] })
+  const groupedRow = productionRow({ afdeling: '', plantingYear: 2006, rkap: [12], actual: [8] })
+  const result = mapProductionSheetValues({
+    sheetName: 'Prod Per TT Karet',
+    values: createSheetRows([
+      ['KARET', 'SGL', 'Sungailembu', '', '', ''],
+      firstRow,
+      groupedRow,
+    ]),
+  }, 2026)
+
+  assert.equal(result.isValid, true)
+  assert.equal(result.records.length, 2)
+  assert.equal(result.records[1]?.afdeling, 'Afd. Pakaoda')
+})
+
+test('Production mapper: blank and dash monthly values represent zero, while formula errors remain invalid', () => {
   const blankRow = productionRow({ afdeling: 'Afd. Pakaoda', plantingYear: 2005 })
   blankRow[6] = ''
   const blankResult = mapProductionSheetValues({
@@ -82,9 +99,49 @@ test('Production mapper: blank and invalid numeric values are rejected, not conv
     ]),
   }, 2026)
 
-  assert.equal(blankResult.isValid, false)
-  assert.ok(blankResult.issues.some((issue) => issue.code === 'MISSING_REQUIRED_VALUE'))
-  assert.equal(blankResult.records.length, 0)
+  assert.equal(blankResult.isValid, true)
+  assert.equal(blankResult.issues.length, 0)
+  assert.equal(blankResult.records.length, 1)
+  assert.equal(blankResult.records[0]?.months[0]?.rkap, 0)
+
+  const dashRow = productionRow({ afdeling: 'Afd. Pakaoda', plantingYear: 2005 })
+  dashRow[18] = '-'
+  const dashResult = mapProductionSheetValues({
+    sheetName: 'Prod Per TT Karet',
+    values: createSheetRows([
+      ['KARET', 'SGL', 'Sungailembu', '', '', ''],
+      dashRow,
+    ]),
+  }, 2026)
+
+  assert.equal(dashResult.isValid, true)
+  assert.equal(dashResult.records.length, 1)
+  assert.equal(dashResult.records[0]?.months[0]?.actual, 0)
+
+  const emptyMeasureRow = productionRow({ afdeling: 'Afd. Pakaoda', plantingYear: 2005, area: '', population: '-', rkap: [10], actual: [7] })
+  const emptyMeasureResult = mapProductionSheetValues({
+    sheetName: 'Prod Per TT Karet',
+    values: createSheetRows([
+      ['KARET', 'SGL', 'Sungailembu', '', '', ''],
+      emptyMeasureRow,
+    ]),
+  }, 2026)
+
+  assert.equal(emptyMeasureResult.isValid, true)
+  assert.equal(emptyMeasureResult.records[0]?.area, 0)
+  assert.equal(emptyMeasureResult.records[0]?.population, 0)
+
+  const placeholderRow = productionRow({ afdeling: '', plantingYear: 2005, area: 0, population: 0 })
+  const placeholderResult = mapProductionSheetValues({
+    sheetName: 'Prod Per TT Karet',
+    values: createSheetRows([
+      ['KARET', 'SGL', 'Sungailembu', '', '', ''],
+      placeholderRow,
+    ]),
+  }, 2026)
+
+  assert.equal(placeholderResult.isValid, true)
+  assert.equal(placeholderResult.records.length, 0)
 
   const invalidRow = productionRow({ afdeling: 'Afd. Pakaoda', plantingYear: 2005 })
   invalidRow[18] = '#VALUE!'
@@ -98,6 +155,52 @@ test('Production mapper: blank and invalid numeric values are rejected, not conv
 
   assert.equal(invalidResult.isValid, false)
   assert.ok(invalidResult.issues.some((issue) => issue.code === 'FORMULA_ERROR'))
+
+  const decoratedFormulaRow = productionRow({ afdeling: 'Afd. Pakaoda', plantingYear: 2005 })
+  decoratedFormulaRow[6] = '#DIV/0! (Function DIVIDE parameter 2 cannot be zero.)'
+  const decoratedFormulaResult = mapProductionSheetValues({
+    sheetName: 'Prod Per TT Karet',
+    values: createSheetRows([
+      ['KARET', 'SGL', 'Sungailembu', '', '', ''],
+      decoratedFormulaRow,
+    ]),
+  }, 2026)
+
+  assert.equal(decoratedFormulaResult.isValid, false)
+  assert.ok(decoratedFormulaResult.issues.some((issue) => issue.code === 'FORMULA_ERROR'))
+
+  const embeddedSummaryRow = Array<GoogleSheetCell>(30).fill('')
+  embeddedSummaryRow[3] = 1990
+  embeddedSummaryRow[4] = 0
+  embeddedSummaryRow[5] = 0
+  embeddedSummaryRow[13] = '#DIV/0!'
+  embeddedSummaryRow[14] = '#DIV/0!'
+
+  const summaryResult = mapProductionSheetValues({
+    sheetName: 'Prod Per TT Karet',
+    values: createSheetRows([
+      ['KARET', 'SGL', 'Sungailembu', '', '', ''],
+      embeddedSummaryRow,
+    ]),
+  }, 2026)
+
+  assert.equal(summaryResult.isValid, true)
+  assert.equal(summaryResult.records.length, 0)
+  assert.equal(summaryResult.issues.length, 0)
+  assert.ok(summaryResult.warnings.some((warning) => warning.includes('agregasi tertanam')))
+
+  const detailRow = productionRow({ afdeling: 'Afd. Pakaoda', plantingYear: 2005 })
+  detailRow[13] = '#DIV/0!'
+  const detailResult = mapProductionSheetValues({
+    sheetName: 'Prod Per TT Karet',
+    values: createSheetRows([
+      ['KARET', 'SGL', 'Sungailembu', '', '', ''],
+      detailRow,
+    ]),
+  }, 2026)
+
+  assert.equal(detailResult.isValid, false)
+  assert.ok(detailResult.issues.some((issue) => issue.code === 'FORMULA_ERROR'))
 })
 
 test('Production mapper: incomplete month layout is a schema error', () => {

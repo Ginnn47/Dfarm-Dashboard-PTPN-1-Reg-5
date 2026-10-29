@@ -3,7 +3,7 @@
  * Handles reactive filters, metric cards, ECharts series, and table projections.
  */
 
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useLeadMeasureStore } from '../data/leadmeasure/leadMeasureStore.ts'
 import {
   LEAD_MEASURE_METRICS,
@@ -39,7 +39,7 @@ export function useLeadMeasureData() {
   const availableMonths = computed(() => store.availableMonths.value)
   const isMock = computed(() => store.isMock.value)
   const isCustom = computed(() => store.isCustom.value)
-  const metadata = computed(() => store.dataset.value.metadata)
+  const metadata = computed(() => store.dataset.value?.metadata)
   const reconciliation = computed(() => store.reconciliation.value)
   const validationIssues = computed(() => store.validationIssues.value)
 
@@ -88,7 +88,7 @@ export function useLeadMeasureData() {
     return store.observations.value.filter((obs) => {
       if (obs.periodType !== viewMode.value) return false
       if (viewMode.value === 'daily') {
-        const obsMonth = parseInt(obs.periodKey.split('-')[1], 10)
+        const obsMonth = parseInt(obs.periodKey.split('-')[1] || '', 10)
         if (obsMonth !== selectedMonth.value) return false
       }
       return true
@@ -100,14 +100,10 @@ export function useLeadMeasureData() {
     if (viewMode.value !== 'daily') return []
     const dailyObs = store.observations.value.filter((obs) => {
       if (obs.periodType !== 'daily') return false
-      const obsMonth = parseInt(obs.periodKey.split('-')[1], 10)
+      const obsMonth = parseInt(obs.periodKey.split('-')[1] || '', 10)
       return obsMonth === selectedMonth.value
     })
     const daysSet = new Set(dailyObs.map((obs) => obs.periodIndex))
-    if (daysSet.size === 0) {
-      // Default standard 30 days if no explicit daily points found
-      return Array.from({ length: 30 }, (_, i) => i + 1)
-    }
     return Array.from(daysSet).sort((a, b) => a - b)
   })
 
@@ -145,7 +141,7 @@ export function useLeadMeasureData() {
     if (viewMode.value === 'monthly') {
       return selectedMonth.value
     }
-    // Daily mode: pick selectedDay if valid, otherwise latest available day
+    // Daily mode: pick selectedDay if valid, otherwise latest available day with valid data
     if (
       selectedDay.value != null &&
       availableDaysInSelectedMonth.value.includes(selectedDay.value)
@@ -154,6 +150,13 @@ export function useLeadMeasureData() {
     }
     const days = availableDaysInSelectedMonth.value
     if (days.length > 0) {
+      const dailyWithData = filteredObservations.value.filter(
+        (o) => o.value != null
+      )
+      if (dailyWithData.length > 0) {
+        const activeDays = dailyWithData.map((o) => o.periodIndex)
+        return Math.max(...activeDays)
+      }
       return Math.max(...days)
     }
     return 1
@@ -204,15 +207,18 @@ export function useLeadMeasureData() {
     let dataPoints: Array<number | null> = []
 
     if (isMonthly) {
-      categories = availableMonths.value.map((m) => m.monthLabel)
-      dataPoints = availableMonths.value.map((m) =>
-        getMetricObservation(metricCode, m.monthIndex)
+      // Monthly mode is a trend across all available months. The focused
+      // month still drives KPI/table/bar details, while daily mode remains
+      // scoped to the selected month below.
+      categories = availableMonths.value.map((month) => month.monthLabel)
+      dataPoints = availableMonths.value.map((month) =>
+        getMetricObservation(metricCode, month.monthIndex)
       )
     } else {
-      const daysInMonth = 30
-      categories = Array.from({ length: daysInMonth }, (_, i) => `${i + 1}`)
-      dataPoints = Array.from({ length: daysInMonth }, (_, i) =>
-        getMetricObservation(metricCode, i + 1)
+      const days = availableDaysInSelectedMonth.value
+      categories = days.map((d) => `${d}`)
+      dataPoints = days.map((d) =>
+        getMetricObservation(metricCode, d)
       )
     }
 
@@ -315,33 +321,34 @@ export function useLeadMeasureData() {
     let drcData: Array<number | null> = []
 
     if (isMonthly) {
-      categories = availableMonths.value.map((m) => m.monthLabel)
-      prodData = availableMonths.value.map((m) =>
-        getMetricObservation('production_achievement_pct', m.monthIndex)
+      const monthlyPeriods = availableMonths.value
+      categories = monthlyPeriods.map((month) => month.monthLabel)
+      prodData = monthlyPeriods.map((month) =>
+        getMetricObservation('production_achievement_pct', month.monthIndex)
       )
-      hkdData = availableMonths.value.map((m) =>
-        getMetricObservation('tapping_day_achievement_pct', m.monthIndex)
+      hkdData = monthlyPeriods.map((month) =>
+        getMetricObservation('tapping_day_achievement_pct', month.monthIndex)
       )
-      tapperData = availableMonths.value.map((m) =>
-        getMetricObservation('productivity_per_tapper', m.monthIndex)
+      tapperData = monthlyPeriods.map((month) =>
+        getMetricObservation('productivity_per_tapper', month.monthIndex)
       )
-      drcData = availableMonths.value.map((m) =>
-        getMetricObservation('drc_pct', m.monthIndex)
+      drcData = monthlyPeriods.map((month) =>
+        getMetricObservation('drc_pct', month.monthIndex)
       )
     } else {
-      const daysInMonth = 30
-      categories = Array.from({ length: daysInMonth }, (_, i) => `${i + 1}`)
-      prodData = Array.from({ length: daysInMonth }, (_, i) =>
-        getMetricObservation('production_achievement_pct', i + 1)
+      const days = availableDaysInSelectedMonth.value
+      categories = days.map((d) => `${d}`)
+      prodData = days.map((d) =>
+        getMetricObservation('production_achievement_pct', d)
       )
-      hkdData = Array.from({ length: daysInMonth }, (_, i) =>
-        getMetricObservation('tapping_day_achievement_pct', i + 1)
+      hkdData = days.map((d) =>
+        getMetricObservation('tapping_day_achievement_pct', d)
       )
-      tapperData = Array.from({ length: daysInMonth }, (_, i) =>
-        getMetricObservation('productivity_per_tapper', i + 1)
+      tapperData = days.map((d) =>
+        getMetricObservation('productivity_per_tapper', d)
       )
-      drcData = Array.from({ length: daysInMonth }, (_, i) =>
-        getMetricObservation('drc_pct', i + 1)
+      drcData = days.map((d) =>
+        getMetricObservation('drc_pct', d)
       )
     }
 
@@ -755,7 +762,7 @@ export function useLeadMeasureData() {
     const drcHke = getMetricObservation('drc_pct', pIdx)
 
     // Lookup October weekly breakdown from EvaProKebun Okt26
-    const octDetailsMap = store.dataset.value.octoberDetails || {}
+    const octDetailsMap = store.dataset.value?.octoberDetails || {}
     const estKey = est.estateId.replace(/-/g, '')
     const oct = octDetailsMap[est.estateId]
       || octDetailsMap[estKey]
@@ -917,9 +924,8 @@ export function useLeadMeasureData() {
         }
       })
     } else {
-      const days = 30
-      return Array.from({ length: days }, (_, i) => {
-        const d = i + 1
+      const days = availableDaysInSelectedMonth.value
+      return days.map((d) => {
         const prod = getMetricObservation('production_achievement_pct', d)
         const hkd = getMetricObservation('tapping_day_achievement_pct', d)
         const tapper = getMetricObservation('productivity_per_tapper', d)
@@ -938,6 +944,37 @@ export function useLeadMeasureData() {
       })
     }
   })
+
+  // Auto-align selectedMonth when switching to daily mode if current month has no daily data
+  watch(viewMode, (newMode) => {
+    if (newMode === 'daily') {
+      const curMonthInfo = availableMonths.value.find((m) => m.monthIndex === selectedMonth.value)
+      if (!curMonthInfo || !curMonthInfo.hasDailyObservations || curMonthInfo.dailyCount === 0) {
+        const dailyMonths = availableMonths.value.filter((m) => m.hasDailyObservations && m.dailyCount > 0)
+        if (dailyMonths.length > 0) {
+          selectedMonth.value = dailyMonths[dailyMonths.length - 1]!.monthIndex
+        }
+      }
+    }
+  })
+
+  // Auto-align when availableMonths updates from remote dataset
+  watch(availableMonths, (months) => {
+    if (viewMode.value === 'daily') {
+      const curMonthInfo = months.find((m) => m.monthIndex === selectedMonth.value)
+      if (!curMonthInfo || !curMonthInfo.hasDailyObservations || curMonthInfo.dailyCount === 0) {
+        const dailyMonths = months.filter((m) => m.hasDailyObservations && m.dailyCount > 0)
+        if (dailyMonths.length > 0) {
+          selectedMonth.value = dailyMonths[dailyMonths.length - 1]!.monthIndex
+        }
+      }
+    }
+  })
+
+  // Reset selectedDay when focused month changes
+  watch(selectedMonth, () => {
+    selectedDay.value = null
+  }, { flush: 'sync' })
 
   return {
     selectedEstate,
