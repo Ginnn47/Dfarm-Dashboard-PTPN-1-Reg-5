@@ -15,6 +15,8 @@ export default defineNuxtConfig({
       leadMeasure2026SpreadsheetId: '',
       leadMeasure2026SheetsJson: '',
       leadMeasure2026MasterSheetsJson: '',
+      investmentOnFarmSpreadsheetId: '',
+      investmentOnFarmSheetsJson: '',
     },
   },
 

@@ -11,6 +11,21 @@ import {
   type LeadMeasurePeriodType,
 } from '../data/leadmeasure/types.ts'
 
+export const FULL_YEAR_MONTHS = [
+  { monthIndex: 1, monthLabel: 'Jan' },
+  { monthIndex: 2, monthLabel: 'Feb' },
+  { monthIndex: 3, monthLabel: 'Mar' },
+  { monthIndex: 4, monthLabel: 'Apr' },
+  { monthIndex: 5, monthLabel: 'Mei' },
+  { monthIndex: 6, monthLabel: 'Jun' },
+  { monthIndex: 7, monthLabel: 'Jul' },
+  { monthIndex: 8, monthLabel: 'Ags' },
+  { monthIndex: 9, monthLabel: 'Sep' },
+  { monthIndex: 10, monthLabel: 'Okt' },
+  { monthIndex: 11, monthLabel: 'Nov' },
+  { monthIndex: 12, monthLabel: 'Des' },
+] as const
+
 export interface LeadMeasureEstateTableRow {
   estateId: string
   estateName: string
@@ -104,7 +119,9 @@ export function useLeadMeasureData() {
       return obsMonth === selectedMonth.value
     })
     const daysSet = new Set(dailyObs.map((obs) => obs.periodIndex))
-    return Array.from(daysSet).sort((a, b) => a - b)
+    if (daysSet.size === 0) return []
+    const totalDays = new Date(selectedYear.value, selectedMonth.value, 0).getDate()
+    return Array.from({ length: totalDays }, (_, i) => i + 1)
   })
 
   // Helper to get average or specific estate observation
@@ -207,15 +224,14 @@ export function useLeadMeasureData() {
     let dataPoints: Array<number | null> = []
 
     if (isMonthly) {
-      // Monthly mode is a trend across all available months. The focused
-      // month still drives KPI/table/bar details, while daily mode remains
-      // scoped to the selected month below.
-      categories = availableMonths.value.map((month) => month.monthLabel)
-      dataPoints = availableMonths.value.map((month) =>
+      // Full 12-month calendar (Jan-Des) across the reporting year
+      categories = FULL_YEAR_MONTHS.map((month) => month.monthLabel)
+      dataPoints = FULL_YEAR_MONTHS.map((month) =>
         getMetricObservation(metricCode, month.monthIndex)
       )
     } else {
-      const days = availableDaysInSelectedMonth.value
+      const daysCount = new Date(selectedYear.value, selectedMonth.value, 0).getDate()
+      const days = Array.from({ length: daysCount }, (_, i) => i + 1)
       categories = days.map((d) => `${d}`)
       dataPoints = days.map((d) =>
         getMetricObservation(metricCode, d)
@@ -321,22 +337,23 @@ export function useLeadMeasureData() {
     let drcData: Array<number | null> = []
 
     if (isMonthly) {
-      const monthlyPeriods = availableMonths.value
-      categories = monthlyPeriods.map((month) => month.monthLabel)
-      prodData = monthlyPeriods.map((month) =>
+      // Full 12-month calendar (Jan-Des) across the reporting year
+      categories = FULL_YEAR_MONTHS.map((month) => month.monthLabel)
+      prodData = FULL_YEAR_MONTHS.map((month) =>
         getMetricObservation('production_achievement_pct', month.monthIndex)
       )
-      hkdData = monthlyPeriods.map((month) =>
+      hkdData = FULL_YEAR_MONTHS.map((month) =>
         getMetricObservation('tapping_day_achievement_pct', month.monthIndex)
       )
-      tapperData = monthlyPeriods.map((month) =>
+      tapperData = FULL_YEAR_MONTHS.map((month) =>
         getMetricObservation('productivity_per_tapper', month.monthIndex)
       )
-      drcData = monthlyPeriods.map((month) =>
+      drcData = FULL_YEAR_MONTHS.map((month) =>
         getMetricObservation('drc_pct', month.monthIndex)
       )
     } else {
-      const days = availableDaysInSelectedMonth.value
+      const daysCount = new Date(selectedYear.value, selectedMonth.value, 0).getDate()
+      const days = Array.from({ length: daysCount }, (_, i) => i + 1)
       categories = days.map((d) => `${d}`)
       prodData = days.map((d) =>
         getMetricObservation('production_achievement_pct', d)
@@ -356,7 +373,9 @@ export function useLeadMeasureData() {
     const maxTapper = validTapper.length > 0 ? Math.max(...validTapper) : 12
     const rightAxisMax = Math.max(16, Math.ceil(maxTapper * 1.25))
 
-    const activeMonthName = availableMonths.value.find((m) => m.monthIndex === selectedMonth.value)?.monthLabel || 'Sep'
+    const activeMonthName = FULL_YEAR_MONTHS.find((m) => m.monthIndex === selectedMonth.value)?.monthLabel
+      || availableMonths.value.find((m) => m.monthIndex === selectedMonth.value)?.monthLabel
+      || 'Sep'
 
     return {
       tooltip: {
@@ -924,7 +943,10 @@ export function useLeadMeasureData() {
         }
       })
     } else {
-      const days = availableDaysInSelectedMonth.value
+      const daysCount = new Date(selectedYear.value, selectedMonth.value, 0).getDate()
+      const days = availableDaysInSelectedMonth.value.length > 0
+        ? availableDaysInSelectedMonth.value
+        : Array.from({ length: daysCount }, (_, i) => i + 1)
       return days.map((d) => {
         const prod = getMetricObservation('production_achievement_pct', d)
         const hkd = getMetricObservation('tapping_day_achievement_pct', d)

@@ -82,6 +82,10 @@ Lead Measure Karet memakai workbook 2026 yang sama untuk dua jalur data:
   `Master Prod Jan26` sampai `Master Prod Nov26`; jalur ini menjadi satu-satunya
   sumber observasi harian.
 
+Nama sheet harus disalin persis dari tab workbook. Pada workbook 2026 saat ini,
+`Master Prod Apr26` sampai `Master Prod Nov26` memiliki satu spasi trailing;
+spasi tersebut sengaja dipertahankan di konfigurasi.
+
 Kedua daftar menggunakan objek `{ "sheetName": "...", "range": "A1:..." }`.
 Jangan menghapus sheet `Master Prod` yang masih kosong karena sheet tersebut
 menandai bulan yang sudah disiapkan dan akan mulai menghasilkan observasi saat

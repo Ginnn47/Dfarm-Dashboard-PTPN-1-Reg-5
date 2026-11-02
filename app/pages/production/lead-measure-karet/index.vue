@@ -8,7 +8,16 @@ import LeadMeasureTrendChart from '~/components/dashboard/leadmeasure/LeadMeasur
 import LeadMeasureEstateBarChart from '~/components/dashboard/leadmeasure/LeadMeasureEstateBarChart.vue'
 import LeadMeasureDetailTable from '~/components/dashboard/leadmeasure/LeadMeasureDetailTable.vue'
 import LeadMeasureEstateDetailSection from '~/components/dashboard/leadmeasure/LeadMeasureEstateDetailSection.vue'
-import { AlertCircleIcon, SoilMoistureFieldIcon, Database01Icon, ArrowUpRight01Icon, File01Icon } from '@hugeicons/core-free-icons'
+import DataLoadingState from '~/components/dashboard/reusable/DataLoadingState.vue'
+import {
+  AlertCircleIcon,
+  SoilMoistureFieldIcon,
+  Database01Icon,
+  ArrowUpRight01Icon,
+  File01Icon,
+  ArrowLeft01Icon,
+  Settings02Icon,
+} from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/vue'
 
 definePageMeta({
@@ -106,12 +115,30 @@ const activeSourceFilename = computed(() => {
   return 'Lead Measure Karet 2026.xlsx'
 })
 
+const INDO_MONTH_SHORT_NAMES = [
+  '',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'Mei',
+  'Jun',
+  'Jul',
+  'Ags',
+  'Sep',
+  'Okt',
+  'Nov',
+  'Des',
+]
+
 const activePeriodLabel = computed(() => {
-  const m = availableMonths.value.find((x) => x.monthIndex === selectedMonth.value)
+  const mLabel = INDO_MONTH_SHORT_NAMES[selectedMonth.value]
+    || availableMonths.value.find((x) => x.monthIndex === selectedMonth.value)?.monthLabel
+    || 'Sep'
   if (viewMode.value === 'monthly') {
-    return `Bulan ${m?.monthLabel || 'Sep'} ${selectedYear.value}`
+    return `Bulan ${mLabel} ${selectedYear.value}`
   }
-  return `Tgl ${activePeriodIndex.value} ${m?.monthLabel || 'Sep'} ${selectedYear.value}`
+  return `Tgl ${activePeriodIndex.value} ${mLabel} ${selectedYear.value}`
 })
 </script>
 
@@ -173,62 +200,43 @@ const activePeriodLabel = computed(() => {
     </header>
 
     <!-- Remote Source Loading State -->
-    <section
+    <DataLoadingState
       v-if="isLoading"
-      class="overflow-hidden rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm sm:p-12"
-      aria-label="Memuat sumber data"
-    >
-      <div class="mx-auto flex size-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-200/80">
-        <HugeiconsIcon :icon="Database01Icon" :size="32" :stroke-width="2.2" class="animate-pulse text-amber-600" />
-      </div>
-      <h2 class="mt-4 text-2xl font-bold tracking-tight text-slate-900">Memuat Data Lead Measure Karet</h2>
-      <p class="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600">
-        Dashboard sedang mengambil data tervalidasi dari Google Sheets melalui backend Nitro.
-      </p>
-    </section>
+      status="loading"
+      title="Memuat Data Lead Measure Karet"
+      description="Dashboard sedang mengambil data tervalidasi dari Google Sheets melalui backend Nitro."
+      :badge-text="`${activeSourceMeta.name} · Memuat data...`"
+    />
 
     <!-- Remote Source Error / Not-Configured State -->
-    <section
+    <DataLoadingState
       v-else-if="isError"
-      class="overflow-hidden rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm sm:p-12"
-      aria-label="Sumber data belum terhubung"
+      status="error"
+      title="Data Lead Measure Karet Gagal Dimuat"
+      :description="sourceError || 'Respons sumber Google Sheets tidak dapat diproses.\nPeriksa koneksi, izin akses, atau coba muat ulang data.'"
+      :badge-text="`${activeSourceMeta.name} · Gagal terhubung`"
+      :show-retry="true"
+      retry-text="Coba Lagi"
+      @retry="refreshLeadMeasureSource"
     >
-      <div class="mx-auto flex size-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-200/80">
-        <HugeiconsIcon :icon="AlertCircleIcon" :size="32" :stroke-width="2.2" class="text-amber-600" />
-      </div>
-      <div class="mt-4 inline-flex items-center gap-1.5 rounded-full bg-amber-100/70 px-3 py-1 text-xs font-semibold text-amber-800">
-        <span class="size-2 rounded-full bg-amber-500 animate-pulse" />
-        {{ activeSourceMeta.name }} · Gagal terhubung
-      </div>
-      <h2 class="mt-4 text-2xl font-bold tracking-tight text-slate-900">
-        Data Lead Measure Karet Gagal Dimuat
-      </h2>
-      <p class="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600">
-        {{ sourceError || 'Dashboard data belum tersedia karena sumber Google Sheets belum dikonfigurasi. Sesuai kebijakan DFARM, sistem tidak menampilkan data simulasi atau data tiruan saat sumber eksternal dipilih.' }}
-      </p>
-      <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
+      <template #actions>
         <button
           type="button"
-          class="inline-flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-5 py-2.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition-colors cursor-pointer"
-          @click="refreshLeadMeasureSource"
-        >
-          Coba Lagi
-        </button>
-        <button
-          type="button"
-          class="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-800 transition-colors cursor-pointer"
+          class="inline-flex items-center gap-2 rounded-xl bg-[#00875a] hover:bg-[#00704a] text-white px-5 py-2.5 text-xs sm:text-sm font-semibold shadow-xs transition-colors cursor-pointer"
           @click="setActiveSource('development')"
         >
-          Kembali ke Development Data
+          <HugeiconsIcon :icon="ArrowLeft01Icon" :size="16" />
+          <span>Kembali ke Development Data</span>
         </button>
         <NuxtLink
           to="/data-source?tab=lead-measure"
-          class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+          class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-5 py-2.5 text-xs sm:text-sm font-semibold shadow-2xs transition-colors cursor-pointer"
         >
-          Kelola Pengaturan Sumber Data
+          <HugeiconsIcon :icon="Settings02Icon" :size="16" />
+          <span>Kelola Pengaturan Sumber Data</span>
         </NuxtLink>
-      </div>
-    </section>
+      </template>
+    </DataLoadingState>
 
     <!-- FULL DASHBOARD CONTENT (WHEN DATA IS LOADED) -->
     <template v-else-if="store.dataset.value">

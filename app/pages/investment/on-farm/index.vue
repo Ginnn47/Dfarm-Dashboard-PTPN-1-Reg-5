@@ -1,6 +1,18 @@
 ﻿<script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { Plant03Icon, SoilMoistureFieldIcon, DatabaseSearchIcon, Database01Icon, ArrowUpRight01Icon, File01Icon } from '@hugeicons/core-free-icons'
+import { ref, onMounted, computed, watch } from 'vue'
+import {
+  Plant03Icon,
+  SoilMoistureFieldIcon,
+  DatabaseSearchIcon,
+  Database01Icon,
+  ArrowUpRight01Icon,
+  File01Icon,
+  AlertCircleIcon,
+  RefreshIcon,
+  ArrowLeft01Icon,
+  Settings02Icon,
+} from '@hugeicons/core-free-icons'
+import DataLoadingState from '~/components/dashboard/reusable/DataLoadingState.vue'
 import { HugeiconsIcon } from '@hugeicons/vue'
 import { useOnFarmData } from '~/composables/useOnFarmData'
 import { useDataSource } from '~/composables/useDataSource'
@@ -74,15 +86,41 @@ const {
   applyAnalysisRange,
 } = useOnFarmData()
 
-const { activeSourceId, activeSourceMeta } = useDataSource()
+const { onFarmActiveSourceId, setDomainActiveSource } = useDataSource()
 
 const activeWorkbookName = computed(() => {
+  if (onFarmActiveSourceId.value === 'google-sheets') {
+    return 'Google Sheets (Investment On-Farm 2026)'
+  }
   return store.metadata.value?.fileName || 'LM 19 Biaya Investasi Tanpok 2026.xlsx'
 })
 
 onMounted(() => {
-  store.initOnFarmStore()
+  if (onFarmActiveSourceId.value === 'google-sheets') {
+    store.loadRemoteOnFarmData().catch(() => {})
+  } else {
+    store.initOnFarmStore()
+  }
 })
+
+watch(onFarmActiveSourceId, (newSource) => {
+  if (newSource === 'google-sheets') {
+    store.loadRemoteOnFarmData().catch(() => {})
+  } else if (newSource === 'development') {
+    store.activateDevelopmentData()
+  }
+})
+
+async function retryOnFarmRemote() {
+  try {
+    await store.loadRemoteOnFarmData()
+  } catch {}
+}
+
+function switchToDevelopment() {
+  store.activateDevelopmentData()
+  setDomainActiveSource('investment-on-farm', 'development')
+}
 
 // Drawer Actions
 function openDrawer(projectCode: string) {
@@ -142,7 +180,7 @@ function clearProjectFilter() {
       <!-- Active Source Information & Link to Data Source -->
       <div class="flex flex-col items-start sm:items-end justify-center gap-2 sm:gap-2.5 shrink-0">
         <NuxtLink
-          to="/data-source"
+          to="/data-source?domain=investment-on-farm"
           class="inline-flex items-center gap-2 rounded-xl border border-sky-400 bg-white px-3.5 py-1.5 text-xs font-semibold text-sky-600 hover:bg-sky-50 transition-colors shadow-2xs"
           title="Kelola Data Source"
         >
@@ -158,12 +196,16 @@ function clearProjectFilter() {
         >
           <span
             class="size-2 rounded-full shrink-0"
-            :class="activeSourceId === 'google-sheets'
-              ? (activeSourceMeta.connectionStatus === 'connected' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse')
+            :class="onFarmActiveSourceId === 'google-sheets'
+              ? (store.isRemoteError.value
+                  ? 'bg-rose-500'
+                  : store.isLoadingRemote.value
+                    ? 'bg-amber-500 animate-pulse'
+                    : 'bg-emerald-500')
               : 'bg-emerald-500'"
             aria-hidden="true"
           />
-          <span class="font-bold">{{ activeSourceId === 'google-sheets' ? 'sheets' : 'DataDev' }}</span>
+          <span class="font-bold">{{ onFarmActiveSourceId === 'google-sheets' ? 'sheets' : 'DataDev' }}</span>
           <span class="text-emerald-300">|</span>
           <HugeiconsIcon :icon="File01Icon" :size="14" class="text-emerald-700 shrink-0" />
           <span class="font-medium text-emerald-950 truncate max-w-[260px]">
@@ -173,9 +215,48 @@ function clearProjectFilter() {
       </div>
     </header>
 
+    <!-- Remote Source Loading State -->
+    <DataLoadingState
+      v-if="store.isLoadingRemote.value"
+      status="loading"
+      title="Memuat Data Investasi On-Farm"
+      description="Dashboard sedang mengambil data tervalidasi dari Google Sheets melalui backend Nitro."
+      badge-text="Google Sheets (On-Farm 2026) · Memuat data..."
+    />
+
+    <!-- Remote Source Error / Not-Configured State -->
+    <DataLoadingState
+      v-else-if="onFarmActiveSourceId === 'google-sheets' && store.isRemoteError.value"
+      status="error"
+      title="Data Investasi On-Farm Gagal Dimuat"
+      :description="store.remoteErrorMessage.value || 'Respons sumber Google Sheets tidak dapat diproses.\nPeriksa koneksi, izin akses, atau coba muat ulang data.'"
+      badge-text="Google Sheets (On-Farm 2026) · Gagal terhubung"
+      :show-retry="true"
+      retry-text="Coba Lagi"
+      @retry="retryOnFarmRemote"
+    >
+      <template #actions>
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-xl bg-[#00875a] hover:bg-[#00704a] text-white px-5 py-2.5 text-xs sm:text-sm font-semibold shadow-xs transition-colors cursor-pointer"
+          @click="switchToDevelopment"
+        >
+          <HugeiconsIcon :icon="ArrowLeft01Icon" :size="16" />
+          <span>Kembali ke Development Data</span>
+        </button>
+        <NuxtLink
+          to="/data-source?domain=investment-on-farm"
+          class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-5 py-2.5 text-xs sm:text-sm font-semibold shadow-2xs transition-colors cursor-pointer"
+        >
+          <HugeiconsIcon :icon="Settings02Icon" :size="16" />
+          <span>Kelola Pengaturan Sumber Data</span>
+        </NuxtLink>
+      </template>
+    </DataLoadingState>
+
     <!-- Empty / Not Loaded State -->
     <div
-      v-if="!store.isLoaded.value"
+      v-else-if="!store.isLoaded.value"
       class="flex min-h-[500px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-xs"
     >
       <div class="flex size-16 items-center justify-center rounded-2xl bg-sky-50 text-sky-600">

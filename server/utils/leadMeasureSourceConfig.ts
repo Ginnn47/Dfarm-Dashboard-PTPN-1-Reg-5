@@ -43,14 +43,14 @@ export const DEFAULT_LEAD_MEASURE_MASTER_SHEET_RANGES: LeadMeasureGoogleSheetRan
   { sheetName: 'Master Prod Jan26', range: 'A1:AP232' },
   { sheetName: 'Master Prod Feb26', range: 'A1:AS232' },
   { sheetName: 'Master Prod Mar26', range: 'A1:AT232' },
-  { sheetName: 'Master Prod Apr26', range: 'A1:AV232' },
-  { sheetName: 'Master Prod Mei26', range: 'A1:AV232' },
-  { sheetName: 'Master Prod Juni26', range: 'A1:AV232' },
-  { sheetName: 'Master Prod Juli26', range: 'A1:AV232' },
-  { sheetName: 'Master Prod Ags26', range: 'A1:AV232' },
-  { sheetName: 'Master Prod Sep26', range: 'A1:AV232' },
-  { sheetName: 'Master Prod Okt26', range: 'A1:AY232' },
-  { sheetName: 'Master Prod Nov26', range: 'A1:AY232' },
+  { sheetName: 'Master Prod Apr26 ', range: 'A1:AV232' },
+  { sheetName: 'Master Prod Mei26 ', range: 'A1:AV232' },
+  { sheetName: 'Master Prod Juni26 ', range: 'A1:AV232' },
+  { sheetName: 'Master Prod Juli26 ', range: 'A1:AV232' },
+  { sheetName: 'Master Prod Ags26 ', range: 'A1:AV232' },
+  { sheetName: 'Master Prod Sep26 ', range: 'A1:AV232' },
+  { sheetName: 'Master Prod Okt26 ', range: 'A1:AY232' },
+  { sheetName: 'Master Prod Nov26 ', range: 'A1:AY232' },
 ]
 
 function requiredValue(value: unknown): string {

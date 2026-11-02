@@ -7,7 +7,11 @@ import { formatRupiahCompact, formatRupiahFull, formatPercent } from '../app/uti
 import { useDevelopmentStore } from '../app/data/development/productionStore.ts'
 import { useOnFarmData } from '../app/composables/useOnFarmData.ts'
 
-const WB_PATH = 'c:/Users/HP VICTUS/Downloads/LM 19 Biaya Investasi Tanpok 2026 (1).xlsx'
+const WB_CANDIDATES = [
+  'D:/Mghub PTPN/DB/DashDataDev/LM 19 Biaya Investasi Tanpok 2026 (1).xlsx',
+  'c:/Users/HP VICTUS/Downloads/LM 19 Biaya Investasi Tanpok 2026 (1).xlsx',
+]
+const WB_PATH = WB_CANDIDATES.find((p) => fs.existsSync(p)) || WB_CANDIDATES[0]
 const hasReferenceWb = fs.existsSync(WB_PATH)
 
 function createMockStorage(initialData: Record<string, string> = {}): Storage {

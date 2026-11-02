@@ -572,3 +572,46 @@ test('Lead Measure Test 24: Mode switching and focused month change reset select
   viewMode.value = 'monthly'
   selectedMonth.value = 9
 })
+
+test('Lead Measure Test 25: Full calendar X-axis coverage for monthly (12 months) and daily modes (full month days)', () => {
+  const { viewMode, selectedMonth, combinedTrendChartOption, availableDaysInSelectedMonth } = useLeadMeasureData()
+
+  // 1. Monthly mode: X-axis MUST display full 12 months (Jan-Des)
+  viewMode.value = 'monthly'
+  const monthlyOpt = combinedTrendChartOption.value
+  assert.equal(monthlyOpt.xAxis.data.length, 12, 'Monthly trend chart X-axis must show all 12 calendar months')
+  assert.deepEqual(
+    monthlyOpt.xAxis.data,
+    ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'],
+    'Monthly trend X-axis categories must match canonical 12 month labels'
+  )
+  for (const s of monthlyOpt.series) {
+    assert.equal(s.data.length, 12, `Series ${s.name} data array must have length 12`)
+  }
+
+  // 2. Daily mode for October (Month 10): X-axis MUST display all 31 days (1..31)
+  viewMode.value = 'daily'
+  selectedMonth.value = 10
+  const octOpt = combinedTrendChartOption.value
+  assert.equal(octOpt.xAxis.data.length, 31, 'October daily trend chart X-axis must display all 31 calendar days')
+  assert.equal(octOpt.xAxis.data[0], '1')
+  assert.equal(octOpt.xAxis.data[30], '31')
+  for (const s of octOpt.series) {
+    assert.equal(s.data.length, 31, `October series ${s.name} must have 31 points (null for unfilled days)`)
+  }
+
+  // 3. Daily mode for November (Month 11): X-axis MUST display all 30 days (1..30)
+  selectedMonth.value = 11
+  const novOpt = combinedTrendChartOption.value
+  assert.equal(novOpt.xAxis.data.length, 30, 'November daily trend chart X-axis must display 30 calendar days')
+  assert.equal(novOpt.xAxis.data[29], '30')
+
+  // 4. Daily mode for February 2026: X-axis MUST display 28 days
+  selectedMonth.value = 2
+  const febOpt = combinedTrendChartOption.value
+  assert.equal(febOpt.xAxis.data.length, 28, 'February 2026 daily trend chart X-axis must display 28 calendar days')
+
+  // Reset
+  viewMode.value = 'monthly'
+  selectedMonth.value = 9
+})

@@ -28,8 +28,8 @@ test('Lead Measure Source Config: validates valid configuration and defaults', (
   assert.equal(config.sources[11]?.range, "'EvaProKebun Nov26  '!A1:BR562")
   assert.equal(config.sources[12]?.sheetName, 'Master Prod Jan26')
   assert.equal(config.sources[12]?.range, "'Master Prod Jan26'!A1:AP232")
-  assert.equal(config.sources[22]?.sheetName, 'Master Prod Nov26')
-  assert.equal(config.sources[22]?.range, "'Master Prod Nov26'!A1:AY232")
+  assert.equal(config.sources[22]?.sheetName, 'Master Prod Nov26 ')
+  assert.equal(config.sources[22]?.range, "'Master Prod Nov26 '!A1:AY232")
 })
 
 test('Lead Measure Source Config: parses custom sheets JSON with qualified range', () => {

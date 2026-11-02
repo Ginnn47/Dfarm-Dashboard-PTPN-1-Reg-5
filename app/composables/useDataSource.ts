@@ -1,4 +1,4 @@
-import { ref, computed, type Ref } from 'vue'
+﻿import { ref, computed, type Ref } from 'vue'
 import {
   availableDataSourcesMeta,
   getDataSource,
@@ -15,6 +15,7 @@ import type {
 } from '../data/production/types.ts'
 
 export const DATA_SOURCE_STORAGE_KEY = 'dfarm_selected_source_v1'
+export const ONFARM_SOURCE_STORAGE_KEY = 'dfarm_domain_source_onfarm_v1'
 export const VALID_SOURCE_IDS: readonly DataSourceId[] = ['development', 'google-sheets'] as const
 export const DEFAULT_SOURCE_ID: DataSourceId = 'development'
 
@@ -35,6 +36,22 @@ function getSafeCookie(): { value: unknown } | null {
   try {
     if (typeof (globalThis as any).useCookie === 'function') {
       return (globalThis as any).useCookie(DATA_SOURCE_STORAGE_KEY, {
+        default: () => DEFAULT_SOURCE_ID,
+        maxAge: 60 * 60 * 24 * 365,
+        path: '/',
+        sameSite: 'lax',
+      })
+    }
+  } catch {
+    // Non-Nuxt context
+  }
+  return null
+}
+
+function getSafeOnFarmCookie(): { value: unknown } | null {
+  try {
+    if (typeof (globalThis as any).useCookie === 'function') {
+      return (globalThis as any).useCookie(ONFARM_SOURCE_STORAGE_KEY, {
         default: () => DEFAULT_SOURCE_ID,
         maxAge: 60 * 60 * 24 * 365,
         path: '/',
@@ -72,6 +89,28 @@ function getInitialSource(): DataSourceId {
   return DEFAULT_SOURCE_ID
 }
 
+function getInitialOnFarmSource(): DataSourceId {
+  const cookie = getSafeOnFarmCookie()
+  if (cookie && typeof cookie.value === 'string' && VALID_SOURCE_IDS.includes(cookie.value as DataSourceId)) {
+    return cookie.value as DataSourceId
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      if (window.localStorage) {
+        const stored = window.localStorage.getItem(ONFARM_SOURCE_STORAGE_KEY)
+        if (stored && VALID_SOURCE_IDS.includes(stored as DataSourceId)) {
+          return stored as DataSourceId
+        }
+      }
+    } catch {
+      // Inaccessible storage
+    }
+  }
+
+  return DEFAULT_SOURCE_ID
+}
+
 let isInitialized = false
 
 /**
@@ -87,11 +126,17 @@ export function initDataSourceStore(force = false): boolean {
   if (isInitialized && !force) return true
 
   let restoredSource: DataSourceId | null = null
+  let restoredOnFarmSource: DataSourceId | null = null
 
   // 1. Check Nuxt Cookie
   const cookie = getSafeCookie()
   if (cookie && typeof cookie.value === 'string' && VALID_SOURCE_IDS.includes(cookie.value as DataSourceId)) {
     restoredSource = cookie.value as DataSourceId
+  }
+
+  const onFarmCookie = getSafeOnFarmCookie()
+  if (onFarmCookie && typeof onFarmCookie.value === 'string' && VALID_SOURCE_IDS.includes(onFarmCookie.value as DataSourceId)) {
+    restoredOnFarmSource = onFarmCookie.value as DataSourceId
   }
 
   // 2. Check localStorage (client-side)
@@ -106,6 +151,15 @@ export function initDataSourceStore(force = false): boolean {
             console.warn(`[useDataSource] Ignored invalid stored source ID: "${stored}". Retaining current choice.`)
           }
         }
+
+        const storedOnFarm = window.localStorage.getItem(ONFARM_SOURCE_STORAGE_KEY)
+        if (storedOnFarm) {
+          if (VALID_SOURCE_IDS.includes(storedOnFarm as DataSourceId)) {
+            restoredOnFarmSource = storedOnFarm as DataSourceId
+          } else {
+            console.warn(`[useDataSource] Ignored invalid stored On-Farm source ID: "${storedOnFarm}". Retaining current choice.`)
+          }
+        }
       }
     } catch {
       // Storage access error (e.g. Incognito / SecurityError)
@@ -117,7 +171,7 @@ export function initDataSourceStore(force = false): boolean {
   const domainSources = useSafeState<Record<DashboardDomainId, DataSourceId>>('domain-active-sources', () => ({
     production: restoredSource || DEFAULT_SOURCE_ID,
     finance: 'development',
-    'investment-on-farm': 'development',
+    'investment-on-farm': restoredOnFarmSource || DEFAULT_SOURCE_ID,
     'investment-off-farm': 'development',
   }))
   const domainConfigs = useSafeState<Record<DashboardDomainId, DomainSourceConfig>>('domain-source-configs', () => ({
@@ -132,6 +186,18 @@ export function initDataSourceStore(force = false): boolean {
     domainSources.value.production = restoredSource
     if (domainConfigs.value.production) {
       domainConfigs.value.production.activeSourceId = restoredSource
+    }
+  }
+
+  if (restoredOnFarmSource) {
+    domainSources.value['investment-on-farm'] = restoredOnFarmSource
+    if (domainConfigs.value['investment-on-farm']) {
+      domainConfigs.value['investment-on-farm'].activeSourceId = restoredOnFarmSource
+    }
+  } else if (force) {
+    domainSources.value['investment-on-farm'] = DEFAULT_SOURCE_ID
+    if (domainConfigs.value['investment-on-farm']) {
+      domainConfigs.value['investment-on-farm'].activeSourceId = DEFAULT_SOURCE_ID
     }
   }
 
@@ -162,6 +228,26 @@ function persistSelection(sourceId: DataSourceId) {
 }
 
 /**
+ * Persist the user's explicit On-Farm domain source selection to cookie and localStorage.
+ */
+function persistOnFarmSelection(sourceId: DataSourceId) {
+  const cookie = getSafeOnFarmCookie()
+  if (cookie) {
+    cookie.value = sourceId
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      if (window.localStorage) {
+        window.localStorage.setItem(ONFARM_SOURCE_STORAGE_KEY, sourceId)
+      }
+    } catch (err) {
+      console.warn('[useDataSource] Gagal menyimpan seleksi On-Farm ke localStorage:', err)
+    }
+  }
+}
+
+/**
  * Reset data source store to clean default state (useful for test isolation and factory reset).
  */
 export function resetDataSourceToDefault(): void {
@@ -169,7 +255,7 @@ export function resetDataSourceToDefault(): void {
   const domainSources = useSafeState<Record<DashboardDomainId, DataSourceId>>('domain-active-sources', () => ({
     production: DEFAULT_SOURCE_ID,
     finance: 'development',
-    'investment-on-farm': 'development',
+    'investment-on-farm': DEFAULT_SOURCE_ID,
     'investment-off-farm': 'development',
   }))
   const domainConfigs = useSafeState<Record<DashboardDomainId, DomainSourceConfig>>('domain-source-configs', () => ({
@@ -181,8 +267,12 @@ export function resetDataSourceToDefault(): void {
 
   activeSourceIdState.value = DEFAULT_SOURCE_ID
   domainSources.value.production = DEFAULT_SOURCE_ID
+  domainSources.value['investment-on-farm'] = DEFAULT_SOURCE_ID
   if (domainConfigs.value.production) {
     domainConfigs.value.production.activeSourceId = DEFAULT_SOURCE_ID
+  }
+  if (domainConfigs.value['investment-on-farm']) {
+    domainConfigs.value['investment-on-farm'].activeSourceId = DEFAULT_SOURCE_ID
   }
 
   const cookie = getSafeCookie()
@@ -190,10 +280,16 @@ export function resetDataSourceToDefault(): void {
     cookie.value = DEFAULT_SOURCE_ID
   }
 
+  const onFarmCookie = getSafeOnFarmCookie()
+  if (onFarmCookie) {
+    onFarmCookie.value = DEFAULT_SOURCE_ID
+  }
+
   if (typeof window !== 'undefined') {
     try {
       if (window.localStorage) {
         window.localStorage.removeItem(DATA_SOURCE_STORAGE_KEY)
+        window.localStorage.removeItem(ONFARM_SOURCE_STORAGE_KEY)
       }
     } catch {
       // Ignore
@@ -223,7 +319,7 @@ export function useDataSource() {
   const domainSources = useSafeState<Record<DashboardDomainId, DataSourceId>>('domain-active-sources', () => ({
     production: activeSourceIdState.value || DEFAULT_SOURCE_ID,
     finance: 'development',
-    'investment-on-farm': 'development',
+    'investment-on-farm': getInitialOnFarmSource(),
     'investment-off-farm': 'development',
   }))
 
@@ -231,7 +327,7 @@ export function useDataSource() {
   const domainConfigs = useSafeState<Record<DashboardDomainId, DomainSourceConfig>>('domain-source-configs', () => ({
     production: { ...DEFAULT_DOMAIN_CONFIGS.production, activeSourceId: activeSourceIdState.value || DEFAULT_SOURCE_ID },
     finance: { ...DEFAULT_DOMAIN_CONFIGS.finance },
-    'investment-on-farm': { ...DEFAULT_DOMAIN_CONFIGS['investment-on-farm'] },
+    'investment-on-farm': { ...DEFAULT_DOMAIN_CONFIGS['investment-on-farm'], activeSourceId: domainSources.value['investment-on-farm'] || DEFAULT_SOURCE_ID },
     'investment-off-farm': { ...DEFAULT_DOMAIN_CONFIGS['investment-off-farm'] },
   }))
 
@@ -294,6 +390,11 @@ export function useDataSource() {
     return currentDomainSource.value.meta
   })
 
+  // Specific domain computed: On-Farm
+  const onFarmActiveSourceId = computed<DataSourceId>(() => {
+    return domainSources.value['investment-on-farm'] || DEFAULT_SOURCE_ID
+  })
+
   function setActiveDomain(id: DashboardDomainId) {
     activeDomainId.value = id
   }
@@ -311,6 +412,8 @@ export function useDataSource() {
 
     if (domainId === 'production') {
       setActiveSource(sourceId)
+    } else if (domainId === 'investment-on-farm') {
+      persistOnFarmSelection(sourceId)
     }
 
     return true
@@ -328,6 +431,8 @@ export function useDataSource() {
     domainSources.value[domainId] = DEFAULT_DOMAIN_CONFIGS[domainId].activeSourceId
     if (domainId === 'production') {
       setActiveSource(DEFAULT_DOMAIN_CONFIGS[domainId].activeSourceId)
+    } else if (domainId === 'investment-on-farm') {
+      persistOnFarmSelection(DEFAULT_DOMAIN_CONFIGS[domainId].activeSourceId)
     }
   }
 
@@ -352,6 +457,7 @@ export function useDataSource() {
     currentDomainActiveSourceId,
     currentDomainSource,
     currentDomainSourceMeta,
+    onFarmActiveSourceId,
     setActiveDomain,
     setDomainActiveSource,
     updateDomainConfig,

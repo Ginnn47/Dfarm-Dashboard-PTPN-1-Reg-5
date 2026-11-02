@@ -57,6 +57,7 @@ const {
   currentDomainSourceMeta: activeSourceMeta,
   availableSources,
   domainSources,
+  onFarmActiveSourceId,
   setActiveDomain,
   setActiveSource,
   setDomainActiveSource,
@@ -446,6 +447,44 @@ function showToast(message: string, type: 'success' | 'info' | 'warning' = 'succ
   }, 4000)
 }
 
+const isOnFarmConnecting = ref(false)
+
+async function handleSelectOnFarmSource(sourceId: 'development' | 'google-sheets') {
+  if (sourceId === 'development') {
+    onFarmStore.activateDevelopmentData()
+    setDomainActiveSource('investment-on-farm', 'development')
+    showToast('Sumber data Investasi On-Farm dialihkan ke Development Data (Lokal).', 'success')
+    return
+  }
+
+  // Google Sheets: Load remote data FIRST before committing
+  isOnFarmConnecting.value = true
+  try {
+    await onFarmStore.loadRemoteOnFarmData()
+    setDomainActiveSource('investment-on-farm', 'google-sheets')
+    showToast('Sumber data Investasi On-Farm berhasil terhubung ke Google Sheets.', 'success')
+  } catch (err: any) {
+    // DO NOT commit source. Retain previous source.
+    const message = onFarmStore.remoteErrorMessage.value || err?.message || 'Gagal menghubungkan ke Google Sheets On-Farm.'
+    showToast(message, 'warning')
+  } finally {
+    isOnFarmConnecting.value = false
+  }
+}
+
+async function verifyOnFarmGoogleSheets() {
+  isOnFarmConnecting.value = true
+  try {
+    await onFarmStore.loadRemoteOnFarmData()
+    showToast('Data Google Sheets On-Farm berhasil diperiksa dan diperbarui.', 'success')
+  } catch (err: any) {
+    const message = onFarmStore.remoteErrorMessage.value || err?.message || 'Pemeriksaan Google Sheets On-Farm gagal.'
+    showToast(message, 'warning')
+  } finally {
+    isOnFarmConnecting.value = false
+  }
+}
+
 function handleSelectSource(sourceId: 'development' | 'google-sheets') {
   if (activeDomainId.value === 'production') {
     setActiveSource(sourceId)
@@ -454,6 +493,8 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
     } else {
       showToast('Google Sheets dipilih. Jalankan pemeriksaan untuk mendapatkan status koneksi terbaru.', 'info')
     }
+  } else if (activeDomainId.value === 'investment-on-farm') {
+    handleSelectOnFarmSource(sourceId)
   } else {
     setDomainActiveSource(activeDomainId.value, sourceId)
     showToast(`Pengaturan sumber untuk ${activeDomain.value.name} diperbarui.`, 'info')
@@ -1432,33 +1473,59 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                 <div class="flex items-center gap-2">
                   <span class="text-[11px] font-bold uppercase tracking-wider text-[#5E6A65]">
                     Sumber Data Aktif Saat Ini
-                </span>
+                  </span>
                   <span
                     class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold"
-                    :class="onFarmStore.isLoaded.value
-                      ? 'bg-sky-100 text-sky-800 border border-sky-300'
-                      : 'bg-amber-100 text-amber-800 border border-amber-300'"
-                >
+                    :class="onFarmActiveSourceId === 'google-sheets'
+                      ? (onFarmStore.isRemoteError.value
+                          ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                          : onFarmStore.isLoadingRemote.value
+                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                            : 'bg-emerald-100 text-emerald-800 border border-emerald-300')
+                      : (onFarmStore.isLoaded.value
+                          ? 'bg-sky-100 text-sky-800 border border-sky-300'
+                          : 'bg-amber-100 text-amber-800 border border-amber-300')"
+                  >
                     <span
                       class="size-2 rounded-full"
-                      :class="onFarmStore.isLoaded.value ? 'bg-sky-600' : 'bg-amber-500 animate-pulse'"
-                />
-                    {{ onFarmStore.isLoaded.value ? 'Terpasang & Aktif' : 'Belum Ada Data' }}
-                </span>
+                      :class="onFarmActiveSourceId === 'google-sheets'
+                        ? (onFarmStore.isRemoteError.value
+                            ? 'bg-rose-600'
+                            : onFarmStore.isLoadingRemote.value
+                              ? 'bg-amber-500 animate-pulse'
+                              : 'bg-emerald-600')
+                        : (onFarmStore.isLoaded.value ? 'bg-sky-600' : 'bg-amber-500 animate-pulse')"
+                    />
+                    {{
+                      onFarmActiveSourceId === 'google-sheets'
+                        ? (onFarmStore.isRemoteError.value
+                            ? 'Gagal Terhubung'
+                            : onFarmStore.isLoadingRemote.value
+                              ? 'Memeriksa Koneksi...'
+                              : 'Terhubung & Aktif')
+                        : (onFarmStore.isLoaded.value ? 'Terpasang & Aktif' : 'Belum Ada Data')
+                    }}
+                  </span>
                 </div>
 
                 <h2 id="active-source-onfarm-heading" class="mt-2 text-2xl font-bold tracking-tight text-[#26312D]">
-                  Development Data (LM 19 2026)
+                  {{ onFarmActiveSourceId === 'google-sheets' ? 'Google Sheets (Investment On-Farm 2026)' : 'Development Data (LM 19 2026)' }}
                 </h2>
 
                 <p class="mt-2 text-sm leading-6 text-[#5E6A65]">
-                  Monitoring realisasi belanja investasi tanaman pokok perkebunan · Konsolidasi transaksi SAP CO/PS (ZESTHLE152) terhadap Target RKAP 2026 dan Lembar Rekap.
+                  {{
+                    onFarmActiveSourceId === 'google-sheets'
+                      ? 'Monitoring realisasi belanja investasi tanaman pokok perkebunan · Konsolidasi transaksi SAP CO/PS terhadap Target RKAP 2026 via Google Sheets API terpusat.'
+                      : 'Monitoring realisasi belanja investasi tanaman pokok perkebunan · Konsolidasi transaksi SAP CO/PS (ZESTHLE152) terhadap Target RKAP 2026 dan Lembar Rekap.'
+                  }}
                 </p>
 
                 <div class="mt-4 flex flex-wrap items-center gap-6 text-xs text-[#5E6A65]">
                   <div>
                     <span class="text-[#808D87]">Tipe Sumber:</span>
-                    <strong class="ml-1 text-[#26312D]">Workbook Excel Multi-Sheet (Lokal / Browser)</strong>
+                    <strong class="ml-1 text-[#26312D]">
+                      {{ onFarmActiveSourceId === 'google-sheets' ? 'Google Sheets API (Cloud / Read-Only)' : 'Workbook Excel Multi-Sheet (Lokal / Browser)' }}
+                    </strong>
                   </div>
                   <div>
                     <span class="text-[#808D87]">Cakupan:</span>
@@ -1474,8 +1541,17 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                   </div>
                   <div>
                     <span class="text-[#808D87]">Status Sistem:</span>
-                    <strong class="ml-1" :class="onFarmStore.isLoaded.value ? 'text-sky-700' : 'text-amber-700'">
-                      {{ onFarmStore.isLoaded.value ? 'Operasional Penuh' : 'Menunggu Berkas' }}
+                    <strong
+                      class="ml-1"
+                      :class="onFarmActiveSourceId === 'google-sheets'
+                        ? (onFarmStore.isRemoteError.value ? 'text-rose-700' : 'text-emerald-700')
+                        : (onFarmStore.isLoaded.value ? 'text-sky-700' : 'text-amber-700')"
+                    >
+                      {{
+                        onFarmActiveSourceId === 'google-sheets'
+                          ? (onFarmStore.isRemoteError.value ? 'Koneksi Gagal' : onFarmStore.isLoadingRemote.value ? 'Memuat Data...' : 'Operasional Penuh')
+                          : (onFarmStore.isLoaded.value ? 'Operasional Penuh' : 'Menunggu Berkas')
+                      }}
                     </strong>
                   </div>
                 </div>
@@ -1485,12 +1561,22 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
                 <NuxtLink
                   to="/investment/on-farm"
                   class="inline-flex items-center gap-2 rounded-xl bg-sky-700 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-sky-800 transition-colors"
-              >
+                >
                   Buka Dashboard On-Farm →
                 </NuxtLink>
+                <button
+                  v-if="onFarmActiveSourceId === 'google-sheets'"
+                  type="button"
+                  class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 cursor-pointer"
+                  :disabled="isOnFarmConnecting || onFarmStore.isLoadingRemote.value"
+                  @click="verifyOnFarmGoogleSheets"
+                >
+                  <HugeiconsIcon :icon="RefreshIcon" :size="13" :class="{ 'animate-spin': isOnFarmConnecting || onFarmStore.isLoadingRemote.value }" />
+                  <span>{{ isOnFarmConnecting || onFarmStore.isLoadingRemote.value ? 'Memeriksa...' : 'Periksa Ulang' }}</span>
+                </button>
                 <span class="text-[11px] text-[#808D87]">
                   Cut-off aktif: Bulan {{ onFarmStore.metadata.value?.detectedActivePeriod || 9 }}
-              </span>
+                </span>
               </div>
             </div>
           </div>
@@ -1509,48 +1595,148 @@ function handleSelectSource(sourceId: 'development' | 'google-sheets') {
 
           <div class="grid gap-6 md:grid-cols-2">
             <!-- Card 1: Development Data (LM 19 2026) -->
-            <div class="flex flex-col justify-between rounded-2xl border-2 border-sky-500 bg-white p-6 shadow-xs">
+            <div
+              class="flex flex-col justify-between rounded-2xl border bg-white p-6 shadow-xs transition-all duration-200"
+              :class="onFarmActiveSourceId === 'development'
+                ? 'border-sky-500 ring-2 ring-sky-500/10'
+                : 'border-[#E5EBE8] hover:border-slate-300'"
+            >
               <div class="space-y-3">
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
                     <span class="flex size-7 items-center justify-center rounded-lg bg-sky-100 text-sky-800 font-bold text-xs">
-                  <HugeiconsIcon :icon="File02Icon" :size="16" />
-                  </span>
+                      <HugeiconsIcon :icon="File02Icon" :size="16" />
+                    </span>
                     <h4 class="text-base font-bold text-[#26312D]">
-                      Development Data (Excel LM 19)
+                      Development Data
                     </h4>
                   </div>
-                  <span class="rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-bold text-sky-800 border border-sky-300">
-                    ? Terhubung & Aktif
-                </span>
+                  <span
+                    class="rounded-full px-2.5 py-0.5 text-xs font-bold"
+                    :class="onFarmActiveSourceId === 'development'
+                      ? 'bg-sky-100 text-sky-800 border border-sky-300'
+                      : 'bg-slate-100 text-slate-600'"
+                  >
+                    {{ onFarmActiveSourceId === 'development' ? '● Aktif' : 'Tersedia' }}
+                  </span>
                 </div>
                 <p class="text-xs leading-5 text-[#5E6A65]">
                   Data workbook multi-sheet tervalidasi: sheet ZESTHLE152 untuk mutasi ledger SAP, sheet RKAP 2026 untuk pagu anggaran, dan sheet Rekap sebagai jembatan relasi proyek.
                 </p>
               </div>
+
+              <div class="mt-6 border-t border-[#E5EBE8] pt-4">
+                <button
+                  type="button"
+                  class="w-full rounded-xl px-4 py-2.5 text-xs font-semibold transition-colors"
+                  :class="onFarmActiveSourceId === 'development'
+                    ? 'bg-sky-50 text-sky-800 cursor-default font-bold border border-sky-200'
+                    : 'bg-slate-900 text-white hover:bg-slate-800 shadow-xs cursor-pointer'"
+                  :disabled="onFarmActiveSourceId === 'development'"
+                  @click="handleSelectOnFarmSource('development')"
+                >
+                  {{ onFarmActiveSourceId === 'development' ? 'Sumber Aktif' : 'Pilih Sumber Ini' }}
+                </button>
+              </div>
             </div>
 
-            <!-- Card 2: Cloud / SAP RFC Connector -->
-            <div class="flex flex-col justify-between rounded-2xl border border-[#E5EBE8] bg-[#F7F9F8] p-6">
+            <!-- Card 2: Google Sheets (Investment On-Farm 2026) -->
+            <div
+              class="flex flex-col justify-between rounded-2xl border bg-white p-6 shadow-xs transition-all duration-200"
+              :class="onFarmActiveSourceId === 'google-sheets'
+                ? (onFarmStore.isRemoteError.value
+                    ? 'border-rose-400 ring-2 ring-rose-400/10'
+                    : 'border-emerald-500 ring-2 ring-emerald-500/10')
+                : 'border-[#E5EBE8] hover:border-slate-300'"
+            >
               <div class="space-y-3">
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
-                    <span class="flex size-7 items-center justify-center rounded-lg bg-slate-200 text-slate-600 font-bold text-xs">
-                  <HugeiconsIcon :icon="DatabaseSearchIcon" :size="16" />
-                  </span>
+                    <span class="flex size-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs">
+                      <HugeiconsIcon :icon="Leaf01Icon" :size="16" />
+                    </span>
                     <h4 class="text-base font-bold text-[#26312D]">
-                      SAP CO/PS Live Connector
+                      Google Sheets
                     </h4>
                   </div>
-                  <span class="rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-                    Phase 3.1 Preview
-                </span>
+                  <span
+                    class="rounded-full px-2.5 py-0.5 text-xs font-bold"
+                    :class="onFarmActiveSourceId === 'google-sheets'
+                      ? (onFarmStore.isRemoteError.value
+                          ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                          : onFarmStore.isLoadingRemote.value
+                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                            : 'bg-emerald-100 text-emerald-800 border border-emerald-300')
+                      : 'bg-slate-100 text-slate-600'"
+                  >
+                    {{
+                      onFarmActiveSourceId === 'google-sheets'
+                        ? (onFarmStore.isRemoteError.value
+                            ? 'Gagal Terhubung'
+                            : onFarmStore.isLoadingRemote.value
+                              ? 'Memeriksa...'
+                              : '● Aktif')
+                        : 'Tersedia'
+                    }}
+                  </span>
                 </div>
                 <p class="text-xs leading-5 text-[#5E6A65]">
-                  Integrasi langsung ke SAP S/4HANA atau SAP ECC via RFC/OData connector. Belum aktif pada tahap pengembangan ini.
+                  Sumber data terpusat Google Sheets API untuk 3 lembar kerja: RKAP 2026, ZESTHLE152, dan Lembar Rekap yang divalidasi oleh backend Nitro.
                 </p>
+                <dl class="space-y-1.5 rounded-xl bg-[#F7F9F8] p-3 text-xs text-[#5E6A65]">
+                  <div class="flex justify-between">
+                    <dt class="text-[#808D87]">Status:</dt>
+                    <dd
+                      class="font-semibold"
+                      :class="onFarmActiveSourceId === 'google-sheets'
+                        ? (onFarmStore.isRemoteError.value ? 'text-rose-700' : 'text-emerald-700')
+                        : 'text-slate-600'"
+                    >
+                      {{
+                        onFarmActiveSourceId === 'google-sheets'
+                          ? (onFarmStore.isRemoteError.value ? 'Koneksi Gagal' : onFarmStore.isLoadingRemote.value ? 'Memuat Data...' : 'Terhubung')
+                          : 'Siap Dihubungkan'
+                      }}
+                    </dd>
+                  </div>
+                  <div class="flex justify-between">
+                    <dt class="text-[#808D87]">Cakupan:</dt>
+                    <dd class="font-medium text-[#26312D]">3 Lembar Kerja</dd>
+                  </div>
+                </dl>
+              </div>
+
+              <div class="mt-6 border-t border-[#E5EBE8] pt-4">
+                <button
+                  type="button"
+                  class="w-full rounded-xl px-4 py-2.5 text-xs font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+                  :class="onFarmActiveSourceId === 'google-sheets'
+                    ? (onFarmStore.isRemoteError.value
+                        ? 'bg-rose-600 text-white hover:bg-rose-700'
+                        : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100')
+                    : 'bg-slate-900 text-white hover:bg-slate-800 shadow-xs'"
+                  :disabled="isOnFarmConnecting || onFarmStore.isLoadingRemote.value"
+                  @click="onFarmActiveSourceId === 'google-sheets' ? verifyOnFarmGoogleSheets() : handleSelectOnFarmSource('google-sheets')"
+                >
+                  <HugeiconsIcon
+                    v-if="isOnFarmConnecting || onFarmStore.isLoadingRemote.value"
+                    :icon="RefreshIcon"
+                    :size="14"
+                    class="animate-spin"
+                  />
+                  <span>
+                    {{
+                      isOnFarmConnecting || onFarmStore.isLoadingRemote.value
+                        ? 'Menghubungkan...'
+                        : (onFarmActiveSourceId === 'google-sheets'
+                            ? (onFarmStore.isRemoteError.value ? 'Coba Lagi' : 'Periksa Ulang')
+                            : 'Hubungkan & Jadikan Aktif')
+                    }}
+                  </span>
+                </button>
               </div>
             </div>
+
           </div>
         </section>
 

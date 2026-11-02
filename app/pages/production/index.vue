@@ -18,7 +18,10 @@ import {
   Database01Icon,
   ArrowUpRight01Icon,
   File01Icon,
+  ArrowLeft01Icon,
+  Settings02Icon,
 } from '@hugeicons/core-free-icons'
+import DataLoadingState from '~/components/dashboard/reusable/DataLoadingState.vue'
 import { computed, ref } from 'vue'
 import { formatNumberCompact } from '~/utils/formatters'
 import {
@@ -198,67 +201,43 @@ function formatCompact(value: number | null | undefined) {
     </header>
 
     <!-- Remote source loading state -->
-    <section
+    <DataLoadingState
       v-if="isLoading"
-      class="overflow-hidden rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm sm:p-12"
-      aria-label="Memuat sumber data"
-    >
-      <div class="mx-auto flex size-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-200/80">
-        <HugeiconsIcon :icon="ComingSoon01Icon" :size="32" :stroke-width="2.2" class="animate-pulse text-amber-600" />
-      </div>
-      <h2 class="mt-4 text-2xl font-bold tracking-tight text-slate-900">Memuat Data Production</h2>
-      <p class="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600">Dashboard sedang mengambil data tervalidasi dari Google Sheets melalui backend Nitro.</p>
-    </section>
+      status="loading"
+      title="Memuat Data Production"
+      description="Dashboard sedang mengambil data tervalidasi dari Google Sheets melalui backend Nitro."
+      :badge-text="`${activeSourceMeta.name} · Memuat data...`"
+    />
 
     <!-- NOT-CONNECTED/ERROR STATE FOR REMOTE SOURCES -->
-    <section
+    <DataLoadingState
       v-else-if="isNotConnected || isError"
-      class="overflow-hidden rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm sm:p-12"
-      aria-label="Sumber data belum terhubung"
+      status="error"
+      :title="isError ? 'Data Production Gagal Dimuat' : 'Data Produksi Belum Tersedia'"
+      :description="sourceError || `Respons sumber ${activeSourceMeta.name} tidak dapat diproses.\nPeriksa koneksi, izin akses, atau coba muat ulang data.`"
+      :badge-text="`${activeSourceMeta.name} · ${isError ? 'Gagal terhubung' : activeSourceMeta.statusLabel}`"
+      :show-retry="isError"
+      retry-text="Coba Lagi"
+      @retry="refreshSource"
     >
-      <div class="mx-auto flex size-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-200/80">
-        <HugeiconsIcon :icon="ComingSoon01Icon" :size="32" :stroke-width="2.2" class="text-amber-600" />
-      </div>
-      <div class="mt-4 inline-flex items-center gap-1.5 rounded-full bg-amber-100/70 px-3 py-1 text-xs font-semibold text-amber-800">
-        <span class="size-2 rounded-full bg-amber-500 animate-pulse" />
-        {{ activeSourceMeta.name }} · {{ activeSourceMeta.statusLabel }}
-      </div>
-      <h2 class="mt-4 text-2xl font-bold tracking-tight text-slate-900">
-        {{ isError ? 'Data Production Gagal Dimuat' : 'Data Produksi Belum Tersedia' }}
-      </h2>
-      <p class="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600">
-        {{ sourceError || `Dashboard data belum tersedia karena sumber ${activeSourceMeta.name} belum dikonfigurasi. Sesuai kebijakan DFARM, sistem tidak menampilkan data simulasi atau data tiruan saat sumber eksternal dipilih.` }}
-      </p>
-      <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
-        <button
-          v-if="isError"
-          type="button"
-          class="inline-flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-5 py-2.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
-          @click="refreshSource"
-        >
-          Coba Lagi
-        </button>
+      <template #actions>
         <button
           type="button"
-          class="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-800 transition-colors"
+          class="inline-flex items-center gap-2 rounded-xl bg-[#00875a] hover:bg-[#00704a] text-white px-5 py-2.5 text-xs sm:text-sm font-semibold shadow-xs transition-colors cursor-pointer"
           @click="setActiveSource('development')"
         >
-          Kembali ke Development Data
+          <HugeiconsIcon :icon="ArrowLeft01Icon" :size="16" />
+          <span>Kembali ke Development Data</span>
         </button>
         <NuxtLink
           to="/data-source"
-          class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+          class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-5 py-2.5 text-xs sm:text-sm font-semibold shadow-2xs transition-colors cursor-pointer"
         >
-          Kelola Pengaturan Sumber Data
+          <HugeiconsIcon :icon="Settings02Icon" :size="16" />
+          <span>Kelola Pengaturan Sumber Data</span>
         </NuxtLink>
-      </div>
-      <div class="mt-8 border-t border-slate-100 pt-6 text-left max-w-md mx-auto text-xs text-slate-500">
-        <p class="font-semibold text-slate-700">Konfigurasi backend Phase 3.3:</p>
-        <p class="mt-1">
-          Spreadsheet ID, sheet, range, dan token akses harus tersedia di runtime server. Dashboard tidak memakai fallback Development secara otomatis.
-        </p>
-      </div>
-    </section>
+      </template>
+    </DataLoadingState>
 
     <!-- FULL PHASE 2.6 DASHBOARD (RENDERED WHEN SOURCE IS AVAILABLE) -->
     <template v-else>

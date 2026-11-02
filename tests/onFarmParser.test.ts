@@ -4,7 +4,11 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { parseOnFarmWorkbook } from '../app/utils/onFarmWorkbookParser.ts'
 
-const WB_PATH = 'c:/Users/HP VICTUS/Downloads/LM 19 Biaya Investasi Tanpok 2026 (1).xlsx'
+const WB_CANDIDATES = [
+  'D:/Mghub PTPN/DB/DashDataDev/LM 19 Biaya Investasi Tanpok 2026 (1).xlsx',
+  'c:/Users/HP VICTUS/Downloads/LM 19 Biaya Investasi Tanpok 2026 (1).xlsx',
+]
+const WB_PATH = WB_CANDIDATES.find((p) => fs.existsSync(p)) || WB_CANDIDATES[0]
 const hasReferenceWb = fs.existsSync(WB_PATH)
 
 test('On-Farm Parser Test 1: Reference workbook parses correctly when available', async () => {
