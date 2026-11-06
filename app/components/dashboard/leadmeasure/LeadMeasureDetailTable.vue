@@ -30,11 +30,11 @@ function formatTapper(val: number | null): string {
 </script>
 
 <template>
-  <div class="flex h-full flex-col rounded-2xl border border-slate-200 bg-white shadow-xs transition-shadow duration-200">
+  <div class="flex h-full flex-col rounded-xl border border-slate-200 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md">
     <!-- Header -->
-    <div class="flex min-h-[72px] items-center justify-between gap-4 border-b border-slate-100 px-5 py-4">
+    <div class="flex min-h-[72px] items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
       <div class="flex items-center gap-3">
-        <HugeiconsIcon :icon="TableIcon" :size="22" class="text-emerald-600 shrink-0" />
+        <div class="shrink-0 flex items-center justify-center pt-0.5"><HugeiconsIcon :icon="TableIcon" :size="32" :stroke-width="2.2" class="text-emerald-700" /></div>
         <div class="min-w-0">
           <h3 class="text-sm font-bold text-slate-800 truncate">
             Tabel Rincian Antar Kebun
@@ -52,7 +52,7 @@ function formatTapper(val: number | null): string {
     </div>
 
     <!-- Table Container -->
-    <div class="flex-1 overflow-x-auto overflow-y-auto max-h-[430px]">
+    <div class="flex-1 overflow-x-auto overflow-y-auto">
       <table class="w-full text-left text-xs text-slate-600">
         <thead class="sticky top-0 bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200 z-10">
           <tr>
@@ -73,13 +73,13 @@ function formatTapper(val: number | null): string {
             <!-- % HKD Sadap Column Header -->
             <th
               class="py-2.5 px-3 text-right transition-colors"
-              :class="selectedMetric === 'tapping_day_achievement_pct' ? 'bg-emerald-100/90 text-emerald-900 border-x border-emerald-300' : ''"
+              :class="selectedMetric === 'tapping_day_achievement_pct' ? 'bg-[#F2F4D2] text-[#59600F] border-x border-[#C8D266]' : ''"
             >
               <div class="flex items-center justify-end gap-1">
-                <span v-if="selectedMetric === 'tapping_day_achievement_pct'" class="text-[9px] font-bold text-emerald-700">★</span>
+                <span v-if="selectedMetric === 'tapping_day_achievement_pct'" class="text-[9px] font-bold text-[#C8D266]">★</span>
                 <span>% HKD</span>
               </div>
-              <span class="block text-[8px] font-normal" :class="selectedMetric === 'tapping_day_achievement_pct' ? 'text-emerald-700' : 'text-slate-400'">≥100%</span>
+              <span class="block text-[8px] font-normal" :class="selectedMetric === 'tapping_day_achievement_pct' ? 'text-[#737B16]' : 'text-slate-400'">≥100%</span>
             </th>
 
             <!-- Per Tapper Column Header -->
@@ -162,9 +162,9 @@ function formatTapper(val: number | null): string {
             <!-- % HKD Sadap Cell -->
             <td
               class="py-2 px-3 text-right transition-colors"
-              :class="selectedMetric === 'tapping_day_achievement_pct' ? 'bg-emerald-50/70 border-x border-emerald-100 font-bold text-emerald-950' : ''"
+              :class="selectedMetric === 'tapping_day_achievement_pct' ? 'bg-[#F7F8E8] border-x border-[#E6E9B5] font-bold text-[#59600F]' : ''"
             >
-              <span :class="row.hkdVal != null && row.hkdVal >= 100 ? 'text-emerald-700 font-bold' : 'text-slate-700'">
+              <span :class="row.hkdVal != null && row.hkdVal >= 100 ? 'text-[#737B16] font-bold' : 'text-slate-700'">
                 {{ formatPct(row.hkdVal) }}
               </span>
             </td>

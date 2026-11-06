@@ -1,6 +1,6 @@
 ﻿import { getMasterAfdelingName, formatAfdelingName, isRawAfdelingCode } from '../data/reference/afdelingMaster.ts'
 import { normalizePhase } from '../utils/onFarmWorkbookParser.ts'
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, getCurrentInstance, onMounted, onBeforeUnmount } from 'vue'
 import { useOnFarmStore } from '../data/onfarm/onFarmStore.ts'
 import type {
   OnFarmActualTransaction,
@@ -71,6 +71,10 @@ const NON_AFDELING_LABEL = 'Non-Afdeling / Sentral'
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
 
+export function getCurrentCalendarMonth(date: Date = new Date()): number {
+  return date.getMonth() + 1
+}
+
 function clampMonth(value: number, maxMonth: number): number {
   return Math.max(1, Math.min(maxMonth, Math.round(value)))
 }
@@ -102,16 +106,17 @@ export function useOnFarmData() {
 
   // Filter States
   const selectedYear = ref<number>(2026)
-  const selectedPeriod = ref<number>(9) // Default s/d September (auto-detect sync)
+  const currentCalendarMonth = ref<number>(getCurrentCalendarMonth())
+  const selectedPeriod = ref<number>(currentCalendarMonth.value)
   const isManualCutoff = ref<boolean>(false)
 
   // Rentang disiapkan sebagai draft dan baru memengaruhi dashboard setelah Terapkan.
   const analysisRangePreset = ref<OnFarmRangePreset>('ytd')
   const analysisRangeStartMonth = ref<number>(1)
-  const analysisRangeEndMonth = ref<number>(9)
+  const analysisRangeEndMonth = ref<number>(currentCalendarMonth.value)
   const draftAnalysisRangePreset = ref<OnFarmRangePreset>('ytd')
   const draftAnalysisRangeStartMonth = ref<number>(1)
-  const draftAnalysisRangeEndMonth = ref<number>(9)
+  const draftAnalysisRangeEndMonth = ref<number>(currentCalendarMonth.value)
 
   const selectedEstate = ref<string>('ALL')
   const selectedCommodity = ref<string>('ALL')
@@ -121,20 +126,9 @@ export function useOnFarmData() {
   const selectedProject = ref<string | null>(null)
   const searchQuery = ref<string>('')
 
-  // Sync default period with detected active period from store if not overridden manually
-  const detectedPeriod = computed(() => store.metadata.value?.detectedActivePeriod || 9)
-  if (!isManualCutoff.value && store.metadata.value?.detectedActivePeriod) {
-    selectedPeriod.value = store.metadata.value.detectedActivePeriod
-  }
-
-  watch(
-    () => store.metadata.value?.detectedActivePeriod,
-    (detected) => {
-      if (!isManualCutoff.value && detected) {
-        selectedPeriod.value = detected
-      }
-    }
-  )
+  // Auto cut-off follows the current reporting calendar, not a stale source fallback.
+  // Source metadata remains available for data-availability diagnostics.
+  const detectedPeriod = computed(() => currentCalendarMonth.value)
 
   function normalizeAnalysisRange(
     preset: OnFarmRangePreset,
@@ -185,6 +179,34 @@ export function useOnFarmData() {
     draftAnalysisRangePreset.value = draft.preset
     draftAnalysisRangeStartMonth.value = draft.start
     draftAnalysisRangeEndMonth.value = draft.end
+  }
+
+  function syncCurrentCalendarMonth() {
+    const nextMonth = getCurrentCalendarMonth()
+    if (nextMonth === currentCalendarMonth.value) return
+
+    currentCalendarMonth.value = nextMonth
+    if (!isManualCutoff.value) {
+      selectedPeriod.value = nextMonth
+      if (analysisRangePreset.value === 'ytd') {
+        analysisRangeEndMonth.value = nextMonth
+      }
+      if (draftAnalysisRangePreset.value === 'ytd') {
+        draftAnalysisRangeEndMonth.value = nextMonth
+      }
+      clampAnalysisRanges()
+    }
+  }
+
+  let calendarMonthTimer: ReturnType<typeof setInterval> | null = null
+  if (getCurrentInstance()) {
+    onMounted(() => {
+      syncCurrentCalendarMonth()
+      calendarMonthTimer = setInterval(syncCurrentCalendarMonth, 60_000)
+    })
+    onBeforeUnmount(() => {
+      if (calendarMonthTimer) clearInterval(calendarMonthTimer)
+    })
   }
 
   watch(selectedPeriod, (val) => {

@@ -4,17 +4,19 @@ import type { ProductionRecord } from '~/data/production/types'
 
 interface TableRow {
   sourceRow: number
+  reportingYear: number
+  estateCode: string
   estate: string
   afdeling: string
   matchedAfdCode?: string | null
   commodity: string
   plantingYear: number
-  actual: number
-  rkap: number
+  actual: number | null
+  rkap: number | null
   achievement: number | null
   variance: number | null
-  area: number
-  population: number
+  area: number | null
+  population: number | null
   productivity: number | null
 }
 
@@ -43,6 +45,8 @@ watch(() => props.pageSize, (newSize) => {
 // Map raw production records to table rows with calculated fields
 const rows = computed<TableRow[]>(() => props.data.map((record) => ({
   sourceRow: record.sourceRow,
+  reportingYear: record.reportingYear,
+  estateCode: record.estateCode,
   estate: record.estate,
   afdeling: record.afdeling,
   matchedAfdCode: record.matchedAfdCode,
@@ -50,11 +54,11 @@ const rows = computed<TableRow[]>(() => props.data.map((record) => ({
   plantingYear: record.plantingYear,
   actual: record.actual,
   rkap: record.rkap,
-  achievement: record.rkap > 0 ? (record.actual / record.rkap) * 100 : null,
-  variance: record.rkap > 0 ? record.actual - record.rkap : null,
+  achievement: record.rkap != null && record.rkap > 0 && record.actual != null ? (record.actual / record.rkap) * 100 : null,
+  variance: record.rkap != null && record.rkap > 0 && record.actual != null ? record.actual - record.rkap : null,
   area: record.area,
   population: record.population,
-  productivity: record.area > 0 ? record.actual / record.area : null,
+  productivity: record.area != null && record.area > 0 && record.actual != null ? record.actual / record.area : null,
 })))
 
 // Extract available options dynamically from current data
@@ -534,7 +538,7 @@ const columns: Array<{
           <tbody>
             <tr
               v-for="row in paged"
-              :key="row.sourceRow"
+              :key="`${row.reportingYear}|${row.estateCode}|${row.afdeling}|${row.commodity}|${row.plantingYear}`"
               class="border-b border-slate-100 transition-colors hover:bg-slate-50"
             >
               <td class="whitespace-nowrap px-3 py-2.5 font-medium text-slate-800">{{ row.estate }}</td>

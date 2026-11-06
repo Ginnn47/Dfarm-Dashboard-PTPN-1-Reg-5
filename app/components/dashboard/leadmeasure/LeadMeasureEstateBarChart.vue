@@ -35,6 +35,13 @@ function onChartMouseOver(params: any) {
 function onChartMouseOut() {
   emit('estate-leave')
 }
+
+function activeMetricClass(code: LeadMeasureMetricCode): string {
+  if (code === 'production_achievement_pct') return 'bg-[#0284C7] text-white shadow-2xs'
+  if (code === 'tapping_day_achievement_pct') return 'bg-[#C8D266] text-slate-900 shadow-2xs'
+  if (code === 'productivity_per_tapper') return 'bg-[#D97706] text-white shadow-2xs'
+  return 'bg-[#6366F1] text-white shadow-2xs'
+}
 </script>
 
 <template>
@@ -55,7 +62,7 @@ function onChartMouseOut() {
           type="button"
           class="rounded-lg px-2.5 py-1 text-xs font-bold transition-all whitespace-nowrap cursor-pointer"
           :class="selectedMetric === m.code
-            ? 'bg-emerald-700 text-white shadow-2xs'
+            ? activeMetricClass(m.code)
             : 'text-slate-600 hover:text-slate-900'"
           @click="selectedMetric = m.code"
         >
@@ -85,7 +92,7 @@ function onChartMouseOut() {
     </div>
 
     <!-- Chart Canvas -->
-    <div class="h-[430px] w-full">
+    <div class="h-[470px] min-h-[470px] w-full flex-1">
       <ClientOnly>
         <v-chart
           :option="barOption"

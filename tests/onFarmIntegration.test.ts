@@ -5,7 +5,7 @@ import { useOnFarmStore, initOnFarmStore, ONFARM_STORAGE_KEY } from '../app/data
 import { parseOnFarmWorkbook } from '../app/utils/onFarmWorkbookParser.ts'
 import { formatRupiahCompact, formatRupiahFull, formatPercent } from '../app/utils/formatters.ts'
 import { useDevelopmentStore } from '../app/data/development/productionStore.ts'
-import { useOnFarmData } from '../app/composables/useOnFarmData.ts'
+import { getCurrentCalendarMonth, useOnFarmData } from '../app/composables/useOnFarmData.ts'
 
 const WB_CANDIDATES = [
   'D:/Mghub PTPN/DB/DashDataDev/LM 19 Biaya Investasi Tanpok 2026 (1).xlsx',
@@ -13,6 +13,12 @@ const WB_CANDIDATES = [
 ]
 const WB_PATH = WB_CANDIDATES.find((p) => fs.existsSync(p)) || WB_CANDIDATES[0]
 const hasReferenceWb = fs.existsSync(WB_PATH)
+
+test('On-Farm auto cutoff fallback follows the current calendar month', () => {
+  assert.equal(getCurrentCalendarMonth(new Date(2026, 0, 15)), 1)
+  assert.equal(getCurrentCalendarMonth(new Date(2026, 10, 2)), 11)
+  assert.equal(getCurrentCalendarMonth(new Date(2026, 11, 31)), 12)
+})
 
 function createMockStorage(initialData: Record<string, string> = {}): Storage {
   const store = new Map<string, string>(Object.entries(initialData))
@@ -154,7 +160,10 @@ test('On-Farm Integration 7: Reference workbook KPI calculation matches approved
   const parseResult = await parseOnFarmWorkbook(buf, 2026)
   store.applyParsedData(parseResult, 'LM 19 Biaya Investasi Tanpok 2026.xlsx')
 
-  const { kpiSummary, monthlyTrend } = useOnFarmData()
+  const { kpiSummary, monthlyTrend, setCutoffPeriod } = useOnFarmData()
+
+  // Keep this benchmark focused on the approved source cut-off period.
+  setCutoffPeriod(9, true)
 
   // 1. Authoritative SAP Actual YTD
   assert.equal(
@@ -229,8 +238,9 @@ test('On-Farm Integration 8: Three-layer context preservation and global filter 
     setCutoffPeriod,
   } = useOnFarmData()
 
-  // Baseline cut-off period is 9
-  assert.equal(selectedPeriod.value, 9)
+  // Baseline auto cut-off follows the current calendar month.
+  const currentMonth = getCurrentCalendarMonth()
+  assert.equal(selectedPeriod.value, currentMonth)
   const initialActual = kpiSummary.value.actualYtd
 
   // Simulate applying global filters in Layer 1
@@ -251,7 +261,7 @@ test('On-Farm Integration 8: Three-layer context preservation and global filter 
 
   // Reset filter restores baseline
   selectedEstate.value = 'ALL'
-  setCutoffPeriod(9, false)
+  setCutoffPeriod(currentMonth, false)
   assert.equal(kpiSummary.value.actualYtd, initialActual)
 })
 
@@ -282,7 +292,8 @@ test('On-Farm Integration 8b: Analysis range is staged, applied globally, and cl
   } = useOnFarmData()
 
   const defaultActual = kpiSummary.value.actualYtd
-  assert.deepEqual([analysisRangeStartMonth.value, analysisRangeEndMonth.value], [1, 9])
+  const currentMonth = getCurrentCalendarMonth()
+  assert.deepEqual([analysisRangeStartMonth.value, analysisRangeEndMonth.value], [1, currentMonth])
 
   // Draft changes do not update the committed data scope before Terapkan.
   draftAnalysisRangePreset.value = 'q1'

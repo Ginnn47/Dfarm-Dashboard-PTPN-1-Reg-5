@@ -66,7 +66,7 @@ export function useLeadMeasureData() {
 
   // Estate Options for Dropdown
   const estateOptions = computed(() => [
-    { value: 'ALL', label: 'Semua Kebun (Konsolidasi Regional)' },
+    { value: 'ALL', label: 'Semua Kebun (Regional)' },
     ...estates.value.map((e) => ({ value: e.estateId, label: e.estateName })),
   ])
 
@@ -270,6 +270,7 @@ export function useLeadMeasureData() {
       xAxis: {
         type: 'category',
         data: categories,
+        triggerEvent: true,
         axisLine: { lineStyle: { color: '#e2e8f0' } },
         axisLabel: { color: '#64748b', fontSize: 10 },
       },
@@ -311,8 +312,8 @@ export function useLeadMeasureData() {
     ),
     tapping_day_achievement_pct: buildSingleMetricTrendOption(
       'tapping_day_achievement_pct',
-      '#059669',
-      'rgba(5, 150, 105, 0.22)'
+      '#C8D266',
+      'rgba(200, 210, 102, 0.24)'
     ),
     productivity_per_tapper: buildSingleMetricTrendOption(
       'productivity_per_tapper',
@@ -376,6 +377,93 @@ export function useLeadMeasureData() {
     const activeMonthName = FULL_YEAR_MONTHS.find((m) => m.monthIndex === selectedMonth.value)?.monthLabel
       || availableMonths.value.find((m) => m.monthIndex === selectedMonth.value)?.monthLabel
       || 'Sep'
+
+    const activeDay = !isMonthly && activePeriodIndex.value ? activePeriodIndex.value : null
+    const activeDayStr = activeDay ? `${activeDay}` : null
+    const activeDayIdx = activeDay ? activeDay - 1 : -1
+
+    const calloutSvgPath = 'M -22 -36 H 22 A 6 6 0 0 1 28 -30 V -16 A 6 6 0 0 1 22 -10 H 4 L 0 0 L -4 -10 H -22 A 6 6 0 0 1 -28 -16 V -30 A 6 6 0 0 1 -22 -36 Z'
+
+    function buildActiveDayMarkPoint(seriesMetricCode: LeadMeasureMetricCode, dataArray: Array<number | null>) {
+      if (!activeDayStr || activeDayIdx < 0) return undefined
+
+      const preferredCode = selectedMetric.value
+      const currentVal = dataArray[activeDayIdx]
+      const hasCurrentVal = currentVal != null && Number.isFinite(currentVal)
+
+      const isPreferred = seriesMetricCode === preferredCode
+      if (isPreferred && hasCurrentVal) {
+        return createMarkPointData(currentVal)
+      }
+
+      const preferredSeriesData = preferredCode === 'production_achievement_pct' ? prodData
+        : preferredCode === 'tapping_day_achievement_pct' ? hkdData
+        : preferredCode === 'productivity_per_tapper' ? tapperData
+        : drcData
+      const preferredHasData = preferredSeriesData[activeDayIdx] != null
+
+      if (!preferredHasData && hasCurrentVal) {
+        const firstWithData = prodData[activeDayIdx] != null ? 'production_achievement_pct'
+          : hkdData[activeDayIdx] != null ? 'tapping_day_achievement_pct'
+          : tapperData[activeDayIdx] != null ? 'productivity_per_tapper'
+          : 'drc_pct'
+        if (seriesMetricCode === firstWithData) {
+          return createMarkPointData(currentVal)
+        }
+      }
+
+      if (!preferredHasData && seriesMetricCode === preferredCode) {
+        return createMarkPointData(preferredCode === 'productivity_per_tapper' ? 10 : 100)
+      }
+
+      return undefined
+    }
+
+    function createMarkPointData(yVal: number) {
+      return {
+        animation: false,
+        silent: true,
+        z: 10,
+        data: [
+          // 1. Bracket / Callout badge with connector stem
+          {
+            coord: [activeDayStr, yVal],
+            symbol: `path://${calloutSvgPath}`,
+            symbolSize: [56, 36],
+            symbolOffset: [0, -18],
+            itemStyle: {
+              color: '#ffffff',
+              borderColor: '#166534',
+              borderWidth: 1.5,
+              shadowColor: 'rgba(0, 0, 0, 0.08)',
+              shadowBlur: 6,
+              shadowOffsetY: 2,
+            },
+            label: {
+              show: true,
+              formatter: `${activeDay} ${activeMonthName}`,
+              color: '#166534',
+              fontWeight: 700,
+              fontSize: 11,
+              fontFamily: 'Inter, system-ui, sans-serif',
+              offset: [0, -4],
+            },
+          },
+          // 2. Thick green dot with glowing halo
+          {
+            coord: [activeDayStr, yVal],
+            symbol: 'circle',
+            symbolSize: 10,
+            itemStyle: {
+              color: '#166534',
+              borderColor: 'rgba(22, 101, 52, 0.28)',
+              borderWidth: 6,
+            },
+            label: { show: false },
+          },
+        ],
+      }
+    }
 
     return {
       tooltip: {
@@ -442,7 +530,7 @@ export function useLeadMeasureData() {
         itemGap: 16,
       },
       grid: {
-        top: 36,
+        top: 42,
         right: 48,
         bottom: 24,
         left: 44,
@@ -494,13 +582,16 @@ export function useLeadMeasureData() {
           yAxisIndex: 0,
           smooth: true,
           showSymbol: true,
-          symbolSize: 6,
+          symbolSize: 7,
+          cursor: 'pointer',
           connectNulls: false,
           itemStyle: { color: '#0284c7' },
           lineStyle: { width: 2.5, color: '#0284c7' },
+          markPoint: buildActiveDayMarkPoint('production_achievement_pct', prodData),
           // Hover-only area emphasis: NO areaStyle in normal state!
           emphasis: {
             focus: 'series',
+            scale: 1.5,
             lineStyle: { width: 3.5 },
             areaStyle: {
               color: {
@@ -527,10 +618,12 @@ export function useLeadMeasureData() {
           yAxisIndex: 0,
           smooth: true,
           showSymbol: true,
-          symbolSize: 6,
+          symbolSize: 7,
+          cursor: 'pointer',
           connectNulls: false,
-          itemStyle: { color: '#059669' },
-          lineStyle: { width: 2.5, color: '#059669' },
+          markPoint: buildActiveDayMarkPoint('tapping_day_achievement_pct', hkdData),
+          itemStyle: { color: '#C8D266' },
+          lineStyle: { width: 2.5, color: '#C8D266' },
           emphasis: {
             focus: 'series',
             lineStyle: { width: 3.5 },
@@ -546,8 +639,10 @@ export function useLeadMeasureData() {
           yAxisIndex: 1,
           smooth: true,
           showSymbol: true,
-          symbolSize: 6,
+          symbolSize: 7,
+          cursor: 'pointer',
           connectNulls: false,
+          markPoint: buildActiveDayMarkPoint('productivity_per_tapper', tapperData),
           itemStyle: { color: '#d97706' },
           lineStyle: { width: 2.5, color: '#d97706' },
           emphasis: {
@@ -565,8 +660,10 @@ export function useLeadMeasureData() {
           yAxisIndex: 0,
           smooth: true,
           showSymbol: true,
-          symbolSize: 6,
+          symbolSize: 7,
+          cursor: 'pointer',
           connectNulls: false,
+          markPoint: buildActiveDayMarkPoint('drc_pct', drcData),
           itemStyle: { color: '#6366f1' },
           lineStyle: { width: 2.5, color: '#6366f1' },
           emphasis: {
@@ -625,12 +722,12 @@ export function useLeadMeasureData() {
       const isHighlighted = highlightedEstateId.value === e.estateId
 
       let barColor = '#38bdf8'
-      if (selectedMetric.value === 'tapping_day_achievement_pct') barColor = '#34d399'
+      if (selectedMetric.value === 'tapping_day_achievement_pct') barColor = '#C8D266'
       else if (selectedMetric.value === 'productivity_per_tapper') barColor = '#fbbf24'
       else if (selectedMetric.value === 'drc_pct') barColor = '#818cf8'
 
       let highlightColor = '#0284c7'
-      if (selectedMetric.value === 'tapping_day_achievement_pct') highlightColor = '#059669'
+      if (selectedMetric.value === 'tapping_day_achievement_pct') highlightColor = '#AAB743'
       else if (selectedMetric.value === 'productivity_per_tapper') highlightColor = '#d97706'
       else if (selectedMetric.value === 'drc_pct') highlightColor = '#4f46e5'
 

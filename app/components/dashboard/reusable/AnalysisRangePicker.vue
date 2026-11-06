@@ -77,14 +77,57 @@ function selectPreset(preset: typeof presets.value[number]) {
 }
 
 function updateStart(event: Event) {
-  const value = Math.min(Number((event.target as HTMLInputElement).value), props.endMonth)
-  emit('update:range', { preset: 'custom', startMonth: value, endMonth: props.endMonth })
+  const raw = Number((event.target as HTMLInputElement).value)
+  if (raw > props.endMonth) {
+    emit('update:range', { preset: 'custom', startMonth: props.endMonth, endMonth: raw })
+  } else {
+    emit('update:range', { preset: 'custom', startMonth: raw, endMonth: props.endMonth })
+  }
 }
 
 function updateEnd(event: Event) {
-  const value = Math.max(Number((event.target as HTMLInputElement).value), props.startMonth)
-  emit('update:range', { preset: 'custom', startMonth: props.startMonth, endMonth: value })
+  const raw = Number((event.target as HTMLInputElement).value)
+  if (raw < props.startMonth) {
+    emit('update:range', { preset: 'custom', startMonth: raw, endMonth: props.startMonth })
+  } else {
+    emit('update:range', { preset: 'custom', startMonth: props.startMonth, endMonth: raw })
+  }
 }
+
+function setStartMonth(val: number) {
+  const month = Math.max(1, Math.min(maxPeriod.value, val))
+  if (month > props.endMonth) {
+    emit('update:range', { preset: 'custom', startMonth: month, endMonth: month })
+  } else {
+    emit('update:range', { preset: 'custom', startMonth: month, endMonth: props.endMonth })
+  }
+}
+
+function setEndMonth(val: number) {
+  const month = Math.max(1, Math.min(maxPeriod.value, val))
+  if (month < props.startMonth) {
+    emit('update:range', { preset: 'custom', startMonth: month, endMonth: month })
+  } else {
+    emit('update:range', { preset: 'custom', startMonth: props.startMonth, endMonth: month })
+  }
+}
+
+// When thumbs overlap at the same month:
+// If at month 1: end thumb is on top so user can slide right.
+// If at month > 1 (e.g. 10): start thumb is on top so user can slide left.
+const startZIndex = computed(() => {
+  if (props.startMonth === props.endMonth) {
+    return props.startMonth > 1 ? 5 : 2
+  }
+  return 2
+})
+
+const endZIndex = computed(() => {
+  if (props.startMonth === props.endMonth) {
+    return props.startMonth === 1 ? 5 : 3
+  }
+  return 3
+})
 
 function handleClickOutside(event: MouseEvent) {
   if (pickerRef.value && !pickerRef.value.contains(event.target as Node)) isOpen.value = false
@@ -162,10 +205,44 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside))
               ? 'bg-sky-50 border-sky-200 text-sky-800'
               : 'bg-emerald-50 border-emerald-200 text-emerald-800'"
           >
-            {{ MONTH_NAMES[startMonth - 1] }}–{{ MONTH_NAMES[endMonth - 1] }}
+            {{ MONTH_NAMES[startMonth - 1] }}{{ startMonth === endMonth ? '' : `–${MONTH_NAMES[endMonth - 1]}` }}
           </span>
         </div>
-        <div class="mt-4 px-1" :style="{ '--range-thumb-color': tone === 'sky' ? '#0284c7' : '#059669' }">
+
+        <!-- Quick Select Dropdowns for Exact Month Selection -->
+        <div class="mt-2.5 grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <label class="block text-[10px] font-semibold text-slate-500 mb-1">Dari Bulan</label>
+            <select
+              :value="startMonth"
+              :disabled="disabled"
+              class="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-2.5 py-1.5 text-xs font-semibold text-slate-800 transition-colors focus:bg-white focus:outline-none"
+              :class="tone === 'sky' ? 'focus:border-sky-500 focus:ring-1 focus:ring-sky-500/20' : 'focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20'"
+              @change="setStartMonth(Number(($event.target as HTMLSelectElement).value))"
+            >
+              <option v-for="(name, idx) in MONTH_NAMES.slice(0, maxPeriod)" :key="idx" :value="idx + 1">
+                {{ name }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] font-semibold text-slate-500 mb-1">Sampai Bulan</label>
+            <select
+              :value="endMonth"
+              :disabled="disabled"
+              class="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-2.5 py-1.5 text-xs font-semibold text-slate-800 transition-colors focus:bg-white focus:outline-none"
+              :class="tone === 'sky' ? 'focus:border-sky-500 focus:ring-1 focus:ring-sky-500/20' : 'focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20'"
+              @change="setEndMonth(Number(($event.target as HTMLSelectElement).value))"
+            >
+              <option v-for="(name, idx) in MONTH_NAMES.slice(0, maxPeriod)" :key="idx" :value="idx + 1">
+                {{ name }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Interactive Dual Slider with Dynamic Z-Index -->
+        <div class="mt-3.5 px-1" :style="{ '--range-thumb-color': tone === 'sky' ? '#0284c7' : '#059669' }">
           <div class="relative h-7">
             <div class="absolute inset-x-0 top-3 h-1 rounded-full" :style="{ background: rangeFill }" />
             <input
@@ -175,6 +252,7 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside))
               :max="maxPeriod"
               :value="startMonth"
               :disabled="disabled"
+              :style="{ zIndex: startZIndex }"
               aria-label="Bulan awal rentang analisis"
               @input="updateStart"
             >
@@ -185,6 +263,7 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside))
               :max="maxPeriod"
               :value="endMonth"
               :disabled="disabled"
+              :style="{ zIndex: endZIndex }"
               aria-label="Bulan akhir rentang analisis"
               @input="updateEnd"
             >
@@ -194,7 +273,7 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside))
             <span>{{ MONTH_NAMES[endMonth - 1] }}</span>
           </div>
         </div>
-        <p class="mt-3 text-[10px] leading-4 text-slate-500">Geser kedua penanda untuk menentukan bulan awal dan akhir.</p>
+        <p class="mt-2.5 text-[10px] leading-4 text-slate-500">Geser kedua penanda atau pilih dropdown untuk menentukan bulan awal dan akhir.</p>
       </div>
       <p v-else class="mt-2 text-[10px] text-slate-500">Preset yang redup belum lengkap pada periode data yang tersedia.</p>
     </div>
@@ -224,8 +303,6 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside))
   box-shadow: 0 1px 4px rgb(15 23 42 / 0.28);
   cursor: grab;
 }
-.range-start { z-index: 2; }
-.range-end { z-index: 3; }
 .range-thumb:focus-visible { outline: none; }
 .range-thumb:focus-visible::-webkit-slider-thumb {
   outline: 2px solid #38bdf8;

@@ -20,6 +20,15 @@ export default defineNuxtConfig({
     },
   },
 
+  nitro: {
+    storage: {
+      leadMeasureNotes: {
+        driver: 'fs',
+        base: './.data/lead-measure-notes',
+      },
+    },
+  },
+
   app: {
     head: {
       title: 'DFARM Dashboard',
@@ -46,7 +55,7 @@ export default defineNuxtConfig({
     // Nuxt renders charts as SVG on the server, then the browser uses Canvas.
     renderer: ['canvas', 'svg'],
     charts: ['BarChart', 'LineChart'],
-    components: ['GridComponent', 'TooltipComponent', 'LegendComponent']
+    components: ['GridComponent', 'TooltipComponent', 'LegendComponent', 'TitleComponent', 'DataZoomComponent', 'MarkLineComponent', 'MarkPointComponent']
   },
 
   vite: {

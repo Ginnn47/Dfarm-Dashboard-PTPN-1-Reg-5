@@ -1,5 +1,5 @@
-import type { ProductionRecord } from '../../app/data/production/types.ts'
-import type { ProductionDashboardSuccess } from '../../shared/api/production.ts'
+import { sumAvailable, type ProductionRecord } from '../../app/data/production/types.ts'
+import type { ProductionDashboardSuccess, ProductionValidationDiagnostics } from '../../shared/api/production.ts'
 import { createGoogleSheetsReader, type GoogleSheetsAccessTokenProvider } from './googleSheetsReader.ts'
 import { ProductionApiError } from './productionApiError.ts'
 import { mapProductionSheets, type GoogleSheetCell, type ProductionSheetInput } from './productionMapper.ts'
@@ -42,8 +42,8 @@ function scopeToMonthRange(record: ProductionRecord, query: ProductionDashboardQ
   return {
     ...record,
     months,
-    actual: months.reduce((total, month) => total + month.actual, 0),
-    rkap: months.reduce((total, month) => total + month.rkap, 0),
+    actual: sumAvailable(months.map((month) => month.actual)),
+    rkap: sumAvailable(months.map((month) => month.rkap)),
   }
 }
 
@@ -52,7 +52,38 @@ function combineMappingResults(results: ReturnType<typeof mapProductionSheets>[]
   const warnings = results.flatMap((result) => result.warnings)
   const records = results.flatMap((result) => result.records)
   const totalRows = results.reduce((total, result) => total + result.summary.totalRows, 0)
-  return { issues, warnings, records, totalRows }
+  const acceptedRows = results.reduce((total, result) => total + result.summary.acceptedRows, 0)
+  const rejectedRows = results.reduce((total, result) => total + result.summary.rejectedRows, 0)
+  const diagnostics = results.flatMap((result) => result.diagnostics.sheets)
+  const reasonCounts = diagnostics.reduce<Record<string, number>>((counts, sheet) => {
+    for (const [reason, count] of Object.entries(sheet.reasonCounts)) {
+      counts[reason] = (counts[reason] || 0) + count
+    }
+    return counts
+  }, {})
+  return { issues, warnings, records, totalRows, acceptedRows, rejectedRows, diagnostics: { sheets: diagnostics, reasonCounts } }
+}
+
+function exposeDiagnostics(diagnostics: ReturnType<typeof combineMappingResults>['diagnostics']): ProductionValidationDiagnostics {
+  return {
+    reasonCounts: diagnostics.reasonCounts,
+    sheets: diagnostics.sheets.map((sheet) => ({
+      sheetName: sheet.sheetName,
+      reportingYear: sheet.reportingYear,
+      excludedFromCanonical: sheet.excludedFromCanonical,
+      blankRows: sheet.blankRows,
+      nonBlankRows: sheet.nonBlankRows,
+      candidateRows: sheet.candidateRows,
+      acceptedRows: sheet.acceptedRows,
+      rejectedRows: sheet.structuralRows + sheet.skippedTemplateRows + sheet.invalidRows + sheet.duplicateRows,
+      structuralRows: sheet.structuralRows,
+      skippedTemplateRows: sheet.skippedTemplateRows,
+      invalidRows: sheet.invalidRows,
+      duplicateRows: sheet.duplicateRows,
+      reasonCounts: sheet.reasonCounts,
+      samples: sheet.rowDiagnostics.slice(0, 20),
+    })),
+  }
 }
 
 export async function readProductionDashboard(
@@ -124,9 +155,10 @@ export async function readProductionDashboard(
       validation: {
         status: validationStatus,
         totalRows: combined.totalRows,
-        acceptedRows: combined.records.length,
-        rejectedRows: Math.max(0, combined.totalRows - combined.records.length),
+        acceptedRows: combined.acceptedRows,
+        rejectedRows: combined.rejectedRows,
         warningCount: combined.warnings.length,
+        diagnostics: exposeDiagnostics(combined.diagnostics),
       },
     },
     meta: {

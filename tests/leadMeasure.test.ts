@@ -250,6 +250,22 @@ test('Lead Measure Test 11: Shared metric selection synchronizes both comparison
   assert.equal(estateTableRows.value[0].rank, 1)
 })
 
+test('Lead Measure Test 11b: Metric selector colors match the four trend line identities', () => {
+  const componentPath = path.resolve(process.cwd(), 'app/components/dashboard/leadmeasure/LeadMeasureEstateBarChart.vue')
+  const chartPath = path.resolve(process.cwd(), 'app/components/dashboard/leadmeasure/LeadMeasureTrendChart.vue')
+  const component = fs.readFileSync(componentPath, 'utf8')
+  const chart = fs.readFileSync(chartPath, 'utf8')
+
+  assert.ok(component.includes('bg-[#0284C7]'), 'Production selector must use the production line color')
+  assert.ok(component.includes('bg-[#C8D266]'), 'HKD selector must use the HKD line color')
+  assert.ok(component.includes('bg-[#D97706]'), 'Tapper selector must use the tapper line color')
+  assert.ok(component.includes('bg-[#6366F1]'), 'DRC selector must use the DRC line color')
+  assert.ok(chart.includes("dot: 'bg-[#0284C7]'"), 'Production summary must use the production line color')
+  assert.ok(chart.includes("dot: 'bg-[#C8D266]'"), 'HKD summary must use the HKD line color')
+  assert.ok(chart.includes("dot: 'bg-[#D97706]'"), 'Tapper summary must use the tapper line color')
+  assert.ok(chart.includes("dot: 'bg-[#6366F1]'"), 'DRC summary must use the DRC line color')
+})
+
 test('Lead Measure Test 12: Estate table rows contain all 15 estates with all 4 metrics, and highlighting reacts to highlightedEstateId', () => {
   const { estateTableRows, highlightedEstateId, estateBarOption } = useLeadMeasureData()
 
@@ -400,9 +416,9 @@ test('Lead Measure Test 18: Neutral default state and established metric interac
   // Neutral default: must have bg-white by default
   assert.ok(content.includes('bg-white'), 'Must have neutral bg-white for default state')
 
-  // Established metric colors: sky for production, emerald for tapping, amber for tapper, indigo for drc
+  // Established metric colors: sky for production, red for tapping, amber for tapper, indigo for drc
   assert.ok(content.includes('border-sky-500'), 'Must use sky for production')
-  assert.ok(content.includes('border-emerald-500'), 'Must use emerald for tapping')
+  assert.ok(content.includes('border-[#C8D266]'), 'Must use lime for tapping')
   assert.ok(content.includes('border-amber-500'), 'Must use amber for tapper')
   assert.ok(content.includes('border-indigo-500'), 'Must use indigo for drc')
 
@@ -614,4 +630,78 @@ test('Lead Measure Test 25: Full calendar X-axis coverage for monthly (12 months
   // Reset
   viewMode.value = 'monthly'
   selectedMonth.value = 9
+})
+
+test('Lead Measure Test 26: Daily notes follow the existing global period context', () => {
+  const componentPath = path.resolve(process.cwd(), 'app/components/dashboard/leadmeasure/LeadMeasureObservationNotes.vue')
+  const pagePath = path.resolve(process.cwd(), 'app/pages/production/lead-measure-karet/index.vue')
+  const component = fs.readFileSync(componentPath, 'utf8')
+  const page = fs.readFileSync(pagePath, 'utf8')
+
+  assert.ok(component.includes('viewMode === \'daily\''), 'Daily mode must render the observation editor')
+  assert.ok(component.includes('Belum ada catatan untuk tanggal ini.'), 'Empty state must stay compact')
+  assert.ok(component.includes('Tambahkan Catatan'), 'Empty state must provide an add action')
+  assert.ok(component.includes('Tersimpan'), 'Saved state must show persistence status')
+  assert.ok(component.includes('Edit'), 'Saved state must provide an edit action')
+  assert.ok(component.includes('Batal'), 'Editing state must provide a cancel action')
+  assert.ok(component.includes('Catatan Kinerja Bulanan'), 'Monthly mode must render the notes summary')
+  assert.ok(component.includes('Tuliskan catatan anomali atau perubahan kinerja...'), 'The editor must use the approved compact placeholder')
+  assert.ok(component.includes('maxlength="500"'), 'The notes editor must enforce the 500-character limit')
+  assert.ok(component.includes('Lihat Catatan Bulanan'), 'Monthly notes must be inspectable')
+  assert.ok(page.includes('useLeadMeasureNotes'), 'The page must initialize the notes composable')
+  assert.ok(page.includes(':note="currentNote"'), 'The page must pass the persisted note to the UI')
+  assert.ok(page.includes('@cancel="cancelNoteEdit"'), 'The page must wire cancel to the notes composable')
+  assert.ok(page.includes('activePeriodIndex'), 'Notes must use the existing active period state')
+  assert.ok(page.includes('v-model:content="noteContent"'), 'The page must bind the notes editor to the composable')
+})
+
+test('Lead Measure Test 27: Interactive chart point clicking on any metric line applies the daily date filter', () => {
+  const chartPath = 'app/components/dashboard/leadmeasure/LeadMeasureTrendChart.vue'
+  const pagePath = 'app/pages/production/lead-measure-karet/index.vue'
+  const chartCode = fs.readFileSync(chartPath, 'utf8')
+  const pageCode = fs.readFileSync(pagePath, 'utf8')
+
+  // 1. Component template and emits contract
+  assert.ok(chartCode.includes("select-day"), 'LeadMeasureTrendChart must declare select-day emit')
+  assert.ok(chartCode.includes("select-month"), 'LeadMeasureTrendChart must declare select-month emit')
+  assert.ok(chartCode.includes('@click="handleChartClick"'), 'v-chart must listen to click events')
+  assert.ok(chartCode.includes('@zr:click="handleZrClick"'), 'v-chart must listen to zr click events')
+
+  // 2. Page template event binding
+  assert.ok(pageCode.includes('@select-day="onTrendSelectDay"'), 'Page must bind select-day event')
+  assert.ok(pageCode.includes('@select-month="onTrendSelectMonth"'), 'Page must bind select-month event')
+  assert.ok(pageCode.includes("function onTrendSelectDay"), 'Page must implement onTrendSelectDay handler')
+
+  // 3. Functional behavior via useLeadMeasureData
+  const { viewMode, selectedMonth, selectedDay, activePeriodIndex, metricCards, combinedTrendChartOption } = useLeadMeasureData()
+
+  // Switch to daily mode for October
+  viewMode.value = 'daily'
+  selectedMonth.value = 10
+
+  // Click day 15 on any of the 4 metric lines
+  selectedDay.value = 15
+  assert.equal(activePeriodIndex.value, 15, 'Active period index must immediately switch to day 15')
+  assert.equal(metricCards.value.length, 4, 'Must have 4 metric containers')
+
+  // Verify markPoint on trend chart highlights active day 15 with bracket and thick green dot (no blue markLine)
+  const chartOpt15 = combinedTrendChartOption.value
+  const activeSeries15 = chartOpt15.series.find((s: any) => s.markPoint)
+  assert.ok(activeSeries15?.markPoint, 'Active day markPoint must exist in daily mode')
+  assert.equal(activeSeries15.markPoint.data[0].coord[0], '15', 'MarkPoint must highlight day 15')
+  assert.equal(activeSeries15.markPoint.data[1].symbol, 'circle', 'MarkPoint must render thick green dot')
+  assert.equal(activeSeries15.markPoint.data[1].itemStyle.color, '#166534', 'Dot must be dark green')
+  assert.ok(!activeSeries15.markLine, 'Must not use blue markLine')
+
+  // Click day 20
+  selectedDay.value = 20
+  assert.equal(activePeriodIndex.value, 20, 'Active period index must immediately switch to day 20')
+  const chartOpt20 = combinedTrendChartOption.value
+  const activeSeries20 = chartOpt20.series.find((s: any) => s.markPoint)
+  assert.equal(activeSeries20.markPoint.data[0].coord[0], '20', 'MarkPoint must highlight day 20')
+
+  // Reset
+  viewMode.value = 'monthly'
+  selectedMonth.value = 9
+  selectedDay.value = null
 })

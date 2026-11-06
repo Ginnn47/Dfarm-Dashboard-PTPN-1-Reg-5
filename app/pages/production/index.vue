@@ -20,6 +20,8 @@ import {
   File01Icon,
   ArrowLeft01Icon,
   Settings02Icon,
+  Calendar01Icon,
+  ArrowDown01Icon,
 } from '@hugeicons/core-free-icons'
 import DataLoadingState from '~/components/dashboard/reusable/DataLoadingState.vue'
 import { computed, ref } from 'vue'
@@ -30,6 +32,7 @@ import {
   useProductionDashboard,
   type ProductionDashboardFilters,
 } from '~/composables/useProductionDashboard'
+import { aggregateMonthly } from '~/data/production/types'
 
 useHead({ title: 'Production Monitoring | DFARM' })
 
@@ -79,6 +82,8 @@ const {
   selectedMonth,
   selectedRange,
 } = useProductionDashboard(filters)
+
+const allMonthlyData = computed(() => aggregateMonthly(filteredRecords.value))
 
 const productionRangeLabel = computed(() => {
   const start = productionMonthOptions[selectedRange.value.start - 1]?.label || ''
@@ -143,12 +148,17 @@ function formatCompact(value: number | null | undefined) {
   if (value == null) return 'Tidak tersedia'
   return formatNumberCompact(value)
 }
+const pageContainer = ref<HTMLElement | null>(null)
+
+useDashboardEntranceAnimation(pageContainer, {
+  isReady: computed(() => !isLoading.value),
+})
 </script>
 
 <template>
-  <div class="space-y-7 pb-10">
+  <div ref="pageContainer" class="space-y-7 pb-10">
     <!-- Header Section -->
-    <header class="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <header data-animate-section class="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <!-- Breadcrumbs -->
         <nav aria-label="Breadcrumb" class="flex items-center gap-1.5 text-xs font-semibold text-slate-400 mb-1.5">
@@ -242,6 +252,7 @@ function formatCompact(value: number | null | undefined) {
     <!-- FULL PHASE 2.6 DASHBOARD (RENDERED WHEN SOURCE IS AVAILABLE) -->
     <template v-else>
       <DashboardProdProductionFilterBar
+        data-animate-section
         v-model="filters"
         :tahun-options="yearOptions"
         :bulan-options="productionMonthOptions"
@@ -251,11 +262,10 @@ function formatCompact(value: number | null | undefined) {
         :tahun-tanam-options="plantingYearOptions"
         :record-count="filteredRecords.length"
         show-tahun-tanam
-        @apply="applyProductionFilters"
         @reset="resetProductionFilters"
       />
 
-      <section aria-labelledby="metric-summary">
+      <section data-animate-section aria-labelledby="metric-summary">
         <div class="mb-4 flex items-end justify-between gap-4">
           <div><p class="text-xs font-bold uppercase tracking-[0.14em] text-sky-700">Ringkasan</p><h2 id="metric-summary" class="mt-1 text-xl font-bold text-slate-900">Kondisi produksi</h2></div>
           <p class="text-xs font-medium text-slate-500">Rentang: {{ productionRangeLabel }} {{ filters.tahun || '(Semua Tahun)' }}</p>
@@ -269,13 +279,37 @@ function formatCompact(value: number | null | undefined) {
         </div>
       </section>
            <!-- Production Data Stream as passive attention layer -->
-      <section aria-label="Production stream ticker">
-        <DashboardProdProductionDataStream :records="periodRecords" />
+      <section data-animate-section aria-label="Production stream ticker">
+        <DashboardProdProductionDataStream
+          :records="periodRecords"
+          :source-label="activeSourceId === 'google-sheets' ? 'Google Sheets' : 'Development Data'"
+        />
       </section>
 
-      <section class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_260px]">
-        <DashboardReusableChartCard title="Tren Produksi" :icon="Chart02Icon" description="Realisasi dan RKAP bulanan dari fixture development." :state="monthlyData.length ? 'populated' : 'empty'" :footer="activeSourceMeta.workbook ? `Data Development· ${activeSourceMeta.workbook}` : activeSourceMeta.name">
-          <DashboardProdProductionTrendChart :data="monthlyData" />
+      <section data-animate-section class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_260px]">
+        <DashboardReusableChartCard
+          title="Tren Produksi"
+          :icon="Chart02Icon"
+          :icon-tone="selectedMonth ? 'emerald' : 'emerald'"
+          :description="selectedMonth ? ('Realisasi vs RKAP · Spotlight: ' + (productionMonthOptions[selectedMonth - 1]?.label || '') + ' ' + (filters.tahun || '2026')) : 'Realisasi dan RKAP bulanan dari sumber Production aktif.'"
+          :state="monthlyData.length ? 'populated' : 'empty'"
+          :footer="activeSourceMeta.workbook ? `${activeSourceMeta.name} · ${activeSourceMeta.workbook}` : activeSourceMeta.name"
+        >
+          <template #actions>
+            <div
+              v-if="selectedMonth"
+              class="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-800 shadow-2xs"
+            >
+              <HugeiconsIcon :icon="Calendar01Icon" class="size-4 text-slate-700" />
+              <span>{{ productionMonthOptions[selectedMonth - 1]?.label }} {{ filters.tahun || '2026' }}</span>
+              <HugeiconsIcon :icon="ArrowDown01Icon" class="size-3.5 text-slate-500" />
+            </div>
+          </template>
+          <DashboardProdProductionTrendChart
+            :data="monthlyData"
+            :full-data="allMonthlyData"
+            :selected-month="selectedMonth"
+          />
         </DashboardReusableChartCard>
         
         <aside
@@ -292,7 +326,7 @@ function formatCompact(value: number | null | undefined) {
         </aside>
       </section>
 
-      <section class="grid gap-6 2xl:grid-cols-2">
+      <section data-animate-section class="grid gap-6 2xl:grid-cols-2">
         <!-- Produksi per Kebun / Afdeling dengan Toggle Switch -->
         <DashboardReusableChartCard
           :title="estateChartTitle"
@@ -331,7 +365,7 @@ function formatCompact(value: number | null | undefined) {
       </section>
 
       <!-- Produksi berdasarkan Tahun Tanam (Layered Shadow Bar) -->
-      <section>
+      <section data-animate-section>
         <DashboardReusableChartCard
           title="Produksi berdasarkan Tahun Tanam"
           :icon="Calendar03Icon"
@@ -358,11 +392,16 @@ function formatCompact(value: number | null | undefined) {
               </button>
             </div>
           </template>
-          <DashboardProdProductionByPlantingYearChart :data="plantingYearData" :mode="plantingYearMode" />
+          <DashboardProdProductionByPlantingYearChart
+            :data="plantingYearData"
+            :mode="plantingYearMode"
+            :records="filteredRecords"
+            :selected-range="selectedRange"
+          />
         </DashboardReusableChartCard>
       </section>
 
-      <section>
+      <section data-animate-section>
         <div class="mb-4"><p class="text-xs font-bold uppercase tracking-[0.14em] text-sky-700">Detail</p><h2 class="mt-1 text-xl font-bold text-slate-900">Detail Produksi</h2></div>
         <DashboardReusableChartCard title="Detail kebun dan tahun tanam" :icon="DatabaseSearchIcon" :description="tableDescription" :state="periodRecords.length ? 'populated' : 'empty'" :footer="activeSourceMeta.sheet ? `Source sheet: ${activeSourceMeta.sheet}` : activeSourceMeta.name">
           <DashboardProdProductionTable :data="periodRecords" :page-size="12" />

@@ -88,7 +88,7 @@ test('Production mapper: carries an afdeling through grouped detail rows', () =>
   assert.equal(result.records[1]?.afdeling, 'Afd. Pakaoda')
 })
 
-test('Production mapper: blank and dash monthly values represent zero, while formula errors remain invalid', () => {
+test('Production mapper: blank and dash monthly values remain unavailable, while formula errors remain invalid', () => {
   const blankRow = productionRow({ afdeling: 'Afd. Pakaoda', plantingYear: 2005 })
   blankRow[6] = ''
   const blankResult = mapProductionSheetValues({
@@ -102,7 +102,7 @@ test('Production mapper: blank and dash monthly values represent zero, while for
   assert.equal(blankResult.isValid, true)
   assert.equal(blankResult.issues.length, 0)
   assert.equal(blankResult.records.length, 1)
-  assert.equal(blankResult.records[0]?.months[0]?.rkap, 0)
+  assert.equal(blankResult.records[0]?.months[0]?.rkap, null)
 
   const dashRow = productionRow({ afdeling: 'Afd. Pakaoda', plantingYear: 2005 })
   dashRow[18] = '-'
@@ -116,7 +116,7 @@ test('Production mapper: blank and dash monthly values represent zero, while for
 
   assert.equal(dashResult.isValid, true)
   assert.equal(dashResult.records.length, 1)
-  assert.equal(dashResult.records[0]?.months[0]?.actual, 0)
+  assert.equal(dashResult.records[0]?.months[0]?.actual, null)
 
   const emptyMeasureRow = productionRow({ afdeling: 'Afd. Pakaoda', plantingYear: 2005, area: '', population: '-', rkap: [10], actual: [7] })
   const emptyMeasureResult = mapProductionSheetValues({
@@ -128,10 +128,10 @@ test('Production mapper: blank and dash monthly values represent zero, while for
   }, 2026)
 
   assert.equal(emptyMeasureResult.isValid, true)
-  assert.equal(emptyMeasureResult.records[0]?.area, 0)
-  assert.equal(emptyMeasureResult.records[0]?.population, 0)
+  assert.equal(emptyMeasureResult.records[0]?.area, null)
+  assert.equal(emptyMeasureResult.records[0]?.population, null)
 
-  const placeholderRow = productionRow({ afdeling: '', plantingYear: 2005, area: 0, population: 0 })
+  const placeholderRow = productionRow({ afdeling: 'Afd. Zero', plantingYear: 2005, area: 0, population: 0 })
   const placeholderResult = mapProductionSheetValues({
     sheetName: 'Prod Per TT Karet',
     values: createSheetRows([
@@ -141,7 +141,43 @@ test('Production mapper: blank and dash monthly values represent zero, while for
   }, 2026)
 
   assert.equal(placeholderResult.isValid, true)
-  assert.equal(placeholderResult.records.length, 0)
+  assert.equal(placeholderResult.records.length, 1)
+  assert.equal(placeholderResult.records[0]?.actual, 0)
+  assert.equal(placeholderResult.records[0]?.rkap, 0)
+
+  const blankProductionRow = Array<GoogleSheetCell>(30).fill('')
+  blankProductionRow[0] = 'KARET'
+  blankProductionRow[2] = 'Afd. Blank'
+  blankProductionRow[3] = 2007
+  blankProductionRow[4] = ''
+  blankProductionRow[5] = '-'
+  const blankProductionResult = mapProductionSheetValues({
+    sheetName: 'Prod Per TT Karet',
+    values: createSheetRows([
+      ['KARET', 'SGL', 'Sungailembu', '', '', ''],
+      blankProductionRow,
+    ]),
+  }, 2026)
+
+  assert.equal(blankProductionResult.records.length, 0)
+  assert.equal(blankProductionResult.summary.skippedTemplateRows, 1)
+
+  const unavailableActualRow = productionRow({
+    afdeling: 'Afd. Unavailable',
+    plantingYear: 2008,
+    rkap: Array<GoogleSheetCell>(12).fill(''),
+    actual: Array<GoogleSheetCell>(12).fill(''),
+  })
+  const unavailableActualResult = mapProductionSheetValues({
+    sheetName: 'Prod Per TT Karet',
+    values: createSheetRows([
+      ['KARET', 'SGL', 'Sungailembu', '', '', ''],
+      unavailableActualRow,
+    ]),
+  }, 2026)
+
+  assert.equal(unavailableActualResult.records.length, 1)
+  assert.equal(unavailableActualResult.records[0]?.actual, null)
 
   const invalidRow = productionRow({ afdeling: 'Afd. Pakaoda', plantingYear: 2005 })
   invalidRow[18] = '#VALUE!'
@@ -232,4 +268,63 @@ test('Production mapper: summary sheets are ignored and detail records remain av
   assert.equal(result.isValid, true)
   assert.equal(result.records.length, 1)
   assert.ok(result.warnings.some((warning) => warning.includes('PRODUKSI')))
+})
+
+test('Production mapper: row accounting separates structural, template, invalid, and duplicate rows', () => {
+  const validRow = productionRow({ afdeling: 'Afd. Pakaoda', plantingYear: 2005, rkap: [10], actual: [7] })
+  const templateRow = productionRow({ afdeling: 'Afd. Pakaoda', plantingYear: 2006, area: 0, population: 0 })
+  const invalidRow = productionRow({ afdeling: 'Afd. Pakaoda', plantingYear: 1800, rkap: [10], actual: [7] })
+  const duplicateRow = productionRow({ afdeling: 'Afd. Pakaoda', plantingYear: 2005, rkap: [10], actual: [7] })
+  const subtotalRow = productionRow({ afdeling: 'Jumlah', plantingYear: 2005, rkap: [10], actual: [7] })
+
+  const result = mapProductionSheetValues({
+    sheetName: 'Prod Per TT Karet',
+    values: createSheetRows([
+      ['KARET', 'SGL', 'Sungailembu', '', '', ''],
+      validRow,
+      [],
+      templateRow,
+      invalidRow,
+      duplicateRow,
+      subtotalRow,
+    ]),
+  }, 2026)
+
+  assert.equal(result.summary.totalRows, 6)
+  assert.equal(result.summary.blankRows, 1)
+  assert.equal(result.summary.candidateRows, 4)
+  assert.equal(result.summary.acceptedRows, 2)
+  assert.equal(result.summary.structuralRows, 2)
+  assert.equal(result.summary.skippedTemplateRows, 0)
+  assert.equal(result.summary.invalidRows, 1)
+  assert.equal(result.summary.duplicateRows, 1)
+  assert.equal(result.summary.rejectedRows, 4)
+  assert.equal(result.diagnostics.sheets[0]?.reasonCounts.CONTEXT_ROW, 1)
+  assert.equal(result.diagnostics.sheets[0]?.reasonCounts.SUBTOTAL_ROW, 1)
+  assert.equal(result.diagnostics.sheets[0]?.reasonCounts.ZERO_MEASURE_TEMPLATE, undefined)
+  assert.equal(result.diagnostics.sheets[0]?.reasonCounts.INVALID_YEAR, 1)
+  assert.equal(result.diagnostics.sheets[0]?.reasonCounts.DUPLICATE_RECORD, 1)
+  assert.deepEqual(
+    result.diagnostics.sheets[0]?.rowDiagnostics.map((diagnostic) => diagnostic.sourceRow),
+    [3, 7, 8, 9],
+  )
+})
+
+test('Production mapper: deduplication preserves same-named estates with different estate codes', () => {
+  const firstRecord = productionRow({ afdeling: 'Afd. Pakaoda', plantingYear: 2005, rkap: [10], actual: [7] })
+  const secondRecord = productionRow({ afdeling: 'Afd. Pakaoda', plantingYear: 2005, rkap: [12], actual: [8] })
+  const result = mapProductionSheetValues({
+    sheetName: 'Prod Per TT Karet',
+    values: createSheetRows([
+      ['KARET', 'SGL', 'Sungailembu', '', '', ''],
+      firstRecord,
+      ['KARET', 'PSW', 'Sungailembu', '', '', ''],
+      secondRecord,
+    ]),
+  }, 2026)
+
+  assert.equal(result.isValid, true)
+  assert.equal(result.records.length, 2)
+  assert.deepEqual(result.records.map((record) => record.estateCode), ['SGL', 'PSW'])
+  assert.equal(result.summary.duplicateRows, 0)
 })

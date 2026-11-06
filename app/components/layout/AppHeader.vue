@@ -10,16 +10,15 @@ const { isCollapsed, toggleCollapse } = useSidebar()
 
 <template>
   <header
-    class="sticky top-0 z-20 w-full border-b border-slate-200/90 bg-white/95 backdrop-blur-md transition-all"
-    style="background: linear-gradient(120deg, rgba(29, 200, 43, 0.10) 0%, rgba(29, 200, 43, 0.06) 20%, rgba(71, 165, 222, 0.09) 45%, rgba(71, 165, 222, 0.06) 65%, rgba(250, 179, 61, 0.08) 85%, rgba(250, 179, 61, 0.04) 100%)"
+    class="sticky top-0 z-20 w-full px-3 py-3 sm:px-5 lg:px-7"
   >
-    <div class="flex h-16 sm:h-18 items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6 lg:px-8">
-      <!-- Left: Collapse Button + DFARM Monitoring title -->
-      <div class="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+    <div class="navbar-glass grid min-h-14 grid-cols-[auto_1fr_auto] items-center gap-2 rounded-[24px] px-2.5 py-2 sm:gap-3 sm:px-3 lg:px-4">
+      <!-- Left: navigation controls -->
+      <div class="flex min-w-0 items-center justify-self-start gap-2 sm:gap-3">
         <!-- Desktop Collapse Button -->
         <button
           type="button"
-          class="hidden lg:flex size-9 shrink-0 items-center justify-center rounded-xl bg-white/85 text-slate-700 shadow-xs border border-white/80 transition-all hover:bg-white hover:text-sky-600 hover:shadow-sm focus:outline-none"
+          class="navbar-control hidden lg:flex"
           :title="isCollapsed ? 'Perluas sidebar' : 'Ciutkan sidebar'"
           :aria-label="isCollapsed ? 'Perluas sidebar' : 'Ciutkan sidebar'"
           @click="toggleCollapse"
@@ -35,7 +34,7 @@ const { isCollapsed, toggleCollapse } = useSidebar()
         <!-- Mobile Drawer Toggle Button -->
         <button
           type="button"
-          class="flex lg:hidden size-9 shrink-0 items-center justify-center rounded-xl bg-white/85 text-slate-700 shadow-xs border border-white/80 transition-all hover:bg-white hover:text-sky-600"
+          class="navbar-control flex lg:hidden"
           aria-label="Buka navigasi"
           @click="$emit('toggleNavigation')"
         >
@@ -46,34 +45,18 @@ const { isCollapsed, toggleCollapse } = useSidebar()
           </span>
         </button>
 
-        <div class="min-w-0">
-          <p class="truncate text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-tight">D-Farm Dashboard Monitoring</p>
-          <p class="hidden sm:block text-xs font-medium text-slate-500">Bidang Tanaman dan Teknik Pengolahan</p>
-        </div>
+        <NuxtLink to="/" class="flex min-w-0 flex-col justify-center text-left" aria-label="D-Farm Dashboard Monitoring">
+          <p class="truncate text-left text-xs font-bold leading-tight tracking-tight text-slate-900 dark:text-slate-100 sm:text-sm">D-Farm Dashboard Monitoring</p>
+          <p class="hidden truncate text-left text-[10px] font-medium leading-tight text-slate-500 dark:text-slate-400 sm:block sm:text-[11px]">Bidang Tanaman dan Teknik Pengolahan</p>
+        </NuxtLink>
       </div>
 
-      <!-- Center: Pill Search Input -->
-      <div class="hidden md:flex flex-1 max-w-md lg:max-w-lg mx-2 lg:mx-6">
-        <div class="relative w-full">
-          <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
-            <svg class="size-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-            </svg>
-          </div>
-          <input
-            type="text"
-            placeholder="Search..."
-            class="h-10 w-full rounded-full border border-white/80 bg-white/95 pl-10 pr-4 text-sm text-slate-800 shadow-xs backdrop-blur-xs placeholder:text-slate-400 focus:border-sky-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-200/50 transition-all"
-          />
-        </div>
-      </div>
-
-      <!-- Right: Settings Icon, User Area Pill, Avatar D -->
-      <div class="flex items-center gap-2 sm:gap-3 shrink-0">
-        <!-- Settings Icon (replaces 'Coming later' as requested) -->
+      <!-- Right: Settings, theme, and profile -->
+      <div class="flex shrink-0 items-center justify-self-end gap-1.5 sm:gap-2">
+        <!-- Settings Icon -->
         <button
           type="button"
-          class="flex size-9 sm:size-10 items-center justify-center rounded-full border border-white/80 bg-white/90 text-slate-600 shadow-xs transition-all hover:bg-white hover:text-sky-600 hover:shadow-sm"
+          class="navbar-control flex"
           title="Pengaturan"
           aria-label="Pengaturan"
         >
@@ -83,14 +66,22 @@ const { isCollapsed, toggleCollapse } = useSidebar()
           </svg>
         </button>
 
-        <!-- User Area Pill -->
-        <span class="hidden sm:inline-flex items-center rounded-full border border-white/80 bg-white/90 px-4 py-1.5 text-xs font-semibold text-slate-700 shadow-xs">
-          User area
-        </span>
+        <!-- Theme toggle -->
+        <button
+          type="button"
+          class="navbar-control flex cursor-not-allowed"
+          title="Mode gelap akan tersedia nanti"
+          aria-label="Mode gelap akan tersedia nanti"
+          aria-disabled="true"
+        >
+          <svg class="size-[17px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
+          </svg>
+        </button>
 
         <!-- Profile Avatar D -->
         <div
-          class="flex size-9 sm:size-10 items-center justify-center rounded-full bg-[#d7edf9] text-sm sm:text-base font-bold text-[#1a85c7] shadow-xs border-2 border-white"
+          class="flex size-9 items-center justify-center rounded-full border border-white/80 bg-[#dceeff] text-sm font-bold text-[#2876b5] shadow-sm dark:border-slate-500 dark:bg-slate-700 dark:text-sky-200 sm:size-10 sm:text-base"
           aria-label="Profile"
         >
           D
@@ -99,3 +90,45 @@ const { isCollapsed, toggleCollapse } = useSidebar()
     </div>
   </header>
 </template>
+
+<style scoped>
+.navbar-glass {
+  background: rgba(255, 255, 255, 0.56);
+  border: 1px solid rgba(255, 255, 255, 0.74);
+  box-shadow: 0 8px 24px rgba(26, 70, 48, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.68);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+.navbar-control {
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.28);
+  color: #475569;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.navbar-control:hover {
+  border-color: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.78);
+  color: #15803d;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.07);
+}
+
+.navbar-control:focus-visible {
+  outline: 2px solid rgba(34, 169, 92, 0.75);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navbar-control {
+    transition: none;
+  }
+}
+</style>

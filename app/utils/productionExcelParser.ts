@@ -1,5 +1,6 @@
 import {
   BULAN_LABELS,
+  sumAvailable,
   type ProductionRecord,
   type MonthlyValue,
 } from '../data/production/types.ts'
@@ -655,8 +656,8 @@ export async function parseProductionWorkbook(
   const commodities = Array.from(new Set(deduplicatedRecords.map((r) => r.commodity))).sort()
   const estates = Array.from(new Set(deduplicatedRecords.map((r) => r.estate))).sort()
   const afdelings = Array.from(new Set(deduplicatedRecords.map((r) => r.afdeling))).sort()
-  const totalActual = deduplicatedRecords.reduce((sum, r) => sum + r.actual, 0)
-  const totalRkap = deduplicatedRecords.reduce((sum, r) => sum + r.rkap, 0)
+  const totalActual = sumAvailable(deduplicatedRecords.map((r) => r.actual)) ?? 0
+  const totalRkap = sumAvailable(deduplicatedRecords.map((r) => r.rkap)) ?? 0
   const matchedCount = deduplicatedRecords.filter((r) => r.identityStatus === 'matched').length
   const matchRatePercent = deduplicatedRecords.length ? Math.round((matchedCount / deduplicatedRecords.length) * 100) : 0
   const totalDiscoveredRows = worksheetDiagnostics.reduce((sum, d) => sum + d.candidateRows, 0)
@@ -744,8 +745,8 @@ export function parseProductionJson(jsonText: string, targetReportingYear = 2026
   const commodities = Array.from(new Set(records.map((r) => r.commodity))).sort()
   const estates = Array.from(new Set(records.map((r) => r.estate))).sort()
   const afdelings = Array.from(new Set(records.map((r) => r.afdeling))).sort()
-  const totalActual = records.reduce((sum, r) => sum + r.actual, 0)
-  const totalRkap = records.reduce((sum, r) => sum + r.rkap, 0)
+  const totalActual = sumAvailable(records.map((r) => r.actual)) ?? 0
+  const totalRkap = sumAvailable(records.map((r) => r.rkap)) ?? 0
   const matchedCount = records.filter((r) => r.identityStatus === 'matched').length
   const matchRatePercent = Math.round((matchedCount / records.length) * 100)
 

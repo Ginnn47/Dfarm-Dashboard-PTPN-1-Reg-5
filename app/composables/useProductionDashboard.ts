@@ -7,6 +7,7 @@ import {
   aggregateMonthly,
   BULAN_LABELS,
   computeKpis,
+  sumAvailable,
   type AfdelingAggregate,
   type EstateAggregate,
   type PlantingYearAggregate,
@@ -94,8 +95,8 @@ export function useProductionDashboard(filters: Ref<ProductionDashboardFilters>)
       const periods = record.months.slice(selectedRange.value.start - 1, selectedRange.value.end)
       return {
         ...record,
-        actual: periods.reduce((total, period) => total + (period?.actual ?? 0), 0),
-        rkap: periods.reduce((total, period) => total + (period?.rkap ?? 0), 0),
+        actual: sumAvailable(periods.map((period) => period?.actual)),
+        rkap: sumAvailable(periods.map((period) => period?.rkap)),
       }
     })
   })
@@ -151,9 +152,10 @@ export function useProductionDashboard(filters: Ref<ProductionDashboardFilters>)
   const estateData = computed(() => aggregateByEstate(periodRecords.value))
   const afdelingData = computed(() => aggregateByAfdeling(periodRecords.value))
   const plantingYearData = computed(() => aggregateByPlantingYear(periodRecords.value))
-  const comparisonAvailable = computed(() => metrics.value.totalRkap > 0)
+  const comparisonAvailable = computed(() => metrics.value.totalRkap != null && metrics.value.totalRkap > 0)
   const rkapDifferencePercent = computed(() => metrics.value.achievement == null ? null : metrics.value.achievement - 100)
-  const peakMonth = computed(() => [...monthlyData.value].sort((a, b) => b.actual - a.actual)[0] || null)
+  const peakMonth = computed(() => [...monthlyData.value]
+    .sort((a, b) => (b.actual ?? Number.NEGATIVE_INFINITY) - (a.actual ?? Number.NEGATIVE_INFINITY))[0] || null)
   const leadingEstate = computed(() => estateData.value[0] || null)
   const belowTargetEstates = computed(() => estateData.value.filter((item) => item.variance != null && item.variance < 0).length)
 

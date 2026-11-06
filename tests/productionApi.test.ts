@@ -109,6 +109,9 @@ test('Production API service: combines detail sheets, excludes summary sheets, a
     const result = await readProductionDashboard(multiSheetSourceConfig())
     assert.equal(result.data.records.length, 2)
     assert.equal(result.data.validation.warningCount, 2)
+    assert.equal(result.data.validation.diagnostics?.reasonCounts.DUPLICATE_RECORD_CROSS_SHEET, 1)
+    assert.equal(result.data.validation.diagnostics?.reasonCounts.SUMMARY_SHEET_EXCLUDED, 1)
+    assert.equal(result.data.validation.diagnostics?.sheets.some((sheet) => sheet.sheetName === 'REKAP Prod per TT' && sheet.excludedFromCanonical), true)
   } finally {
     globalThis.fetch = originalFetch
   }

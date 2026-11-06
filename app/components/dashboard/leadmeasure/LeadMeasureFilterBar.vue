@@ -48,7 +48,7 @@ const estatePopupRef = ref<HTMLElement | null>(null)
 
 const selectedEstateLabel = computed(() => {
   const found = props.estateOptions.find((opt) => opt.value === selectedEstate.value)
-  return found?.label || 'Semua Kebun (Konsolidasi Regional)'
+  return found?.label || 'Semua Kebun (Regional)'
 })
 
 const filteredEstates = computed(() => {

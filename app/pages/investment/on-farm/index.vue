@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import {
   Plant03Icon,
@@ -72,6 +72,8 @@ const {
   availableAfdelings,
   availableActivities,
 
+  filteredTransactionsAllPeriods,
+  filteredBudgetPlans,
   filteredTransactionsRange,
   kpiSummary,
   monthlyTrend,
@@ -85,6 +87,54 @@ const {
   resetFilters,
   applyAnalysisRange,
 } = useOnFarmData()
+
+const fullMonthlyTrend = computed(() => {
+  const trend = []
+  let runningActual = 0
+  let runningBudget = 0
+  const monthLabels = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
+  for (let m = 1; m <= 12; m++) {
+    const monthActual = filteredTransactionsAllPeriods.value
+      .filter((tx) => tx.period === m)
+      .reduce((sum, tx) => sum + tx.actualCost, 0)
+    runningActual += monthActual
+
+    const monthBudget = filteredBudgetPlans.value.reduce((sum, p) => {
+      const alloc = p.monthlyAllocations.find((item) => item.period === m)
+      const val = alloc?.budgetCost ?? (alloc?.cumulativeBudget || 0)
+      return sum + (typeof val === "number" ? val : 0)
+    }, 0)
+    runningBudget += monthBudget
+
+    trend.push({
+      period: m,
+      monthLabel: monthLabels[m - 1],
+      isAvailable: m <= selectedPeriod.value,
+      actual: monthActual,
+      budget: monthBudget,
+      cumulativeActual: m <= selectedPeriod.value ? runningActual : null,
+      cumulativeBudget: runningBudget,
+    })
+  }
+  return trend
+})
+
+const isSingleMonthRange = computed(() => analysisRangeStartMonth.value === analysisRangeEndMonth.value)
+const selectedSpotlightMonth = computed(() => {
+  if (isSingleMonthRange.value) {
+    return analysisRangeStartMonth.value
+  }
+  return null
+})
+
+function handleApplyAnalysisRange(val?: { preset: any; startMonth: number; endMonth: number }) {
+  if (val) {
+    draftAnalysisRangePreset.value = val.preset
+    draftAnalysisRangeStartMonth.value = val.startMonth
+    draftAnalysisRangeEndMonth.value = val.endMonth
+  }
+  applyAnalysisRange()
+}
 
 const { onFarmActiveSourceId, setDomainActiveSource } = useDataSource()
 
@@ -152,12 +202,17 @@ function handleViewTransactions(payload: string | { projectCode: string; wbsElem
 function clearProjectFilter() {
   selectedProject.value = null
 }
+const pageContainer = ref<HTMLElement | null>(null)
+
+useDashboardEntranceAnimation(pageContainer, {
+  isReady: computed(() => !store.isLoadingRemote.value),
+})
 </script>
 
 <template>
-  <div class="mx-auto max-w-7xl space-y-7 pb-16">
+  <div ref="pageContainer" class="mx-auto max-w-7xl space-y-7 pb-16">
     <!-- Header Section -->
-    <header class="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <header data-animate-section class="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <!-- Breadcrumbs -->
         <nav aria-label="Breadcrumb" class="flex items-center gap-1.5 text-xs font-semibold text-slate-400 mb-1.5">
@@ -284,6 +339,7 @@ function clearProjectFilter() {
 
       <!-- Global Filter Bar (Preserved Across All Sections) -->
       <OnFarmFilterBar
+        data-animate-section
         v-model:selected-period="selectedPeriod"
         v-model:draft-analysis-range-preset="draftAnalysisRangePreset"
         v-model:draft-analysis-range-start-month="draftAnalysisRangeStartMonth"
@@ -302,12 +358,16 @@ function clearProjectFilter() {
         :available-commodities="availableCommodities"
         :available-phases="availablePhases"
         :estate-status-map="estateStatusMap"
+        @update:draft-analysis-range-preset="draftAnalysisRangePreset = $event"
+        @update:draft-analysis-range-start-month="draftAnalysisRangeStartMonth = $event"
+        @update:draft-analysis-range-end-month="draftAnalysisRangeEndMonth = $event"
         @reset="resetFilters"
-        @apply="applyAnalysisRange"
+        @apply="handleApplyAnalysisRange"
       />
 
       <!-- Two-Section Navigation Switcher -->
       <OnFarmLayerNavigation
+        data-animate-section
         v-model="activeSection"
         :transaction-count="filteredTransactionsRange.length"
         :project-count="projectWbsSummary.length"
@@ -373,21 +433,25 @@ function clearProjectFilter() {
 
         <!-- SECTION 1: Five KPI Metrics -->
         <OnFarmKpiCards
+          data-animate-section
           :kpis="kpiSummary"
         />
 
         <!-- SECTION 2: Primary Lead Visualization: Rekapitulasi RKAP vs SAP Bulanan (Full Width) -->
         <OnFarmMonthlyLeadBarChart
+          data-animate-section
           :monthly-trend="monthlyTrend"
           :cut-off-period="selectedPeriod"
           :analysis-range-label="analysisRangeLabel"
         />
 
         <!-- SECTION 3: Two-Column Row directly below Lead Chart (Kurva S & Serapan per Bulan) -->
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div data-animate-section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <!-- Kiri: Kurva S Kumulatif -->
           <OnFarmScurveChart
             :monthly-trend="monthlyTrend"
+            :full-monthly-trend="fullMonthlyTrend"
+            :selected-month="selectedSpotlightMonth"
             :cut-off-period="selectedPeriod"
             :analysis-range-label="analysisRangeLabel"
           />
@@ -402,12 +466,14 @@ function clearProjectFilter() {
 
         <!-- SECTION 4: Komparasi Realisasi SAP vs RKAP per Kebun (Barchart Biasa) -->
         <OnFarmEstateBarChart
+          data-animate-section
           :estate-data="estateBreakdown"
           :analysis-range-label="analysisRangeLabel"
         />
 
         <!-- SECTION 5: Analisis Anggaran per Komoditas & Fase Tanam (Donut + Interactive Inline Drawer) -->
         <OnFarmCommodityAnalyticsCard
+          data-animate-section
           :commodity-data="commodityBreakdown"
           :phase-data="phaseBreakdown"
           :analysis-range-label="analysisRangeLabel"

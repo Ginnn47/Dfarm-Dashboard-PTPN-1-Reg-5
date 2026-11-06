@@ -5,6 +5,7 @@ import { useLeadMeasureData } from '~/composables/useLeadMeasureData'
 import { useDataSource } from '~/composables/useDataSource'
 import LeadMeasureFilterBar from '~/components/dashboard/leadmeasure/LeadMeasureFilterBar.vue'
 import LeadMeasureTrendChart from '~/components/dashboard/leadmeasure/LeadMeasureTrendChart.vue'
+import LeadMeasureObservationNotes from '~/components/dashboard/leadmeasure/LeadMeasureObservationNotes.vue'
 import LeadMeasureEstateBarChart from '~/components/dashboard/leadmeasure/LeadMeasureEstateBarChart.vue'
 import LeadMeasureDetailTable from '~/components/dashboard/leadmeasure/LeadMeasureDetailTable.vue'
 import LeadMeasureEstateDetailSection from '~/components/dashboard/leadmeasure/LeadMeasureEstateDetailSection.vue'
@@ -19,6 +20,7 @@ import {
   Settings02Icon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/vue'
+import { useLeadMeasureNotes } from '~/composables/useLeadMeasureNotes'
 
 definePageMeta({
   title: 'Lead Measure Karet — DFARM',
@@ -52,6 +54,28 @@ const {
   reconciliation,
 } = useLeadMeasureData()
 
+const {
+  noteContent,
+  currentNote,
+  monthlyNotes,
+  isLoadingDaily: isNotesLoadingDaily,
+  isLoadingMonthly: isNotesLoadingMonthly,
+  isSaving: isNoteSaving,
+  errorMessage: notesErrorMessage,
+  successMessage: notesSuccessMessage,
+  hasUnsavedChanges: hasUnsavedNoteChanges,
+  selectedDateLabel: noteSelectedDateLabel,
+  selectedMonthLabel: noteSelectedMonthLabel,
+  cancelNoteEdit,
+  saveNote,
+} = useLeadMeasureNotes({
+  viewMode,
+  selectedYear,
+  selectedMonth,
+  activePeriodIndex,
+  selectedEstate,
+})
+
 async function refreshLeadMeasureSource() {
   if (activeSourceId.value === 'google-sheets') {
     try {
@@ -72,8 +96,21 @@ watch(activeSourceId, () => {
   void refreshLeadMeasureSource()
 })
 
+function onTrendSelectDay(day: number, metricCode?: any) {
+  viewMode.value = 'daily'
+  selectedDay.value = day
+  if (metricCode) {
+    selectedMetric.value = metricCode
+  }
+}
+
+function onTrendSelectMonth(month: number) {
+  selectedMonth.value = month
+  viewMode.value = 'daily'
+}
+
 const selectedEstateName = computed(() => {
-  if (selectedEstate.value === 'ALL') return 'Konsolidasi Regional (Semua Kebun)'
+  if (selectedEstate.value === 'ALL') return 'Regional (Semua Kebun)'
   const found = estates.value.find((e) => e.estateId === selectedEstate.value)
   return found?.estateName || selectedEstate.value
 })
@@ -140,12 +177,17 @@ const activePeriodLabel = computed(() => {
   }
   return `Tgl ${activePeriodIndex.value} ${mLabel} ${selectedYear.value}`
 })
+const pageContainer = ref<HTMLElement | null>(null)
+
+useDashboardEntranceAnimation(pageContainer, {
+  isReady: computed(() => !isLoading.value && !!store.dataset.value),
+})
 </script>
 
 <template>
-  <main class="space-y-6 pb-12">
+  <main ref="pageContainer" class="space-y-6 pb-12">
     <!-- Header Section -->
-    <header class="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <header data-animate-section class="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <!-- Breadcrumbs -->
         <nav aria-label="Breadcrumb" class="flex items-center gap-1.5 text-xs font-semibold text-slate-400 mb-1.5">
@@ -256,6 +298,7 @@ const activePeriodLabel = computed(() => {
 
     <!-- 1. Redesigned Filter Controls (Popup Menu, Segmented Switch, 12 Month Chips, Reporting Year) -->
     <LeadMeasureFilterBar
+      data-animate-section
       v-model:selected-estate="selectedEstate"
       v-model:view-mode="viewMode"
       v-model:selected-month="selectedMonth"
@@ -271,18 +314,41 @@ const activePeriodLabel = computed(() => {
 
     <!-- Combined 4-Series Trend Chart -->
     <LeadMeasureTrendChart
+      data-animate-section
       :trend-option="combinedTrendChartOption"
       :cards="metricCards"
       :view-mode="viewMode"
       :selected-estate-name="selectedEstateName"
-    />
+      @select-day="onTrendSelectDay"
+      @select-month="onTrendSelectMonth"
+    >
+      <template #notes>
+        <LeadMeasureObservationNotes
+          v-model:content="noteContent"
+          :view-mode="viewMode"
+          :selected-date-label="noteSelectedDateLabel"
+          :selected-month-label="noteSelectedMonthLabel"
+          :garden-label="selectedEstateName"
+          :note="currentNote"
+          :monthly-notes="monthlyNotes"
+          :is-loading-daily="isNotesLoadingDaily"
+          :is-loading-monthly="isNotesLoadingMonthly"
+          :is-saving="isNoteSaving"
+          :has-unsaved-changes="hasUnsavedNoteChanges"
+          :error-message="notesErrorMessage"
+          :success-message="notesSuccessMessage"
+          @save="saveNote"
+          @cancel="cancelNoteEdit"
+        />
+      </template>
+    </LeadMeasureTrendChart>
 
     <!-- Bottom Section: Adaptive View -->
     <!-- Case A: All Estates / Regional Scope -> Comparison Bar Chart + Detail Table -->
-    <div v-if="selectedEstate === 'ALL'" class="space-y-4">
-      <div class="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
+    <div v-if="selectedEstate === 'ALL'" data-animate-section class="space-y-4">
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-12 items-stretch">
         <!-- Kiri: Komparasi Antar Kebun (Barchart dengan filter 4 metrik) -->
-        <div class="lg:col-span-6">
+        <div class="lg:col-span-6 flex flex-col">
           <LeadMeasureEstateBarChart
             v-model:selected-metric="selectedMetric"
             :bar-option="estateBarOption"
@@ -291,6 +357,7 @@ const activePeriodLabel = computed(() => {
             :selected-estate="selectedEstate"
             :selected-estate-name="selectedEstateName"
             :highlighted-estate-id="highlightedEstateId"
+            class="h-full"
             @estate-hover="(id) => highlightedEstateId = id"
             @estate-leave="() => highlightedEstateId = null"
             @reset-estate-filter="selectedEstate = 'ALL'"
@@ -298,13 +365,14 @@ const activePeriodLabel = computed(() => {
         </div>
 
         <!-- Kanan: Tabel Rincian Antar Kebun (Menyorot Kolom Terpilih) -->
-        <div class="lg:col-span-6">
+        <div class="lg:col-span-6 flex flex-col">
           <LeadMeasureDetailTable
             :rows="estateTableRows"
             :selected-metric="selectedMetric"
             :highlighted-estate-id="highlightedEstateId"
             :selected-estate="selectedEstate"
             :period-label="activePeriodLabel"
+            class="h-full"
             @estate-hover="(id) => highlightedEstateId = id"
             @estate-leave="() => highlightedEstateId = null"
             @reset-estate-filter="selectedEstate = 'ALL'"
@@ -314,7 +382,7 @@ const activePeriodLabel = computed(() => {
     </div>
 
     <!-- Case B: Single Estate Selected -> Centered Detail Kinerja Kebun View -->
-    <div v-else class="pt-2">
+    <div v-else data-animate-section class="pt-2">
       <LeadMeasureEstateDetailSection
         v-model:selected-metric="selectedMetric"
         :estate-name="selectedEstateDetailName"

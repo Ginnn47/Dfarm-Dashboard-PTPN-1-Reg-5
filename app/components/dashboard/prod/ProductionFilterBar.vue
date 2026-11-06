@@ -54,7 +54,9 @@ const hasActiveFilter = computed(() => {
     props.modelValue.afdeling ||
     props.modelValue.tahunTanam ||
     props.modelValue.rentangPreset === 'custom' ||
-    (props.modelValue.rentangPreset && props.modelValue.rentangPreset !== 'ytd')
+    (props.modelValue.rentangPreset && props.modelValue.rentangPreset !== 'ytd') ||
+    (props.modelValue.bulanAwal && props.modelValue.bulanAwal !== '1') ||
+    (props.modelValue.bulanAkhir && props.modelValue.bulanAkhir !== '12')
   )
 })
 
@@ -130,19 +132,11 @@ const fullTahunTanamOptions = computed<FilterOption[]>(() => [
         <button
           v-if="hasActiveFilter"
           type="button"
-          class="flex h-8 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-800 cursor-pointer shadow-2xs"
+          class="flex h-8 items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 text-xs font-bold text-white shadow-2xs transition-colors hover:bg-emerald-700 cursor-pointer"
           @click="resetFilters"
         >
-          <span class="text-slate-400">&times;</span> Reset
-        </button>
-
-        <button
-          type="button"
-          :disabled="loading"
-          class="flex h-8 items-center gap-1.5 rounded-xl bg-emerald-700 px-3.5 text-xs font-bold text-white shadow-2xs transition-colors hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
-          @click="$emit('apply')"
-        >
-          &#10003; Terapkan
+          <span>↺</span>
+          <span>Reset Filter</span>
         </button>
       </div>
     </div>

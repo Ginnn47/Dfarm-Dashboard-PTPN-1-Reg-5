@@ -369,6 +369,33 @@ interface ProductionValidationSummary {
   acceptedRows: number
   rejectedRows: number
   warningCount: number
+  diagnostics?: ProductionValidationDiagnostics
+}
+
+interface ProductionValidationDiagnostics {
+  reasonCounts: Record<string, number>
+  sheets: Array<{
+    sheetName: string
+    reportingYear: number
+    excludedFromCanonical: boolean
+    blankRows: number
+    nonBlankRows: number
+    candidateRows: number
+    acceptedRows: number
+    rejectedRows: number
+    structuralRows: number
+    skippedTemplateRows: number
+    invalidRows: number
+    duplicateRows: number
+    reasonCounts: Record<string, number>
+    samples: Array<{
+      sourceRow: number
+      category: string
+      code: string
+      field: string | null
+      message: string
+    }>
+  }>
 }
 
 interface ProductionDashboardData {

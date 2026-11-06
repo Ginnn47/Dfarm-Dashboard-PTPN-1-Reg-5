@@ -20,10 +20,11 @@ const getItemLabel = (item: ChartItem) => {
 
 const sorted = computed(() => {
   return [...props.data]
-    .filter((d) => d.actual > 0 || d.rkap > 0)
+    .filter((d) => (d.actual != null && d.actual > 0) || (d.rkap != null && d.rkap > 0))
     .sort((a, b) => {
-      if (b.actual !== a.actual) return b.actual - a.actual
-      return b.rkap - a.rkap
+      const actualDifference = (b.actual ?? Number.NEGATIVE_INFINITY) - (a.actual ?? Number.NEGATIVE_INFINITY)
+      if (actualDifference !== 0) return actualDifference
+      return (b.rkap ?? Number.NEGATIVE_INFINITY) - (a.rkap ?? Number.NEGATIVE_INFINITY)
     })
 })
 
@@ -115,7 +116,8 @@ const option = computed(() => ({
       for (const p of params) {
         const color = p.color as string
         const name = p.seriesName as string
-        const value = Math.round(p.value as number || 0).toLocaleString('id-ID')
+        const rawValue = p.value as number | null | undefined
+        const value = rawValue == null ? 'Tidak tersedia' : Math.round(rawValue).toLocaleString('id-ID')
         html += `<div style="display:flex;align-items:center;gap:6px;margin-top:2px">
           <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${color}"></span>
           <span style="flex:1">${name}</span>
@@ -123,13 +125,13 @@ const option = computed(() => ({
         </div>`
       }
       if (dataItem) {
-        const varianceVal = dataItem.variance || 0
-        const varianceColor = varianceVal >= 0 ? '#059669' : '#dc2626'
+        const varianceVal = dataItem.variance
+        const varianceColor = varianceVal == null ? '#64748b' : varianceVal >= 0 ? '#059669' : '#dc2626'
         const achievementVal = dataItem.achievement
         const achievementColor =
-          (achievementVal || 0) >= 100 ? '#059669' : (achievementVal || 0) >= 85 ? '#d97706' : '#dc2626'
+          achievementVal == null ? '#64748b' : achievementVal >= 100 ? '#059669' : achievementVal >= 85 ? '#d97706' : '#dc2626'
         html += `<div style="border-top:1px solid #e2e8f0;margin-top:6px;padding-top:6px;font-size:11px;color:#64748b">
-          Selisih: <span style="color:${varianceColor};font-weight:600">${varianceVal >= 0 ? '+' : ''}${(varianceVal / 1000).toFixed(1)}K</span>
+          Selisih: <span style="color:${varianceColor};font-weight:600">${varianceVal == null ? 'Tidak tersedia' : `${varianceVal >= 0 ? '+' : ''}${(varianceVal / 1000).toFixed(1)}K`}</span>
           &nbsp;|&nbsp; Pencapaian: <span style="font-weight:600;color:${achievementColor}">${achievementVal != null ? achievementVal.toFixed(1) + '%' : 'Tidak tersedia'}</span>
         </div>`
       }

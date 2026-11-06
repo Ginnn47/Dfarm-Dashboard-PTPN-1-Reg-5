@@ -24,16 +24,54 @@ export interface ProductionMappingIssue {
   message: string
 }
 
+export type ProductionRowDiagnosticCategory = 'structural' | 'template' | 'invalid' | 'duplicate'
+
+export interface ProductionRowDiagnostic {
+  sourceRow: number
+  category: ProductionRowDiagnosticCategory
+  code: string
+  field: string | null
+  message: string
+}
+
+export interface ProductionSheetDiagnostics {
+  sheetName: string
+  reportingYear: number
+  excludedFromCanonical: boolean
+  blankRows: number
+  nonBlankRows: number
+  candidateRows: number
+  acceptedRows: number
+  structuralRows: number
+  skippedTemplateRows: number
+  invalidRows: number
+  duplicateRows: number
+  reasonCounts: Record<string, number>
+  rowDiagnostics: ProductionRowDiagnostic[]
+}
+
+export interface ProductionDiagnostics {
+  sheets: ProductionSheetDiagnostics[]
+  reasonCounts: Record<string, number>
+}
+
 export interface ProductionMappingResult {
   records: ProductionRecord[]
   isValid: boolean
   issues: ProductionMappingIssue[]
   warnings: string[]
+  diagnostics: ProductionDiagnostics
   summary: {
     reportingYear: number
     totalRows: number
     acceptedRows: number
     rejectedRows: number
+    candidateRows: number
+    blankRows: number
+    structuralRows: number
+    skippedTemplateRows: number
+    invalidRows: number
+    duplicateRows: number
     matchedCount: number
     unresolvedCount: number
     matchRatePercent: number
@@ -53,6 +91,7 @@ export interface ColumnIndexes {
 
 interface ParsedNumber {
   value: number | null
+  status: 'number' | 'blank' | 'dash' | 'invalid' | 'formula-error'
   issueCode?: 'MISSING_REQUIRED_VALUE' | 'INVALID_NUMBER' | 'FORMULA_ERROR'
 }
 
@@ -74,26 +113,31 @@ function isFormulaError(value: GoogleSheetCell): boolean {
 }
 
 function parseRequiredNumber(value: GoogleSheetCell): ParsedNumber {
-  if (isFormulaError(value)) return { value: null, issueCode: 'FORMULA_ERROR' }
+  if (isFormulaError(value)) return { value: null, status: 'formula-error', issueCode: 'FORMULA_ERROR' }
   if (value === null || value === undefined || cellText(value) === '') {
-    return { value: null, issueCode: 'MISSING_REQUIRED_VALUE' }
+    return { value: null, status: 'blank', issueCode: 'MISSING_REQUIRED_VALUE' }
   }
   if (typeof value === 'number') {
-    return Number.isFinite(value) ? { value } : { value: null, issueCode: 'INVALID_NUMBER' }
+    return Number.isFinite(value)
+      ? { value, status: 'number' }
+      : { value: null, status: 'invalid', issueCode: 'INVALID_NUMBER' }
   }
 
   const text = cellText(value)
-  if (!/^-?(?:\d+)(?:\.\d+)?$/.test(text)) return { value: null, issueCode: 'INVALID_NUMBER' }
+  if (!/^-?(?:\d+)(?:\.\d+)?$/.test(text)) return { value: null, status: 'invalid', issueCode: 'INVALID_NUMBER' }
   const parsed = Number(text)
-  return Number.isFinite(parsed) ? { value: parsed } : { value: null, issueCode: 'INVALID_NUMBER' }
+  return Number.isFinite(parsed)
+    ? { value: parsed, status: 'number' }
+    : { value: null, status: 'invalid', issueCode: 'INVALID_NUMBER' }
 }
 
 function parseSourceNumber(value: GoogleSheetCell): ParsedNumber {
-  if (isFormulaError(value)) return { value: null, issueCode: 'FORMULA_ERROR' }
+  if (isFormulaError(value)) return { value: null, status: 'formula-error', issueCode: 'FORMULA_ERROR' }
 
   const text = cellText(value)
-  // The live workbook uses blank cells and '-' for unrecorded numeric measures.
-  if (text === '' || text === '-') return { value: 0 }
+  // Blank and dash are unavailable source values, not numeric zero.
+  if (text === '') return { value: null, status: 'blank' }
+  if (text === '-') return { value: null, status: 'dash' }
 
   return parseRequiredNumber(value)
 }
@@ -102,9 +146,10 @@ function parseMonthlyNumber(value: GoogleSheetCell): ParsedNumber {
   return parseSourceNumber(value)
 }
 
-function isZeroLike(value: GoogleSheetCell): boolean {
+function hasMeaningfulMeasure(value: GoogleSheetCell): boolean {
   const text = cellText(value)
-  return text === '' || text === '-' || /^-?(?:0)(?:\.0+)?$/.test(text)
+  if (text === '' || text === '-') return false
+  return true
 }
 
 function isEmbeddedSummaryRow(
@@ -133,9 +178,9 @@ function parseYear(value: GoogleSheetCell): ParsedNumber {
   if (parsed.issueCode || parsed.value === null) return parsed
   const absYear = Math.abs(parsed.value)
   if (!Number.isInteger(absYear) || absYear < 1900 || absYear > 2100) {
-    return { value: null, issueCode: 'INVALID_NUMBER' }
+    return { value: null, status: 'invalid', issueCode: 'INVALID_NUMBER' }
   }
-  return { value: absYear }
+  return { value: absYear, status: 'number' }
 }
 
 function findHeaderRow(values: GoogleSheetCell[][]): number {
@@ -333,18 +378,84 @@ function isSummarySheet(sheetName: string): boolean {
   return /rekap|summary|cover|total|produksi|^sheet\d+$/i.test(sheetName)
 }
 
-function createResult(reportingYear: number, records: ProductionRecord[], issues: ProductionMappingIssue[], warnings: string[], totalRows: number): ProductionMappingResult {
+function normalizeKeyPart(value: string): string {
+  return value.trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
+function productionRecordKey(record: ProductionRecord): string {
+  return [
+    record.reportingYear,
+    normalizeKeyPart(record.commodity),
+    normalizeKeyPart(record.estateCode),
+    normalizeKeyPart(record.estate),
+    normalizeKeyPart(record.afdeling),
+    record.plantingYear,
+  ].join('|')
+}
+
+function addDiagnostic(sheet: ProductionSheetDiagnostics, diagnostic: ProductionRowDiagnostic): void {
+  sheet.rowDiagnostics.push(diagnostic)
+  sheet.reasonCounts[diagnostic.code] = (sheet.reasonCounts[diagnostic.code] || 0) + 1
+  if (diagnostic.category === 'structural') sheet.structuralRows++
+  if (diagnostic.category === 'template') sheet.skippedTemplateRows++
+  if (diagnostic.category === 'invalid') sheet.invalidRows++
+  if (diagnostic.category === 'duplicate') sheet.duplicateRows++
+}
+
+function createSheetDiagnostics(sheetName: string, reportingYear: number, excludedFromCanonical = false): ProductionSheetDiagnostics {
+  return {
+    sheetName,
+    reportingYear,
+    excludedFromCanonical,
+    blankRows: 0,
+    nonBlankRows: 0,
+    candidateRows: 0,
+    acceptedRows: 0,
+    structuralRows: 0,
+    skippedTemplateRows: 0,
+    invalidRows: 0,
+    duplicateRows: 0,
+    reasonCounts: {},
+    rowDiagnostics: [],
+  }
+}
+
+function createResult(
+  reportingYear: number,
+  records: ProductionRecord[],
+  issues: ProductionMappingIssue[],
+  warnings: string[],
+  diagnostics: ProductionDiagnostics,
+): ProductionMappingResult {
+  diagnostics.sheets.forEach((sheet) => {
+    sheet.rowDiagnostics.sort((left, right) => left.sourceRow - right.sourceRow)
+  })
   const matchedCount = records.filter((record) => record.identityStatus === 'matched').length
+  const includedSheets = diagnostics.sheets.filter((sheet) => !sheet.excludedFromCanonical)
+  const totalRows = includedSheets.reduce((sum, sheet) => sum + sheet.nonBlankRows, 0)
+  const blankRows = includedSheets.reduce((sum, sheet) => sum + sheet.blankRows, 0)
+  const candidateRows = includedSheets.reduce((sum, sheet) => sum + sheet.candidateRows, 0)
+  const structuralRows = includedSheets.reduce((sum, sheet) => sum + sheet.structuralRows, 0)
+  const skippedTemplateRows = includedSheets.reduce((sum, sheet) => sum + sheet.skippedTemplateRows, 0)
+  const invalidRows = includedSheets.reduce((sum, sheet) => sum + sheet.invalidRows, 0)
+  const duplicateRows = includedSheets.reduce((sum, sheet) => sum + sheet.duplicateRows, 0)
   return {
     records,
     isValid: issues.length === 0,
     issues,
     warnings,
+    diagnostics,
     summary: {
       reportingYear,
       totalRows,
       acceptedRows: records.length,
-      rejectedRows: Math.max(0, totalRows - records.length),
+      rejectedRows: structuralRows + skippedTemplateRows + invalidRows + duplicateRows,
+      candidateRows,
+      blankRows,
+      structuralRows,
+      skippedTemplateRows,
+      invalidRows,
+      duplicateRows,
       matchedCount,
       unresolvedCount: records.length - matchedCount,
       matchRatePercent: records.length ? Math.round((matchedCount / records.length) * 100) : 0,
@@ -360,7 +471,8 @@ export function mapProductionSheetValues(
   const headerRowIndex = findHeaderRow(values)
   const columnResult = findColumns(values, headerRowIndex, input.sheetName, reportingYear)
   if (!columnResult.columns) {
-    return createResult(reportingYear, [], columnResult.issues, [], 0)
+    const diagnostics = createSheetDiagnostics(input.sheetName, reportingYear)
+    return createResult(reportingYear, [], columnResult.issues, [], { sheets: [diagnostics], reasonCounts: {} })
   }
 
   const columns = columnResult.columns
@@ -371,12 +483,15 @@ export function mapProductionSheetValues(
   let currentEstateCode = ''
   let currentAfdeling = ''
   let embeddedSummaryRows = 0
-  let totalRows = 0
+  const sheetDiagnostics = createSheetDiagnostics(input.sheetName, reportingYear)
 
   for (let rowIndex = headerRowIndex + 2; rowIndex < values.length; rowIndex++) {
     const row = values[rowIndex] || []
-    if (isBlankRow(row)) continue
-    totalRows++
+    if (isBlankRow(row)) {
+      sheetDiagnostics.blankRows++
+      continue
+    }
+    sheetDiagnostics.nonBlankRows++
 
     const sourceRow = (input.sourceRowOffset || 0) + rowIndex + 1
     const commodityText = cellText(row[columns.commodity])
@@ -392,46 +507,88 @@ export function mapProductionSheetValues(
       currentAfdeling = ''
     }
 
-    if (/jumlah|total/i.test(codeText) || /jumlah|total/i.test(nameText) || /jumlah|total/i.test(yearText)) continue
+    if (/jumlah|total/i.test(codeText) || /jumlah|total/i.test(nameText) || /jumlah|total/i.test(yearText)) {
+      addDiagnostic(sheetDiagnostics, {
+        sourceRow,
+        category: 'structural',
+        code: 'SUBTOTAL_ROW',
+        field: null,
+        message: 'Baris subtotal atau total tidak menjadi record canonical.',
+      })
+      continue
+    }
 
     // Merged/grouped source rows often repeat the afdeling only on the first detail row.
     if (yearText && nameText) currentAfdeling = nameText
 
     // Estate context rows establish the carry-forward identity for detail rows.
-    if (!yearText) continue
-
-    if (isEmbeddedSummaryRow(row, columns, input.sheetName, commodityText, codeText, nameText, yearText)) {
-      embeddedSummaryRows++
+    if (!yearText) {
+      addDiagnostic(sheetDiagnostics, {
+        sourceRow,
+        category: 'structural',
+        code: 'CONTEXT_ROW',
+        field: null,
+        message: 'Baris konteks kebun atau afdeling tidak menjadi record canonical.',
+      })
       continue
     }
 
-    // Skip template rows that carry only an empty/zero measure shell.
+    if (isEmbeddedSummaryRow(row, columns, input.sheetName, commodityText, codeText, nameText, yearText)) {
+      embeddedSummaryRows++
+      addDiagnostic(sheetDiagnostics, {
+        sourceRow,
+        category: 'structural',
+        code: 'EMBEDDED_SUMMARY_ROW',
+        field: null,
+        message: 'Baris agregasi tertanam diabaikan dari dataset detail.',
+      })
+      continue
+    }
+
+    // Blank/dash-only measure rows are templates; explicit numeric zero remains real data.
     const measureCells = [
       row[columns.area],
       row[columns.population],
       ...row.slice(columns.rkapMonthStart, columns.rkapMonthStart + 12),
       ...row.slice(columns.actualMonthStart, columns.actualMonthStart + 12),
     ]
-    const hasMeaningfulNumericData = measureCells.some((cell) => !isZeroLike(cell))
+    const hasMeaningfulNumericData = measureCells.some((cell) => hasMeaningfulMeasure(cell))
 
-    if (!hasMeaningfulNumericData) continue
+    if (!hasMeaningfulNumericData) {
+      addDiagnostic(sheetDiagnostics, {
+        sourceRow,
+        category: 'template',
+        code: 'ZERO_MEASURE_TEMPLATE',
+        field: null,
+        message: 'Baris bertahun tanam tetapi seluruh ukuran kosong atau nol.',
+      })
+      continue
+    }
+
+    sheetDiagnostics.candidateRows++
 
     const year = parseYear(row[columns.plantingYear])
     if (year.issueCode || year.value === null) {
-      issues.push({
+      const issue = {
         sourceRow,
         field: 'plantingYear',
-        code: 'INVALID_YEAR',
+        code: 'INVALID_YEAR' as const,
         message: year.issueCode === 'FORMULA_ERROR'
           ? 'Tahun tanam berisi formula error.'
           : 'Tahun tanam wajib berupa bilangan bulat 1900-2100.',
+      }
+      issues.push({
+        ...issue,
       })
+      addDiagnostic(sheetDiagnostics, { ...issue, category: 'invalid' })
       continue
     }
 
     const afdelingText = nameText || currentAfdeling
     if (!afdelingText) {
-      issues.push({ sourceRow, field: 'afdeling', code: 'MISSING_REQUIRED_VALUE', message: 'Nama afdeling kosong.' })
+      const issue = { sourceRow, field: 'afdeling', code: 'MISSING_REQUIRED_VALUE' as const, message: 'Nama afdeling kosong.' }
+      issues.push(issue)
+      addDiagnostic(sheetDiagnostics, { ...issue, category: 'invalid' })
       continue
     }
 
@@ -445,18 +602,30 @@ export function mapProductionSheetValues(
       ['population', row[columns.population]],
     ] as const
     const parsedNumeric = numericFields.map(([field, value]) => [field, parseSourceNumber(value)] as const)
-    const invalidNumeric = parsedNumeric.filter(([, parsed]) => parsed.issueCode || parsed.value === null)
+    const invalidNumeric = parsedNumeric.filter(([, parsed]) => parsed.issueCode)
     if (!estateCode || !estate || !commodity) {
-      issues.push({
+      const issue = {
         sourceRow,
         field: !estateCode ? 'estateCode' : !estate ? 'estate' : 'commodity',
-        code: 'MISSING_REQUIRED_VALUE',
+        code: 'MISSING_REQUIRED_VALUE' as const,
         message: 'Identitas wajib kebun atau komoditas tidak lengkap.',
-      })
+      }
+      issues.push(issue)
+      addDiagnostic(sheetDiagnostics, { ...issue, category: 'invalid' })
       continue
     }
     if (invalidNumeric.length > 0) {
-      issues.push(...invalidNumeric.map(([field, parsed]) => issueForNumber(sourceRow, field, parsed)))
+      const numericIssues = invalidNumeric.map(([field, parsed]) => issueForNumber(sourceRow, field, parsed))
+      issues.push(...numericIssues)
+      addDiagnostic(sheetDiagnostics, {
+        sourceRow,
+        category: 'invalid',
+        code: numericIssues[0]?.code || 'INVALID_NUMBER',
+        field: numericIssues[0]?.field || null,
+        message: numericIssues.length > 1
+          ? `${numericIssues.length} nilai numerik pada baris ini tidak valid.`
+          : numericIssues[0]?.message || 'Nilai numerik tidak valid.',
+      })
       continue
     }
 
@@ -465,24 +634,32 @@ export function mapProductionSheetValues(
     for (let monthIndex = 0; monthIndex < BULAN_LABELS.length; monthIndex++) {
       const rkap = parseMonthlyNumber(row[columns.rkapMonthStart + monthIndex])
       const actual = parseMonthlyNumber(row[columns.actualMonthStart + monthIndex])
-      if (rkap.issueCode || rkap.value === null) {
+      if (rkap.issueCode) {
         issues.push(issueForNumber(sourceRow, `${BULAN_LABELS[monthIndex]} RKAP`, rkap))
         rowHasMonthlyError = true
       }
-      if (actual.issueCode || actual.value === null) {
+      if (actual.issueCode) {
         issues.push(issueForNumber(sourceRow, `${BULAN_LABELS[monthIndex]} actual`, actual))
         rowHasMonthlyError = true
       }
-      if (!rowHasMonthlyError && rkap.value !== null && actual.value !== null) {
-        months.push({
-          month: monthIndex + 1,
-          monthLabel: BULAN_LABELS[monthIndex]!,
-          actual: actual.value,
-          rkap: rkap.value,
-        })
-      }
+      months.push({
+        month: monthIndex + 1,
+        monthLabel: BULAN_LABELS[monthIndex]!,
+        actual: actual.value,
+        rkap: rkap.value,
+      })
     }
-    if (rowHasMonthlyError) continue
+    if (rowHasMonthlyError) {
+      const rowIssues = issues.filter((issue) => issue.sourceRow === sourceRow)
+      addDiagnostic(sheetDiagnostics, {
+        sourceRow,
+        category: 'invalid',
+        code: rowIssues.at(-1)?.code || 'INVALID_NUMBER',
+        field: rowIssues.at(-1)?.field || null,
+        message: 'Satu atau lebih nilai bulanan tidak valid.',
+      })
+      continue
+    }
 
     const match = matchAfdelingIdentity(estate, afdeling)
     records.push({
@@ -493,10 +670,14 @@ export function mapProductionSheetValues(
       estate,
       afdeling,
       plantingYear: year.value,
-      area: parsedNumeric[0]![1].value!,
-      population: parsedNumeric[1]![1].value!,
-      actual: months.reduce((sum, month) => sum + month.actual, 0),
-      rkap: months.reduce((sum, month) => sum + month.rkap, 0),
+      area: parsedNumeric[0]![1].value,
+      population: parsedNumeric[1]![1].value,
+      actual: months.some((month) => month.actual !== null)
+        ? months.reduce((sum, month) => sum + (month.actual ?? 0), 0)
+        : null,
+      rkap: months.some((month) => month.rkap !== null)
+        ? months.reduce((sum, month) => sum + (month.rkap ?? 0), 0)
+        : null,
       months,
       matchedAfdCode: match.afdCode,
       matchedAfdName: match.afdName,
@@ -505,6 +686,7 @@ export function mapProductionSheetValues(
       reff: match.reff,
       identityStatus: match.status,
     })
+    sheetDiagnostics.acceptedRows++
   }
 
   if (embeddedSummaryRows > 0) {
@@ -513,16 +695,28 @@ export function mapProductionSheetValues(
 
   const seen = new Set<string>()
   const deduplicated = records.filter((record) => {
-    const key = `${record.reportingYear}|${record.commodity}|${record.estate.toLowerCase()}|${record.afdeling.toLowerCase()}|${record.plantingYear}`
+    const key = productionRecordKey(record)
     if (seen.has(key)) {
       warnings.push(`Baris ${record.sourceRow}: record duplikat diabaikan.`)
+      sheetDiagnostics.acceptedRows--
+      addDiagnostic(sheetDiagnostics, {
+        sourceRow: record.sourceRow,
+        category: 'duplicate',
+        code: 'DUPLICATE_RECORD',
+        field: null,
+        message: 'Record memiliki kunci canonical yang sudah pernah diterima.',
+      })
       return false
     }
     seen.add(key)
     return true
   })
 
-  return createResult(reportingYear, deduplicated, issues, warnings, totalRows)
+  const diagnostics = {
+    sheets: [sheetDiagnostics],
+    reasonCounts: { ...sheetDiagnostics.reasonCounts },
+  }
+  return createResult(reportingYear, deduplicated, issues, warnings, diagnostics)
 }
 
 export function mapProductionSheets(
@@ -538,14 +732,47 @@ export function mapProductionSheets(
   const records: ProductionRecord[] = []
   const issues = results.flatMap((result) => result.issues)
   const warnings = [...ignoredWarnings, ...results.flatMap((result) => result.warnings)]
+  const diagnosticsSheets = results.flatMap((result) => result.diagnostics.sheets)
+
+  for (const sheet of sheets.filter((candidate) => isSummarySheet(candidate.sheetName))) {
+    const summaryDiagnostics = createSheetDiagnostics(sheet.sheetName, reportingYear, true)
+    summaryDiagnostics.blankRows = sheet.values.filter((row) => isBlankRow(Array.isArray(row) ? row : [])).length
+    summaryDiagnostics.nonBlankRows = sheet.values.length - summaryDiagnostics.blankRows
+    summaryDiagnostics.structuralRows = summaryDiagnostics.nonBlankRows
+    if (summaryDiagnostics.nonBlankRows > 0) {
+      summaryDiagnostics.reasonCounts.SUMMARY_SHEET_EXCLUDED = summaryDiagnostics.nonBlankRows
+      summaryDiagnostics.rowDiagnostics = sheet.values
+        .map((row, index) => ({ row: Array.isArray(row) ? row : [], index }))
+        .filter(({ row }) => !isBlankRow(row))
+        .map(({ index }) => ({
+          sourceRow: (sheet.sourceRowOffset || 0) + index + 1,
+          category: 'structural' as const,
+          code: 'SUMMARY_SHEET_EXCLUDED',
+          field: null,
+          message: 'Sheet summary dikecualikan dari dataset detail Production.',
+        }))
+    }
+    diagnosticsSheets.push(summaryDiagnostics)
+  }
 
   // Deduplicate after combining sheets so overlapping tabs cannot inflate the dataset.
   const seen = new Set<string>()
   for (const result of results) {
     for (const record of result.records) {
-      const key = `${record.reportingYear}|${record.commodity}|${record.estate.toLowerCase()}|${record.afdeling.toLowerCase()}|${record.plantingYear}`
+      const key = productionRecordKey(record)
       if (seen.has(key)) {
         warnings.push(`Baris ${record.sourceRow}: record duplikat antar-sheet diabaikan.`)
+        const sheetDiagnostics = result.diagnostics.sheets[0]
+        if (sheetDiagnostics) {
+          sheetDiagnostics.acceptedRows--
+          addDiagnostic(sheetDiagnostics, {
+            sourceRow: record.sourceRow,
+            category: 'duplicate',
+            code: 'DUPLICATE_RECORD_CROSS_SHEET',
+            field: null,
+            message: 'Record duplikat antar-sheet diabaikan dari dataset gabungan.',
+          })
+        }
         continue
       }
       seen.add(key)
@@ -553,12 +780,19 @@ export function mapProductionSheets(
     }
   }
 
+  const reasonCounts = diagnosticsSheets.reduce<Record<string, number>>((counts, sheet) => {
+    for (const [reason, count] of Object.entries(sheet.reasonCounts)) {
+      counts[reason] = (counts[reason] || 0) + count
+    }
+    return counts
+  }, {})
+
   return createResult(
     reportingYear,
     records,
     issues,
     warnings,
-    results.reduce((sum, result) => sum + result.summary.totalRows, 0)
+    { sheets: diagnosticsSheets, reasonCounts },
   )
 }
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import type { ProductionRecord } from '~/data/production/types'
+import { hasMeaningfulMarqueeProduction, type ProductionRecord } from '~/data/production/types'
 
 interface StreamItem {
   key: string
@@ -9,7 +9,7 @@ interface StreamItem {
   afdCode?: string | null
   commodity: string
   plantingYear: number
-  variance: number
+  variance: number | null
   achievement: number | null
   direction: 'up' | 'down' | 'neutral'
 }
@@ -24,9 +24,11 @@ const props = withDefaults(
   defineProps<{
     records: ProductionRecord[]
     speed?: number
+    sourceLabel?: string
   }>(),
   {
     speed: 150,
+    sourceLabel: 'Production Data',
   }
 )
 
@@ -47,16 +49,20 @@ const streamRecords = computed<StreamItem[]>(() => {
     commodity: string
     plantingYear: number
     actual: number
-    rkap: number
+    rkap: number | null
   }>()
 
   for (const record of props.records) {
+    // A null actual means the source has no production observation for this record.
+    // Explicit zero remains eligible and is intentionally preserved.
+    if (!hasMeaningfulMarqueeProduction(record) || record.actual == null) continue
+    const actual = record.actual
     const afdCode = record.matchedAfdCode || null
     const key = `${record.estateCode}|${afdCode || record.afdeling}|${record.commodity}|${record.plantingYear}`
     const existing = groups.get(key)
     if (existing) {
-      existing.actual += record.actual
-      existing.rkap += record.rkap
+      existing.actual += actual
+      existing.rkap = record.rkap == null ? existing.rkap : (existing.rkap ?? 0) + record.rkap
     } else {
       groups.set(key, {
         estate: record.estate,
@@ -64,18 +70,18 @@ const streamRecords = computed<StreamItem[]>(() => {
         afdCode,
         commodity: record.commodity,
         plantingYear: record.plantingYear,
-        actual: record.actual,
+        actual,
         rkap: record.rkap,
       })
     }
   }
 
   return Array.from(groups.entries()).map(([key, item]) => {
-    const variance = item.actual - item.rkap
-    const achievement = item.rkap > 0 ? (item.actual / item.rkap) * 100 : null
+    const variance = item.rkap != null ? item.actual - item.rkap : null
+    const achievement = item.rkap != null && item.rkap > 0 ? (item.actual / item.rkap) * 100 : null
     let direction: 'up' | 'down' | 'neutral' = 'neutral'
-    if (variance < -0.001) direction = 'down'
-    else if (variance > 0.001) direction = 'up'
+    if (variance != null && variance < -0.001) direction = 'down'
+    else if (variance != null && variance > 0.001) direction = 'up'
 
     return {
       key,
@@ -101,7 +107,8 @@ const filteredStreamRecords = computed(() => {
   return streamRecords.value
 })
 
-function formatVariance(val: number): string {
+function formatVariance(val: number | null): string {
+  if (val == null) return '—'
   const sign = val > 0 ? '+' : val < 0 ? '−' : ''
   const abs = Math.abs(val)
   if (abs >= 1_000_000) {
@@ -291,7 +298,7 @@ onBeforeUnmount(() => {
           class="rounded px-1.5 py-0.5 text-[10px] font-semibold"
           style="background-color: rgba(228, 197, 104, 0.15); color: #E4C568"
         >
-          Development Data
+          {{ props.sourceLabel }}
         </span>
       </div>
 

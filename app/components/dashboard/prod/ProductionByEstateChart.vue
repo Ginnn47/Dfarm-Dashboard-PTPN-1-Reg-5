@@ -26,7 +26,7 @@ const getItemLabel = (item: ChartItem) => {
 // Urutkan dari produksi aktual terbesar ke terkecil
 const sortedData = computed(() => {
   return [...props.data]
-    .filter((item) => item.actual > 0)
+    .filter((item): item is ChartItem & { actual: number } => item.actual != null && item.actual > 0)
     .sort((a, b) => b.actual - a.actual)
 })
 
@@ -46,7 +46,7 @@ const segmentPayload = computed(() => {
         isOther: false,
         rawItem: item,
       })),
-      otherItems: [] as ChartItem[],
+      otherItems: [] as Array<ChartItem & { actual: number }>,
       otherTotal: 0,
     }
   }
@@ -98,7 +98,8 @@ const option = computed(() => {
       padding: [10, 14],
       textStyle: { color: '#1e293b', fontSize: 12 },
       formatter(params: any) {
-        const val = Math.round(params.value as number || 0).toLocaleString('id-ID')
+        const rawValue = params.value as number | null | undefined
+        const val = rawValue == null ? 'Tidak tersedia' : Math.round(rawValue).toLocaleString('id-ID')
         const pct = total > 0
           ? ((params.value / total) * 100).toFixed(1).replace('.', ',') + '%'
           : '0%'

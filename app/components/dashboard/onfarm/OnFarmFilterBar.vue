@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed } from 'vue'
 import { FilterEditIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/vue'
@@ -37,7 +37,7 @@ const emit = defineEmits<{
   (e: 'update:selectedCommodity', val: string): void
   (e: 'update:selectedPhase', val: string): void
   (e: 'reset'): void
-  (e: 'apply'): void
+  (e: 'apply', val?: AnalysisRangeSelection): void
 }>()
 
 const MONTH_NAMES = [
@@ -62,6 +62,7 @@ function updateAnalysisRange(value: AnalysisRangeSelection) {
   emit('update:draftAnalysisRangePreset', value.preset)
   emit('update:draftAnalysisRangeStartMonth', value.startMonth)
   emit('update:draftAnalysisRangeEndMonth', value.endMonth)
+  emit('apply', value)
 }
 
 const estateOptions = computed(() => [
@@ -94,19 +95,10 @@ const hasActiveFilters = computed(() => {
     props.selectedCommodity !== 'ALL' ||
     props.selectedPhase !== 'ALL' ||
     props.isManualCutoff ||
-    props.analysisRangePreset !== 'ytd'
+    props.analysisRangePreset !== 'ytd' ||
+    props.analysisRangeStartMonth !== 1 ||
+    props.analysisRangeEndMonth !== props.selectedPeriod
   )
-})
-
-const activeFilterCount = computed(() => {
-  let count = 0
-  if (props.selectedEstate !== 'ALL') count++
-  if (props.selectedAfdeling !== 'ALL') count++
-  if (props.selectedCommodity !== 'ALL') count++
-  if (props.selectedPhase !== 'ALL') count++
-  if (props.isManualCutoff) count++
-  if (props.analysisRangePreset !== 'ytd') count++
-  return count
 })
 </script>
 
@@ -128,7 +120,7 @@ const activeFilterCount = computed(() => {
           :class="isManualCutoff ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-sky-200 bg-sky-50/70 text-sky-800'"
         >
           <span class="size-2 rounded-full" :class="isManualCutoff ? 'bg-amber-500' : 'bg-sky-500'" />
-          <span>Cut-off: s/d Bln {{ selectedPeriod }} · {{ isManualCutoff ? 'Manual Override' : 'Auto SAP' }}</span>
+          <span>Cut-off: s/d Bln {{ selectedPeriod }} · {{ isManualCutoff ? 'Manual Override' : 'Auto Real-Time' }}</span>
         </span>
 
         <button
@@ -143,19 +135,11 @@ const activeFilterCount = computed(() => {
         <button
           v-if="hasActiveFilters"
           type="button"
-          class="flex h-8 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-800 cursor-pointer shadow-2xs"
+          class="flex h-8 items-center gap-1.5 rounded-xl bg-sky-600 px-3.5 text-xs font-bold text-white shadow-2xs transition-colors hover:bg-sky-700 cursor-pointer"
           @click="$emit('reset')"
         >
-          <span class="text-slate-400">×</span>
-          Reset
-        </button>
-
-        <button
-          type="button"
-          class="flex h-8 items-center gap-1.5 rounded-xl bg-sky-700 px-3.5 text-xs font-bold text-white shadow-2xs transition-colors hover:bg-sky-800 cursor-pointer"
-          @click="$emit('apply')"
-        >
-          ✓ Terapkan
+          <span>↺</span>
+          <span>Reset Filter</span>
         </button>
       </div>
     </div>
@@ -184,9 +168,6 @@ const activeFilterCount = computed(() => {
           :max-month="selectedPeriod"
           @update:range="updateAnalysisRange"
         />
-        <p v-if="draftAnalysisRangePreset !== analysisRangePreset || draftAnalysisRangeStartMonth !== analysisRangeStartMonth || draftAnalysisRangeEndMonth !== analysisRangeEndMonth" class="mt-1 text-[10px] text-amber-700">
-          Pilihan belum diterapkan
-        </p>
       </div>
 
       <div class="space-y-1.5">
@@ -239,23 +220,23 @@ const activeFilterCount = computed(() => {
       <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Filter Aktif:</span>
       <span v-if="selectedEstate !== 'ALL'" class="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
         Kebun: <strong>{{ selectedEstate.replace(/^KEBUN\s+/i, '').trim().toUpperCase() }}</strong>
-        <button type="button" class="text-slate-400 hover:text-slate-700 font-bold" @click="$emit('update:selectedEstate', 'ALL')">×</button>
+        <button type="button" class="text-slate-400 hover:text-slate-700 font-bold cursor-pointer" @click="$emit('update:selectedEstate', 'ALL')">×</button>
       </span>
       <span v-if="selectedAfdeling !== 'ALL'" class="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
         Afdeling: <strong>{{ selectedAfdeling }}</strong>
-        <button type="button" class="text-slate-400 hover:text-slate-700 font-bold" @click="$emit('update:selectedAfdeling', 'ALL')">×</button>
+        <button type="button" class="text-slate-400 hover:text-slate-700 font-bold cursor-pointer" @click="$emit('update:selectedAfdeling', 'ALL')">×</button>
       </span>
       <span v-if="selectedCommodity !== 'ALL'" class="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
         Komoditas: <strong>{{ selectedCommodity }}</strong>
-        <button type="button" class="text-slate-400 hover:text-slate-700 font-bold" @click="$emit('update:selectedCommodity', 'ALL')">×</button>
+        <button type="button" class="text-slate-400 hover:text-slate-700 font-bold cursor-pointer" @click="$emit('update:selectedCommodity', 'ALL')">×</button>
       </span>
       <span v-if="selectedPhase !== 'ALL'" class="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
         Fase: <strong>{{ selectedPhase }}</strong>
-        <button type="button" class="text-slate-400 hover:text-slate-700 font-bold" @click="$emit('update:selectedPhase', 'ALL')">×</button>
+        <button type="button" class="text-slate-400 hover:text-slate-700 font-bold cursor-pointer" @click="$emit('update:selectedPhase', 'ALL')">×</button>
       </span>
       <span v-if="isManualCutoff" class="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
         Manual Cut-Off: <strong>Bulan {{ selectedPeriod }}</strong>
-        <button type="button" class="text-amber-600 hover:text-amber-900 font-bold" @click="$emit('update:selectedPeriod', detectedPeriod)">×</button>
+        <button type="button" class="text-amber-600 hover:text-amber-900 font-bold cursor-pointer" @click="$emit('update:selectedPeriod', detectedPeriod)">×</button>
       </span>
       <span class="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-xs font-semibold text-sky-800">
         Rentang Analisis: <strong>{{ analysisRangeLabel }}</strong>
